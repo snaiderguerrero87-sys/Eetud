@@ -72,6 +72,15 @@ function verificarAutenticacion(req, res, next) {
     }
 }
 
+// ===== MIDDLEWARE AUTH PARA APIs =====
+function verificarAutenticacionApi(req, res, next) {
+    if (req.session && req.session.usuario) {
+        next();
+    } else {
+        res.status(401).json({ error: 'No autenticado' });
+    }
+}
+
 // Configurar EJS
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
@@ -244,7 +253,6 @@ app.post('/registro', async (req, res) => {
         const nuevoId = result.insertId;
         console.log('✅ Usuario creado con ID:', nuevoId);
 
-        // Crear registro en empresa_info SOLO con los datos del usuario (el resto vacío)
         await pool.query(
             `INSERT INTO empresa_info (usuario_id, nombre, nit, telefono, email, direccion, web, descripcion, logo)
              VALUES (?, ?, ?, ?, ?, '', '', '', '')`,
@@ -280,22 +288,17 @@ app.post('/registro', async (req, res) => {
 });
 
 // ============================================================
-// ===== EMPRESA INFO (MIGRADO A MYSQL - FILTRADO POR USUARIO) =====
+// ===== EMPRESA INFO (MYSQL) =====
 // ============================================================
 
 app.get('/api/empresa-info', verificarAutenticacion, async (req, res) => {
     try {
         const usuarioId = req.session.usuario.id;
-
         const [rows] = await pool.query(
             'SELECT nombre, nit, telefono, email, direccion, web, descripcion, logo FROM empresa_info WHERE usuario_id = ? LIMIT 1',
             [usuarioId]
         );
-
-        if (rows.length === 0) {
-            return res.json({});
-        }
-
+        if (rows.length === 0) return res.json({});
         res.json(rows[0]);
     } catch (e) {
         console.error('❌ Error al leer empresaInfo:', e);
@@ -348,6 +351,106 @@ app.get('/api/ping', (req, res) => {
         timestamp: new Date().toISOString(),
         session: req.session?.usuario?.username || 'no autenticado'
     });
+});
+
+// ============================================================
+// ===== HERRAMIENTAS (MYSQL - POR USUARIO) =====
+// ============================================================
+
+// Listar todas las herramientas del usuario
+app.get('/api/herramientas', verificarAutenticacionApi, async (req, res) => {
+    try {
+        const usuarioId = req.session.usuario.id;
+        const [rows] = await pool.query(
+            'SELECT id, codigo, nombre, marca, ubicacion FROM herramientas WHERE usuario_id = ? ORDER BY id DESC',
+            [usuarioId]
+        );
+        res.json(rows);
+    } catch (error) {
+        console.error('❌ Error al listar herramientas:', error);
+        res.status(500).json({ error: 'Error al listar herramientas' });
+    }
+});
+
+// Obtener una herramienta específica
+app.get('/api/herramientas/:id', verificarAutenticacionApi, async (req, res) => {
+    try {
+        const usuarioId = req.session.usuario.id;
+        const id = parseInt(req.params.id);
+        const [rows] = await pool.query(
+            'SELECT * FROM herramientas WHERE id = ? AND usuario_id = ? LIMIT 1',
+            [id, usuarioId]
+        );
+        if (rows.length === 0) return res.status(404).json({ error: 'Herramienta no encontrada' });
+        res.json(rows[0]);
+    } catch (error) {
+        console.error('❌ Error al obtener herramienta:', error);
+        res.status(500).json({ error: 'Error al obtener herramienta' });
+    }
+});
+
+// Crear herramienta
+app.post('/api/herramientas', verificarAutenticacionApi, async (req, res) => {
+    try {
+        const usuarioId = req.session.usuario.id;
+        const { codigo, nombre, marca } = req.body;
+
+        if (!codigo || !nombre || !marca) {
+            return res.status(400).json({ error: 'Código, nombre y marca son obligatorios' });
+        }
+
+        const [result] = await pool.query(
+            'INSERT INTO herramientas (usuario_id, codigo, nombre, marca, ubicacion) VALUES (?, ?, ?, ?, ?)',
+            [usuarioId, codigo, nombre, marca, '']
+        );
+
+        console.log(`✅ Herramienta creada ID ${result.insertId} para usuario ${usuarioId}`);
+        res.json({ success: true, id: result.insertId });
+    } catch (error) {
+        console.error('❌ Error al crear herramienta:', error);
+        res.status(500).json({ error: 'Error al crear herramienta' });
+    }
+});
+
+// Actualizar herramienta
+app.put('/api/herramientas/:id', verificarAutenticacionApi, async (req, res) => {
+    try {
+        const usuarioId = req.session.usuario.id;
+        const id = parseInt(req.params.id);
+        const { codigo, nombre, marca } = req.body;
+
+        const [result] = await pool.query(
+            'UPDATE herramientas SET codigo = ?, nombre = ?, marca = ? WHERE id = ? AND usuario_id = ?',
+            [codigo, nombre, marca, id, usuarioId]
+        );
+
+        if (result.affectedRows === 0) return res.status(404).json({ error: 'Herramienta no encontrada' });
+
+        res.json({ success: true });
+    } catch (error) {
+        console.error('❌ Error al actualizar herramienta:', error);
+        res.status(500).json({ error: 'Error al actualizar herramienta' });
+    }
+});
+
+// Eliminar herramienta
+app.delete('/api/herramientas/:id', verificarAutenticacionApi, async (req, res) => {
+    try {
+        const usuarioId = req.session.usuario.id;
+        const id = parseInt(req.params.id);
+
+        const [result] = await pool.query(
+            'DELETE FROM herramientas WHERE id = ? AND usuario_id = ?',
+            [id, usuarioId]
+        );
+
+        if (result.affectedRows === 0) return res.status(404).json({ error: 'Herramienta no encontrada' });
+
+        res.json({ success: true });
+    } catch (error) {
+        console.error('❌ Error al eliminar herramienta:', error);
+        res.status(500).json({ error: 'Error al eliminar herramienta' });
+    }
 });
 
 // ============================================================
@@ -565,7 +668,6 @@ app.get('/api/apu-pdf/:id', verificarAutenticacion, async (req, res) => {
         const PDFDocument = require('pdfkit');
         const apuId = parseInt(req.params.id);
         const apuPath = path.join(__dirname, 'data', 'apu.json');
-        const empresaPath = path.join(__dirname, 'data', 'empresaInfo.json');
 
         let apuData = null;
         let empresaData = {};
@@ -576,7 +678,6 @@ app.get('/api/apu-pdf/:id', verificarAutenticacion, async (req, res) => {
         }
         if (!apuData) return res.status(404).json({ error: 'APU no encontrado' });
 
-        // Buscar empresa_info del usuario actual en MySQL
         const usuarioId = req.session.usuario.id;
         const [empresas] = await pool.query(
             'SELECT nombre, nit, telefono, email, direccion, web, descripcion, logo FROM empresa_info WHERE usuario_id = ? LIMIT 1',

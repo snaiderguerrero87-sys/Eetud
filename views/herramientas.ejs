@@ -9,7 +9,6 @@
             </button>
         </div>
 
-        <!-- Tabla de Herramientas -->
         <section class="table-container">
             <table class="data-table" id="tablaHerramientas">
                 <thead>
@@ -22,10 +21,9 @@
                     </tr>
                 </thead>
                 <tbody id="cuerpoTabla">
-                    <!-- Los datos se cargan con JavaScript -->
                 </tbody>
             </table>
-            <div id="sinDatos" class="empty-state">
+            <div id="sinDatos" class="empty-state" style="display:none;">
                 <i class="fas fa-tools"></i>
                 <p>No hay herramientas registradas</p>
                 <button class="btn-primary" onclick="abrirModal()">
@@ -34,11 +32,10 @@
             </div>
         </section>
 
-        <!-- Modal para crear herramienta (SIN ubicación) -->
         <div id="modalHerramienta" class="modal">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h2>Nueva Herramienta</h2>
+                    <h2 id="modalTitulo">Nueva Herramienta</h2>
                     <span class="close" onclick="cerrarModal()">&times;</span>
                 </div>
                 <form id="formHerramienta">
@@ -62,95 +59,43 @@
             </div>
         </div>
 
-        <!-- Botón para borrar caché -->
-        <button class="btn-danger btn-cache" onclick="borrarCache()">
-            <i class="fas fa-trash"></i> Borrar Caché
+        <button class="btn-danger btn-cache" onclick="borrarTodas()">
+            <i class="fas fa-trash"></i> Borrar Todas Mis Herramientas
         </button>
 
+        <style>
+            .ubicacion-asignada {
+                color: var(--success);
+                font-weight: 500;
+            }
+            .ubicacion-vacia {
+                color: var(--gray-500);
+            }
+        </style>
+
         <script>
-            // ===== VARIABLES GLOBALES =====
             var herramientas = [];
             var editandoId = null;
-            var proyectosData = [];
 
-            // ===== FUNCIÓN PARA OBTENER UBICACIÓN DE HERRAMIENTA =====
-            function obtenerUbicacionHerramienta(herramientaId) {
-                var ubicacion = '';
-                try {
-                    var data = localStorage.getItem('proyectos');
-                    if (data) {
-                        proyectosData = JSON.parse(data);
-                        for (var i = 0; i < proyectosData.length; i++) {
-                            var proyecto = proyectosData[i];
-                            if (proyecto.herramientasObra) {
-                                for (var j = 0; j < proyecto.herramientasObra.length; j++) {
-                                    if (proyecto.herramientasObra[j].herramientaId === herramientaId) {
-                                        ubicacion = proyecto.nombre || 'Proyecto #' + proyecto.id;
-                                        break;
-                                    }
-                                }
-                            }
-                            if (ubicacion) break;
-                        }
-                    }
-                } catch (e) {
-                    proyectosData = [];
-                }
-                return ubicacion || '';
-            }
-
-            // ===== CARGAR DATOS AL INICIAR =====
             document.addEventListener('DOMContentLoaded', function() {
                 cargarHerramientas();
             });
 
-            // ===== FUNCIONES PRINCIPALES =====
-
-            function cargarHerramientas() {
-                var data = localStorage.getItem('herramientas');
-                if (data) {
-                    herramientas = JSON.parse(data);
-                } else {
-                    herramientas = [];
-                    guardarHerramientas();
-                }
-                actualizarUbicaciones();
-                renderizarTabla();
-            }
-
-            function actualizarUbicaciones() {
+            // ============================================================
+            // ===== CARGAR HERRAMIENTAS DESDE EL SERVIDOR =====
+            // ============================================================
+            async function cargarHerramientas() {
                 try {
-                    var data = localStorage.getItem('proyectos');
-                    if (data) {
-                        proyectosData = JSON.parse(data);
-                        var ubicacionMap = {};
-                        for (var i = 0; i < proyectosData.length; i++) {
-                            var proyecto = proyectosData[i];
-                            if (proyecto.herramientasObra) {
-                                for (var j = 0; j < proyecto.herramientasObra.length; j++) {
-                                    var herr = proyecto.herramientasObra[j];
-                                    ubicacionMap[herr.herramientaId] = proyecto.nombre || 'Proyecto #' + proyecto.id;
-                                }
-                            }
-                        }
-                        for (var k = 0; k < herramientas.length; k++) {
-                            var herrId = herramientas[k].id;
-                            if (ubicacionMap[herrId]) {
-                                herramientas[k].ubicacion = ubicacionMap[herrId];
-                            } else {
-                                herramientas[k].ubicacion = '';
-                            }
-                        }
-                        guardarHerramientas();
-                    }
-                } catch (e) {
-                    proyectosData = [];
+                    const response = await fetch('/api/herramientas');
+                    if (!response.ok) throw new Error('Error al cargar herramientas');
+                    herramientas = await response.json();
+                    renderizarTabla();
+                } catch (error) {
+                    console.error('Error:', error);
+                    mostrarNotificacion('Error al cargar herramientas');
+                    herramientas = [];
+                    renderizarTabla();
                 }
-            }
-
-            function guardarHerramientas() {
-                localStorage.setItem('herramientas', JSON.stringify(herramientas));
-                renderizarTabla();
             }
 
             function renderizarTabla() {
@@ -170,32 +115,38 @@
 
                 var html = '';
                 for (var i = 0; i < herramientas.length; i++) {
-                    var herramienta = herramientas[i];
-                    var ubicacionMostrar = herramienta.ubicacion || '-';
-                    var ubicacionHtml = ubicacionMostrar !== '-' 
-                        ? '<span class="ubicacion-asignada"><i class="fas fa-check-circle" style="color:var(--success);"></i> ' + ubicacionMostrar + '</span>' 
+                    var h = herramientas[i];
+                    var ubicacionHtml = h.ubicacion
+                        ? '<span class="ubicacion-asignada"><i class="fas fa-check-circle"></i> ' + h.ubicacion + '</span>'
                         : '<span class="ubicacion-vacia">-</span>';
-                    
+
                     html += '<tr>';
-                    html += '<td><strong>' + herramienta.codigo + '</strong></td>';
-                    html += '<td>' + herramienta.nombre + '</td>';
-                    html += '<td>' + herramienta.marca + '</td>';
+                    html += '<td><strong>' + escapeHtml(h.codigo) + '</strong></td>';
+                    html += '<td>' + escapeHtml(h.nombre) + '</td>';
+                    html += '<td>' + escapeHtml(h.marca) + '</td>';
                     html += '<td>' + ubicacionHtml + '</td>';
                     html += '<td>';
-                    html += '<button class="btn-edit" onclick="editarHerramienta(' + herramienta.id + ')">';
-                    html += '<i class="fas fa-edit"></i>';
-                    html += '</button>';
-                    html += '<button class="btn-delete" onclick="eliminarHerramienta(' + herramienta.id + ')">';
-                    html += '<i class="fas fa-trash"></i>';
-                    html += '</button>';
+                    html += '<button class="btn-edit" onclick="editarHerramienta(' + h.id + ')"><i class="fas fa-edit"></i></button>';
+                    html += '<button class="btn-delete" onclick="eliminarHerramienta(' + h.id + ')"><i class="fas fa-trash"></i></button>';
                     html += '</td>';
                     html += '</tr>';
                 }
                 tbody.innerHTML = html;
             }
 
-            // ===== MODAL =====
+            function escapeHtml(text) {
+                if (text === undefined || text === null) return '';
+                return String(text)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#39;');
+            }
 
+            // ============================================================
+            // ===== MODAL =====
+            // ============================================================
             function abrirModal(herramienta) {
                 var modal = document.getElementById('modalHerramienta');
                 var form = document.getElementById('formHerramienta');
@@ -211,13 +162,7 @@
                     titulo.textContent = 'Nueva Herramienta';
                     form.reset();
                     editandoId = null;
-                    var ultimo = herramientas.length > 0 ? herramientas[herramientas.length - 1] : null;
-                    var nuevoCodigo = 'HER-001';
-                    if (ultimo) {
-                        var num = parseInt(ultimo.codigo.split('-')[1]) + 1;
-                        nuevoCodigo = 'HER-' + String(num).padStart(3, '0');
-                    }
-                    document.getElementById('codigo').value = nuevoCodigo;
+                    document.getElementById('codigo').value = generarCodigo();
                 }
 
                 modal.style.display = 'flex';
@@ -229,9 +174,23 @@
                 editandoId = null;
             }
 
-            // ===== CRUD =====
+            function generarCodigo() {
+                if (herramientas.length === 0) return 'HER-001';
+                var maxNum = 0;
+                for (var i = 0; i < herramientas.length; i++) {
+                    var match = herramientas[i].codigo.match(/HER-(\d+)/);
+                    if (match) {
+                        var num = parseInt(match[1]);
+                        if (num > maxNum) maxNum = num;
+                    }
+                }
+                return 'HER-' + String(maxNum + 1).padStart(3, '0');
+            }
 
-            document.getElementById('formHerramienta').addEventListener('submit', function(e) {
+            // ============================================================
+            // ===== CRUD =====
+            // ============================================================
+            document.getElementById('formHerramienta').addEventListener('submit', async function(e) {
                 e.preventDefault();
 
                 var codigo = document.getElementById('codigo').value.trim();
@@ -243,40 +202,31 @@
                     return;
                 }
 
-                if (editandoId !== null) {
-                    var index = herramientas.findIndex(function(h) { return h.id === editandoId; });
-                    if (index !== -1) {
-                        herramientas[index] = { 
-                            id: editandoId, 
-                            codigo: codigo, 
-                            nombre: nombre, 
-                            marca: marca, 
-                            ubicacion: herramientas[index].ubicacion || ''
-                        };
-                    }
-                } else {
-                    var nuevoId = 1;
-                    if (herramientas.length > 0) {
-                        var ids = herramientas.map(function(h) { return h.id; });
-                        nuevoId = Math.max.apply(null, ids) + 1;
-                    }
-                    herramientas.push({ 
-                        id: nuevoId, 
-                        codigo: codigo, 
-                        nombre: nombre, 
-                        marca: marca, 
-                        ubicacion: ''
-                    });
-                }
+                try {
+                    var url = editandoId !== null
+                        ? '/api/herramientas/' + editandoId
+                        : '/api/herramientas';
+                    var method = editandoId !== null ? 'PUT' : 'POST';
 
-                guardarHerramientas();
-                cerrarModal();
-                if (editandoId !== null) {
-                    mostrarNotificacion('Herramienta actualizada');
-                } else {
-                    mostrarNotificacion('Herramienta creada');
+                    var response = await fetch(url, {
+                        method: method,
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ codigo: codigo, nombre: nombre, marca: marca })
+                    });
+
+                    if (!response.ok) {
+                        var err = await response.json();
+                        throw new Error(err.error || 'Error al guardar');
+                    }
+
+                    await cargarHerramientas();
+                    cerrarModal();
+                    mostrarNotificacion(editandoId !== null ? 'Herramienta actualizada' : 'Herramienta creada');
+                    editandoId = null;
+                } catch (error) {
+                    console.error('Error:', error);
+                    mostrarNotificacion('Error: ' + error.message);
                 }
-                editandoId = null;
             });
 
             function editarHerramienta(id) {
@@ -287,64 +237,60 @@
                         break;
                     }
                 }
-                if (herramienta) {
-                    abrirModal(herramienta);
-                }
+                if (herramienta) abrirModal(herramienta);
             }
 
-            function eliminarHerramienta(id) {
-                if (confirm('¿Estás seguro de eliminar esta herramienta?')) {
-                    var nuevasHerramientas = [];
-                    for (var i = 0; i < herramientas.length; i++) {
-                        if (herramientas[i].id !== id) {
-                            nuevasHerramientas.push(herramientas[i]);
-                        }
-                    }
-                    herramientas = nuevasHerramientas;
-                    guardarHerramientas();
+            async function eliminarHerramienta(id) {
+                if (!confirm('¿Estás seguro de eliminar esta herramienta?')) return;
+
+                try {
+                    var response = await fetch('/api/herramientas/' + id, { method: 'DELETE' });
+                    if (!response.ok) throw new Error('Error al eliminar');
+                    await cargarHerramientas();
                     mostrarNotificacion('Herramienta eliminada');
+                } catch (error) {
+                    console.error('Error:', error);
+                    mostrarNotificacion('Error al eliminar');
                 }
             }
 
-            // ===== BORRAR CACHÉ =====
-            function borrarCache() {
-                if (confirm('⚠️ ¿Estás seguro de borrar TODOS los datos guardados? Esta acción no se puede deshacer.')) {
-                    localStorage.clear();
-                    herramientas = [];
-                    guardarHerramientas();
-                    mostrarNotificacion('🗑️ Caché borrada correctamente');
+            async function borrarTodas() {
+                if (herramientas.length === 0) {
+                    alert('No hay herramientas para borrar');
+                    return;
+                }
+                if (!confirm('⚠️ ¿Borrar TODAS tus herramientas? Esta acción no se puede deshacer.')) return;
+
+                try {
+                    for (var i = 0; i < herramientas.length; i++) {
+                        await fetch('/api/herramientas/' + herramientas[i].id, { method: 'DELETE' });
+                    }
+                    await cargarHerramientas();
+                    mostrarNotificacion('Todas las herramientas fueron eliminadas');
+                } catch (error) {
+                    console.error('Error:', error);
+                    mostrarNotificacion('Error al borrar');
                 }
             }
 
+            // ============================================================
             // ===== NOTIFICACIONES =====
+            // ============================================================
             function mostrarNotificacion(mensaje) {
                 var notificacion = document.createElement('div');
                 notificacion.className = 'notification';
                 notificacion.textContent = mensaje;
                 document.body.appendChild(notificacion);
-                setTimeout(function() {
-                    notificacion.classList.add('show');
-                }, 100);
+                setTimeout(function() { notificacion.classList.add('show'); }, 100);
                 setTimeout(function() {
                     notificacion.classList.remove('show');
-                    setTimeout(function() {
-                        notificacion.remove();
-                    }, 300);
+                    setTimeout(function() { notificacion.remove(); }, 300);
                 }, 3000);
             }
 
-            // Cerrar modal al hacer clic fuera
             window.onclick = function(event) {
                 var modal = document.getElementById('modalHerramienta');
-                if (event.target === modal) {
-                    cerrarModal();
-                }
-            };
-
-            // ===== FUNCIÓN PARA ACTUALIZAR DESDE PROYECTOS =====
-            window.actualizarUbicacionesHerramientas = function() {
-                actualizarUbicaciones();
-                renderizarTabla();
+                if (event.target === modal) cerrarModal();
             };
         </script>
     `
