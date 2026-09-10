@@ -454,6 +454,114 @@ app.delete('/api/herramientas/:id', verificarAutenticacionApi, async (req, res) 
 });
 
 // ============================================================
+// ===== EMPLEADOS (MYSQL - POR USUARIO) =====
+// ============================================================
+
+// Listar todos los empleados del usuario
+app.get('/api/empleados', verificarAutenticacionApi, async (req, res) => {
+    try {
+        const usuarioId = req.session.usuario.id;
+        const [rows] = await pool.query(
+            'SELECT id, nombre, cargo, costoDia, costoMes, costoHora FROM empleados WHERE usuario_id = ? ORDER BY id DESC',
+            [usuarioId]
+        );
+        res.json(rows);
+    } catch (error) {
+        console.error('❌ Error al listar empleados:', error);
+        res.status(500).json({ error: 'Error al listar empleados' });
+    }
+});
+
+// Obtener un empleado específico
+app.get('/api/empleados/:id', verificarAutenticacionApi, async (req, res) => {
+    try {
+        const usuarioId = req.session.usuario.id;
+        const id = parseInt(req.params.id);
+        const [rows] = await pool.query(
+            'SELECT * FROM empleados WHERE id = ? AND usuario_id = ? LIMIT 1',
+            [id, usuarioId]
+        );
+        if (rows.length === 0) return res.status(404).json({ error: 'Empleado no encontrado' });
+        res.json(rows[0]);
+    } catch (error) {
+        console.error('❌ Error al obtener empleado:', error);
+        res.status(500).json({ error: 'Error al obtener empleado' });
+    }
+});
+
+// Crear empleado
+app.post('/api/empleados', verificarAutenticacionApi, async (req, res) => {
+    try {
+        const usuarioId = req.session.usuario.id;
+        const { nombre, cargo, costoDia } = req.body;
+
+        if (!nombre || !cargo || !costoDia) {
+            return res.status(400).json({ error: 'Nombre, cargo y costo por día son obligatorios' });
+        }
+
+        const costoDiaNum = parseFloat(costoDia);
+        const costoMes = costoDiaNum * 30;
+        const costoHora = costoDiaNum / 8;
+
+        const [result] = await pool.query(
+            'INSERT INTO empleados (usuario_id, nombre, cargo, costoDia, costoMes, costoHora) VALUES (?, ?, ?, ?, ?, ?)',
+            [usuarioId, nombre, cargo, costoDiaNum, costoMes, costoHora]
+        );
+
+        console.log(`✅ Empleado creado ID ${result.insertId} para usuario ${usuarioId}`);
+        res.json({ success: true, id: result.insertId });
+    } catch (error) {
+        console.error('❌ Error al crear empleado:', error);
+        res.status(500).json({ error: 'Error al crear empleado' });
+    }
+});
+
+// Actualizar empleado
+app.put('/api/empleados/:id', verificarAutenticacionApi, async (req, res) => {
+    try {
+        const usuarioId = req.session.usuario.id;
+        const id = parseInt(req.params.id);
+        const { nombre, cargo, costoDia } = req.body;
+
+        const costoDiaNum = parseFloat(costoDia);
+        const costoMes = costoDiaNum * 30;
+        const costoHora = costoDiaNum / 8;
+
+        const [result] = await pool.query(
+            'UPDATE empleados SET nombre = ?, cargo = ?, costoDia = ?, costoMes = ?, costoHora = ? WHERE id = ? AND usuario_id = ?',
+            [nombre, cargo, costoDiaNum, costoMes, costoHora, id, usuarioId]
+        );
+
+        if (result.affectedRows === 0) return res.status(404).json({ error: 'Empleado no encontrado' });
+
+        res.json({ success: true });
+    } catch (error) {
+        console.error('❌ Error al actualizar empleado:', error);
+        res.status(500).json({ error: 'Error al actualizar empleado' });
+    }
+});
+
+// Eliminar empleado
+app.delete('/api/empleados/:id', verificarAutenticacionApi, async (req, res) => {
+    try {
+        const usuarioId = req.session.usuario.id;
+        const id = parseInt(req.params.id);
+
+        const [result] = await pool.query(
+            'DELETE FROM empleados WHERE id = ? AND usuario_id = ?',
+            [id, usuarioId]
+        );
+
+        if (result.affectedRows === 0) return res.status(404).json({ error: 'Empleado no encontrado' });
+
+        res.json({ success: true });
+    } catch (error) {
+        console.error('❌ Error al eliminar empleado:', error);
+        res.status(500).json({ error: 'Error al eliminar empleado' });
+    }
+});
+
+// ============================================================
 // ===== APUS (PENDIENTE MIGRAR - POR AHORA COMPARTIDO) =====
 // ============================================================
 

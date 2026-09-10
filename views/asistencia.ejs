@@ -1,6 +1,6 @@
 <%- include('layouts/main', { 
     title: 'Asistencia - Empleados',
-    usuario: 'Administrador',
+    usuario: usuario,
     body: `
         <div class="page-header">
             <h1>Gestión de Empleados</h1>
@@ -9,7 +9,6 @@
             </button>
         </div>
 
-        <!-- Tabla de Empleados -->
         <section class="table-container">
             <table class="data-table" id="tablaEmpleados">
                 <thead>
@@ -24,10 +23,9 @@
                     </tr>
                 </thead>
                 <tbody id="cuerpoTabla">
-                    <!-- Los datos se cargan con JavaScript -->
                 </tbody>
             </table>
-            <div id="sinDatos" class="empty-state">
+            <div id="sinDatos" class="empty-state" style="display:none;">
                 <i class="fas fa-users"></i>
                 <p>No hay empleados registrados</p>
                 <button class="btn-primary" onclick="abrirModal()">
@@ -36,7 +34,6 @@
             </div>
         </section>
 
-        <!-- Modal para crear/editar empleado -->
         <div id="modalEmpleado" class="modal">
             <div class="modal-content">
                 <div class="modal-header">
@@ -74,52 +71,46 @@
             </div>
         </div>
 
-        <!-- Botón para borrar caché -->
-        <button class="btn-danger btn-cache" onclick="borrarCache()">
-            <i class="fas fa-trash"></i> Borrar Caché
+        <button class="btn-danger btn-cache" onclick="borrarTodos()">
+            <i class="fas fa-trash"></i> Borrar Todos Mis Empleados
         </button>
 
         <script>
-            // ===== VARIABLES GLOBALES =====
             var empleados = [];
             var editandoId = null;
 
-            // ===== CARGAR DATOS AL INICIAR =====
             document.addEventListener('DOMContentLoaded', function() {
                 cargarEmpleados();
             });
 
-            // ===== CALCULAR COSTOS =====
+            // ============================================================
+            // ===== CALCULAR COSTOS (preview en el modal) =====
+            // ============================================================
             function calcularCostos() {
                 var costoDia = parseFloat(document.getElementById('costoDia').value) || 0;
-                var costoMes = costoDia * 30; // 30 días
-                var costoHora = costoDia / 8; // 8 horas por día
-                
+                var costoMes = costoDia * 30;
+                var costoHora = costoDia / 8;
                 document.getElementById('costoMes').value = '$' + Number(costoMes).toLocaleString('es-CO');
                 document.getElementById('costoHora').value = '$' + Number(costoHora).toLocaleString('es-CO');
             }
 
-            // ===== FUNCIONES PRINCIPALES =====
-
-            // Cargar empleados desde localStorage
-            function cargarEmpleados() {
-                var data = localStorage.getItem('empleados');
-                if (data) {
-                    empleados = JSON.parse(data);
-                } else {
+            // ============================================================
+            // ===== CARGAR EMPLEADOS DESDE EL SERVIDOR =====
+            // ============================================================
+            async function cargarEmpleados() {
+                try {
+                    const response = await fetch('/api/empleados');
+                    if (!response.ok) throw new Error('Error al cargar empleados');
+                    empleados = await response.json();
+                    renderizarTabla();
+                } catch (error) {
+                    console.error('Error:', error);
+                    mostrarNotificacion('Error al cargar empleados');
                     empleados = [];
-                    guardarEmpleados();
+                    renderizarTabla();
                 }
-                renderizarTabla();
             }
 
-            // Guardar empleados en localStorage
-            function guardarEmpleados() {
-                localStorage.setItem('empleados', JSON.stringify(empleados));
-                renderizarTabla();
-            }
-
-            // Renderizar la tabla
             function renderizarTabla() {
                 var tbody = document.getElementById('cuerpoTabla');
                 var sinDatos = document.getElementById('sinDatos');
@@ -137,33 +128,40 @@
 
                 var html = '';
                 for (var i = 0; i < empleados.length; i++) {
-                    var empleado = empleados[i];
-                    var costoDiaFormateado = '$' + Number(empleado.costoDia).toLocaleString('es-CO');
-                    var costoMesFormateado = '$' + Number(empleado.costoMes).toLocaleString('es-CO');
-                    var costoHoraFormateado = '$' + Number(empleado.costoHora).toLocaleString('es-CO');
-                    
+                    var e = empleados[i];
+                    var costoDia = '$' + Number(e.costoDia).toLocaleString('es-CO');
+                    var costoMes = '$' + Number(e.costoMes).toLocaleString('es-CO');
+                    var costoHora = '$' + Number(e.costoHora).toLocaleString('es-CO');
+
                     html += '<tr>';
-                    html += '<td><strong>' + empleado.id + '</strong></td>';
-                    html += '<td>' + empleado.nombre + '</td>';
-                    html += '<td>' + empleado.cargo + '</td>';
-                    html += '<td>' + costoDiaFormateado + '</td>';
-                    html += '<td>' + costoMesFormateado + '</td>';
-                    html += '<td>' + costoHoraFormateado + '</td>';
+                    html += '<td><strong>' + e.id + '</strong></td>';
+                    html += '<td>' + escapeHtml(e.nombre) + '</td>';
+                    html += '<td>' + escapeHtml(e.cargo) + '</td>';
+                    html += '<td>' + costoDia + '</td>';
+                    html += '<td>' + costoMes + '</td>';
+                    html += '<td>' + costoHora + '</td>';
                     html += '<td>';
-                    html += '<button class="btn-edit" onclick="editarEmpleado(' + empleado.id + ')">';
-                    html += '<i class="fas fa-edit"></i>';
-                    html += '</button>';
-                    html += '<button class="btn-delete" onclick="eliminarEmpleado(' + empleado.id + ')">';
-                    html += '<i class="fas fa-trash"></i>';
-                    html += '</button>';
+                    html += '<button class="btn-edit" onclick="editarEmpleado(' + e.id + ')"><i class="fas fa-edit"></i></button>';
+                    html += '<button class="btn-delete" onclick="eliminarEmpleado(' + e.id + ')"><i class="fas fa-trash"></i></button>';
                     html += '</td>';
                     html += '</tr>';
                 }
                 tbody.innerHTML = html;
             }
 
-            // ===== MODAL =====
+            function escapeHtml(text) {
+                if (text === undefined || text === null) return '';
+                return String(text)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#39;');
+            }
 
+            // ============================================================
+            // ===== MODAL =====
+            // ============================================================
             function abrirModal(empleado) {
                 var modal = document.getElementById('modalEmpleado');
                 var form = document.getElementById('formEmpleado');
@@ -195,71 +193,48 @@
                 document.getElementById('costoHora').value = '';
             }
 
+            // ============================================================
             // ===== CRUD =====
-
-            // Guardar empleado (crear o editar)
-            document.getElementById('formEmpleado').addEventListener('submit', function(e) {
+            // ============================================================
+            document.getElementById('formEmpleado').addEventListener('submit', async function(e) {
                 e.preventDefault();
 
                 var nombre = document.getElementById('nombre').value.trim();
                 var cargo = document.getElementById('cargo').value.trim();
-                var costoDia = parseFloat(document.getElementById('costoDia').value.trim());
+                var costoDia = parseFloat(document.getElementById('costoDia').value);
 
                 if (!nombre || !cargo || !costoDia) {
                     alert('Por favor, completa todos los campos obligatorios (*)');
                     return;
                 }
 
-                var costoMes = costoDia * 30;
-                var costoHora = costoDia / 8;
+                try {
+                    var url = editandoId !== null
+                        ? '/api/empleados/' + editandoId
+                        : '/api/empleados';
+                    var method = editandoId !== null ? 'PUT' : 'POST';
 
-                if (editandoId !== null) {
-                    var index = -1;
-                    for (var i = 0; i < empleados.length; i++) {
-                        if (empleados[i].id === editandoId) {
-                            index = i;
-                            break;
-                        }
-                    }
-                    if (index !== -1) {
-                        empleados[index] = { 
-                            id: editandoId, 
-                            nombre: nombre, 
-                            cargo: cargo, 
-                            costoDia: costoDia,
-                            costoMes: costoMes,
-                            costoHora: costoHora
-                        };
-                    }
-                } else {
-                    var nuevoId = 1;
-                    if (empleados.length > 0) {
-                        var maxId = 0;
-                        for (var j = 0; j < empleados.length; j++) {
-                            if (empleados[j].id > maxId) {
-                                maxId = empleados[j].id;
-                            }
-                        }
-                        nuevoId = maxId + 1;
-                    }
-                    empleados.push({ 
-                        id: nuevoId, 
-                        nombre: nombre, 
-                        cargo: cargo, 
-                        costoDia: costoDia,
-                        costoMes: costoMes,
-                        costoHora: costoHora
+                    var response = await fetch(url, {
+                        method: method,
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ nombre: nombre, cargo: cargo, costoDia: costoDia })
                     });
-                }
 
-                guardarEmpleados();
-                cerrarModal();
-                var mensaje = editandoId !== null ? 'Empleado actualizado' : 'Empleado creado';
-                mostrarNotificacion(mensaje);
-                editandoId = null;
+                    if (!response.ok) {
+                        var err = await response.json();
+                        throw new Error(err.error || 'Error al guardar');
+                    }
+
+                    await cargarEmpleados();
+                    cerrarModal();
+                    mostrarNotificacion(editandoId !== null ? 'Empleado actualizado' : 'Empleado creado');
+                    editandoId = null;
+                } catch (error) {
+                    console.error('Error:', error);
+                    mostrarNotificacion('Error: ' + error.message);
+                }
             });
 
-            // Editar empleado
             function editarEmpleado(id) {
                 var empleado = null;
                 for (var i = 0; i < empleados.length; i++) {
@@ -268,59 +243,60 @@
                         break;
                     }
                 }
-                if (empleado) {
-                    abrirModal(empleado);
-                }
+                if (empleado) abrirModal(empleado);
             }
 
-            // Eliminar empleado
-            function eliminarEmpleado(id) {
-                if (confirm('¿Estás seguro de eliminar este empleado?')) {
-                    var nuevosEmpleados = [];
-                    for (var i = 0; i < empleados.length; i++) {
-                        if (empleados[i].id !== id) {
-                            nuevosEmpleados.push(empleados[i]);
-                        }
-                    }
-                    empleados = nuevosEmpleados;
-                    guardarEmpleados();
+            async function eliminarEmpleado(id) {
+                if (!confirm('¿Estás seguro de eliminar este empleado?')) return;
+
+                try {
+                    var response = await fetch('/api/empleados/' + id, { method: 'DELETE' });
+                    if (!response.ok) throw new Error('Error al eliminar');
+                    await cargarEmpleados();
                     mostrarNotificacion('Empleado eliminado');
+                } catch (error) {
+                    console.error('Error:', error);
+                    mostrarNotificacion('Error al eliminar');
                 }
             }
 
-            // ===== BORRAR CACHÉ =====
-            function borrarCache() {
-                if (confirm('⚠️ ¿Estás seguro de borrar TODOS los datos guardados? Esta acción no se puede deshacer.')) {
-                    localStorage.clear();
-                    empleados = [];
-                    guardarEmpleados();
-                    mostrarNotificacion('🗑️ Caché borrada correctamente');
+            async function borrarTodos() {
+                if (empleados.length === 0) {
+                    alert('No hay empleados para borrar');
+                    return;
+                }
+                if (!confirm('⚠️ ¿Borrar TODOS tus empleados? Esta acción no se puede deshacer.')) return;
+
+                try {
+                    for (var i = 0; i < empleados.length; i++) {
+                        await fetch('/api/empleados/' + empleados[i].id, { method: 'DELETE' });
+                    }
+                    await cargarEmpleados();
+                    mostrarNotificacion('Todos los empleados fueron eliminados');
+                } catch (error) {
+                    console.error('Error:', error);
+                    mostrarNotificacion('Error al borrar');
                 }
             }
 
+            // ============================================================
             // ===== NOTIFICACIONES =====
+            // ============================================================
             function mostrarNotificacion(mensaje) {
                 var notificacion = document.createElement('div');
                 notificacion.className = 'notification';
                 notificacion.textContent = mensaje;
                 document.body.appendChild(notificacion);
-                setTimeout(function() {
-                    notificacion.classList.add('show');
-                }, 100);
+                setTimeout(function() { notificacion.classList.add('show'); }, 100);
                 setTimeout(function() {
                     notificacion.classList.remove('show');
-                    setTimeout(function() {
-                        notificacion.remove();
-                    }, 300);
+                    setTimeout(function() { notificacion.remove(); }, 300);
                 }, 3000);
             }
 
-            // Cerrar modal al hacer clic fuera
             window.onclick = function(event) {
                 var modal = document.getElementById('modalEmpleado');
-                if (event.target === modal) {
-                    cerrarModal();
-                }
+                if (event.target === modal) cerrarModal();
             };
         </script>
     `
