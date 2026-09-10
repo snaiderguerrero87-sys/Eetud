@@ -1,0 +1,6 @@
+{
+  "watch": ["server.js", "views", "public", "config"],
+  "ext": "js,json,ejs,css",
+  "ignore": ["data/", "node_modules/", "*.log"],
+  "delay": "500"
+}
