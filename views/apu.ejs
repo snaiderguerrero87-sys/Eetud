@@ -18,8 +18,7 @@
         </div>
 
         <section class="table-container">
-            <div id="contenedorTablas">
-            </div>
+            <div id="contenedorTablas"></div>
             <div id="sinDatos" class="empty-state">
                 <i class="fas fa-file-invoice"></i>
                 <p>No hay APU registrados</p>
@@ -80,7 +79,7 @@
                                 Ignorar items (editar valor manualmente)
                             </span>
                         </label>
-                        <button type="button" id="btnToggleInfo" style="background:var(--warning); color:white; border:none; border-radius:50%; width:28px; height:28px; font-size:14px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0;" title="Al activar esta opción, se ignoran los campos de materiales, equipos, transporte y mano de obra y solo se usa el valor manual.">
+                        <button type="button" id="btnToggleInfo" style="background:var(--warning); color:white; border:none; border-radius:50%; width:28px; height:28px; font-size:14px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
                             <i class="fas fa-info"></i>
                         </button>
                     </div>
@@ -318,7 +317,6 @@
                         Descarga el formato Excel, completa los datos y luego impórtalo.
                         Las categorías nuevas se crearán automáticamente.
                     </p>
-                    
                     <div style="display:flex; gap:12px; flex-wrap:wrap; justify-content:center;">
                         <button class="btn-primary" onclick="descargarFormatoAPU()" style="flex:1; min-width:150px;">
                             <i class="fas fa-download"></i> Descargar Formato
@@ -328,13 +326,10 @@
                         </button>
                         <input type="file" id="fileInputImportarAPU" accept=".xlsx,.xls" style="display:none;" onchange="procesarImportacionAPU(event)">
                     </div>
-                    
                     <div id="importarProgresoAPU" style="display:none; margin-top:16px; padding:12px; background:var(--gray-50); border-radius:8px; text-align:center;">
                         <span id="importarMensajeAPU">Procesando archivo...</span>
                     </div>
-                    
-                    <div id="importarResultadoAPU" style="display:none; margin-top:16px; padding:12px; border-radius:8px;">
-                    </div>
+                    <div id="importarResultadoAPU" style="display:none; margin-top:16px; padding:12px; border-radius:8px;"></div>
                 </div>
             </div>
         </div>
@@ -350,326 +345,48 @@
                 max-height: 92vh;
                 padding: 24px 32px;
             }
-            
             @media (max-width: 768px) {
-                .modal-muy-grande .modal-content {
-                    max-width: 98vw;
-                    width: 98vw;
-                    padding: 16px;
-                    max-height: 95vh;
-                }
-                .modal-muy-grande .modal-content .form-row {
-                    flex-direction: column;
-                    gap: 0;
-                }
-                .modal-muy-grande .modal-content .form-row .form-group.half {
-                    flex: none;
-                }
-                .modal-muy-grande .modal-content .item-row {
-                    flex-wrap: wrap;
-                }
-                .modal-muy-grande .modal-content .item-row .form-group {
-                    flex: 1;
-                    min-width: 100px;
-                }
-                #modalSelectorMateriales .modal-content {
-                    max-width: 98vw;
-                    width: 98vw;
-                    padding: 16px;
-                }
-                #modalSelectorMateriales .modal-content > div {
-                    flex-direction: column;
-                }
-                #modalSelectorMateriales .modal-content > div > div {
-                    flex: none;
-                    width: 100%;
-                    border-left: none;
-                    padding-left: 0;
-                    border-top: 1px solid var(--gray-200);
-                    padding-top: 16px;
-                    margin-top: 12px;
-                }
-                .form-actions {
-                    flex-direction: column;
-                }
-                .form-actions button {
-                    width: 100%;
-                }
-                #modalSelectorMateriales .modal-content > div > div:last-child {
-                    flex-direction: column;
-                    align-items: stretch;
-                }
-                #modalSelectorMateriales .modal-content > div > div:last-child > div {
-                    flex-wrap: wrap;
-                }
+                .modal-muy-grande .modal-content { max-width: 98vw; width: 98vw; padding: 16px; max-height: 95vh; }
+                .modal-muy-grande .modal-content .form-row { flex-direction: column; gap: 0; }
+                .modal-muy-grande .modal-content .form-row .form-group.half { flex: none; }
+                .modal-muy-grande .modal-content .item-row { flex-wrap: wrap; }
+                .modal-muy-grande .modal-content .item-row .form-group { flex: 1; min-width: 100px; }
+                #modalSelectorMateriales .modal-content { max-width: 98vw; width: 98vw; padding: 16px; }
+                #modalSelectorMateriales .modal-content > div { flex-direction: column; }
+                #modalSelectorMateriales .modal-content > div > div { flex: none; width: 100%; border-left: none; padding-left: 0; border-top: 1px solid var(--gray-200); padding-top: 16px; margin-top: 12px; }
+                .form-actions { flex-direction: column; }
+                .form-actions button { width: 100%; }
             }
-
-            .toggle-container {
-                display: flex !important;
-                align-items: center !important;
-                gap: 12px !important;
-                padding: 12px 16px !important;
-                background: var(--gray-50) !important;
-                border-radius: 8px !important;
-                border: 1px solid var(--gray-200) !important;
-            }
-
-            .toggle-container .toggle-label {
-                display: flex !important;
-                align-items: center !important;
-                gap: 12px !important;
-                cursor: pointer !important;
-                margin: 0 !important;
-                flex: 1 !important;
-            }
-
-            .toggle-container .toggle-label .toggle-slider {
-                position: relative !important;
-                width: 44px !important;
-                height: 24px !important;
-                background: var(--gray-200) !important;
-                border-radius: 12px !important;
-                transition: all 0.3s !important;
-                flex-shrink: 0 !important;
-            }
-
-            .toggle-container .toggle-label .toggle-slider::after {
-                content: '' !important;
-                position: absolute !important;
-                top: 2px !important;
-                left: 2px !important;
-                width: 20px !important;
-                height: 20px !important;
-                background: white !important;
-                border-radius: 50% !important;
-                transition: all 0.3s !important;
-                box-shadow: var(--shadow) !important;
-            }
-
-            .toggle-container .toggle-label input:checked + .toggle-slider {
-                background: var(--primary) !important;
-            }
-
-            .toggle-container .toggle-label input:checked + .toggle-slider::after {
-                transform: translateX(20px) !important;
-            }
-
-            .toggle-container .toggle-label .toggle-text {
-                font-size: 14px !important;
-                font-weight: 500 !important;
-                color: var(--gray-900) !important;
-            }
-
-            .toggle-container .toggle-label .toggle-text i {
-                color: var(--warning) !important;
-                margin-right: 6px !important;
-            }
-
-            #btnToggleInfo {
-                background: var(--warning) !important;
-                color: white !important;
-                border: none !important;
-                border-radius: 50% !important;
-                width: 28px !important;
-                height: 28px !important;
-                font-size: 14px !important;
-                font-weight: 700 !important;
-                cursor: pointer !important;
-                display: flex !important;
-                align-items: center !important;
-                justify-content: center !important;
-                flex-shrink: 0 !important;
-                transition: all 0.3s !important;
-            }
-
-            #btnToggleInfo:hover {
-                transform: scale(1.1) !important;
-                background: #d97706 !important;
-            }
-
-            .item-row .form-group.small input[type="text"] {
-                font-family: monospace !important;
-                text-align: right !important;
-                min-width: 90px !important;
-                width: auto !important;
-                padding: 4px 6px !important;
-                border: 1px solid var(--gray-200) !important;
-                border-radius: 4px !important;
-                font-size: 14px !important;
-                transition: width 0.1s ease !important;
-            }
-
-            .item-row .form-group.small input[type="text"]:focus {
-                border-color: var(--primary) !important;
-                box-shadow: 0 0 0 3px rgba(0, 39, 53, 0.15) !important;
-                outline: none !important;
-            }
-
-            .item-row .form-group.small {
-                flex: 0 0 auto !important;
-            }
-
-            .item-row .form-group.small[style*="flex:1"] {
-                flex: 1 !important;
-                min-width: 120px !important;
-            }
-
-            .material-item-selector {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                padding: 8px 12px;
-                border-bottom: 1px solid var(--gray-100);
-                transition: all 0.2s;
-                gap: 8px;
-                flex-wrap: wrap;
-            }
-            .material-item-selector:hover {
-                background: var(--gray-50);
-            }
-            .material-item-selector .info {
-                flex: 1;
-                min-width: 150px;
-            }
-            .material-item-selector .info .nombre {
-                font-weight: 500;
-                color: var(--gray-900);
-            }
-            .material-item-selector .info .detalle {
-                font-size: 12px;
-                color: var(--gray-600);
-            }
-            .material-item-selector .cantidad-input {
-                width: 70px;
-                padding: 4px 6px;
-                border: 1px solid var(--gray-200);
-                border-radius: 4px;
-                font-size: 13px;
-                text-align: center;
-            }
-            .material-item-selector .cantidad-input:focus {
-                outline: none;
-                border-color: var(--primary);
-                box-shadow: 0 0 0 3px rgba(0, 39, 53, 0.15);
-            }
-            .material-item-selector .btn-agregar {
-                background: var(--primary);
-                color: white;
-                border: none;
-                padding: 4px 12px;
-                border-radius: 4px;
-                cursor: pointer;
-                font-size: 12px;
-                transition: all 0.2s;
-                white-space: nowrap;
-            }
-            .material-item-selector .btn-agregar:hover {
-                background: var(--primary-dark);
-            }
-            .material-item-selector .btn-agregar.agregado {
-                background: var(--success);
-                cursor: default;
-            }
-            .material-item-selector .btn-agregar.agregado:hover {
-                background: var(--success);
-            }
-            .material-item-selector .btn-quitar {
-                background: none;
-                border: none;
-                color: var(--danger);
-                cursor: pointer;
-                font-size: 14px;
-                padding: 4px;
-            }
-            .material-item-selector .btn-quitar:hover {
-                color: #dc2626;
-            }
-
-            .seleccionado-item {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                padding: 6px 10px;
-                margin-bottom: 4px;
-                background: var(--gray-50);
-                border-radius: 4px;
-                border: 1px solid var(--gray-200);
-                font-size: 13px;
-                gap: 8px;
-                flex-wrap: wrap;
-            }
-            .seleccionado-item .info {
-                flex: 1;
-                min-width: 120px;
-            }
-            .seleccionado-item .cantidad-info {
-                font-size: 12px;
-                color: var(--gray-600);
-                background: var(--gray-200);
-                padding: 2px 8px;
-                border-radius: 4px;
-            }
-            .seleccionado-item .btn-quitar {
-                background: none;
-                border: none;
-                color: var(--danger);
-                cursor: pointer;
-                font-size: 14px;
-                padding: 0 4px;
-            }
-            .seleccionado-item .btn-quitar:hover {
-                color: #dc2626;
-            }
-
-            @media (max-width: 768px) {
-                .toggle-container {
-                    flex-wrap: wrap !important;
-                }
-                .toggle-container .toggle-label {
-                    flex: 1 1 100% !important;
-                }
-                .item-row .form-group.small[style*="flex:1"] {
-                    flex: 1 1 100% !important;
-                    min-width: 100% !important;
-                }
-                .item-row .form-group.small input[type="text"] {
-                    width: 100% !important;
-                    min-width: 100% !important;
-                }
-                .material-item-selector {
-                    flex-wrap: wrap;
-                }
-                .material-item-selector .info {
-                    min-width: 100%;
-                }
-            }
-
+            .toggle-container { display: flex !important; align-items: center !important; gap: 12px !important; padding: 12px 16px !important; background: var(--gray-50) !important; border-radius: 8px !important; border: 1px solid var(--gray-200) !important; }
+            .toggle-container .toggle-label { display: flex !important; align-items: center !important; gap: 12px !important; cursor: pointer !important; margin: 0 !important; flex: 1 !important; }
+            .toggle-container .toggle-label .toggle-slider { position: relative !important; width: 44px !important; height: 24px !important; background: var(--gray-200) !important; border-radius: 12px !important; transition: all 0.3s !important; flex-shrink: 0 !important; }
+            .toggle-container .toggle-label .toggle-slider::after { content: '' !important; position: absolute !important; top: 2px !important; left: 2px !important; width: 20px !important; height: 20px !important; background: white !important; border-radius: 50% !important; transition: all 0.3s !important; box-shadow: var(--shadow) !important; }
+            .toggle-container .toggle-label input:checked + .toggle-slider { background: var(--primary) !important; }
+            .toggle-container .toggle-label input:checked + .toggle-slider::after { transform: translateX(20px) !important; }
+            .toggle-container .toggle-label .toggle-text { font-size: 14px !important; font-weight: 500 !important; color: var(--gray-900) !important; }
+            .toggle-container .toggle-label .toggle-text i { color: var(--warning) !important; margin-right: 6px !important; }
+            #btnToggleInfo { background: var(--warning) !important; color: white !important; border: none !important; border-radius: 50% !important; width: 28px !important; height: 28px !important; font-size: 14px !important; font-weight: 700 !important; cursor: pointer !important; display: flex !important; align-items: center !important; justify-content: center !important; flex-shrink: 0 !important; }
+            .item-row .form-group.small input[type="text"] { font-family: monospace !important; text-align: right !important; min-width: 90px !important; width: auto !important; padding: 4px 6px !important; border: 1px solid var(--gray-200) !important; border-radius: 4px !important; font-size: 14px !important; }
+            .item-row .form-group.small input[type="text"]:focus { border-color: var(--primary) !important; box-shadow: 0 0 0 3px rgba(0, 39, 53, 0.15) !important; outline: none !important; }
+            .item-row .form-group.small { flex: 0 0 auto !important; }
+            .item-row .form-group.small[style*="flex:1"] { flex: 1 !important; min-width: 120px !important; }
+            .material-item-selector { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--gray-100); transition: all 0.2s; gap: 8px; flex-wrap: wrap; }
+            .material-item-selector:hover { background: var(--gray-50); }
+            .material-item-selector .info { flex: 1; min-width: 150px; }
+            .material-item-selector .info .nombre { font-weight: 500; color: var(--gray-900); }
+            .material-item-selector .info .detalle { font-size: 12px; color: var(--gray-600); }
+            .material-item-selector .cantidad-input { width: 70px; padding: 4px 6px; border: 1px solid var(--gray-200); border-radius: 4px; font-size: 13px; text-align: center; }
+            .material-item-selector .btn-agregar { background: var(--primary); color: white; border: none; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; transition: all 0.2s; white-space: nowrap; }
+            .material-item-selector .btn-agregar:hover { background: var(--primary-dark); }
+            .material-item-selector .btn-agregar.agregado { background: var(--success); cursor: default; }
+            .seleccionado-item { display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; margin-bottom: 4px; background: var(--gray-50); border-radius: 4px; border: 1px solid var(--gray-200); font-size: 13px; gap: 8px; flex-wrap: wrap; }
+            .seleccionado-item .info { flex: 1; min-width: 120px; }
+            .seleccionado-item .cantidad-info { font-size: 12px; color: var(--gray-600); background: var(--gray-200); padding: 2px 8px; border-radius: 4px; }
+            .seleccionado-item .btn-quitar { background: none; border: none; color: var(--danger); cursor: pointer; font-size: 14px; padding: 0 4px; }
             .btn-print { background: #10b981; color: white; border: none; padding: 6px 10px; border-radius: 6px; cursor: pointer; transition: all 0.2s; margin-left: 4px; }
             .btn-print:hover { background: #059669; transform: scale(1.05); }
             .item-row .form-group.small input[type="number"] { width: 80px; }
             .item-row .form-group.small input[readonly] { width: 60px; }
-            .selector-multiple { border: 1px solid var(--gray-200); border-radius: 8px; padding: 12px; background: var(--gray-50); }
-            .selector-busqueda { display: flex; gap: 12px; margin-bottom: 12px; }
-            .selector-busqueda input { flex: 1; padding: 8px 14px; border: 1px solid var(--gray-200); border-radius: 6px; font-size: 14px; font-family: inherit; }
-            .selector-busqueda input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(0, 39, 53, 0.15); }
-            .selector-lista { max-height: 150px; overflow-y: auto; background: white; border: 1px solid var(--gray-200); border-radius: 6px; padding: 4px; }
-            .selector-lista::-webkit-scrollbar { width: 6px; }
-            .selector-lista::-webkit-scrollbar-track { background: var(--gray-100); border-radius: 10px; }
-            .selector-lista::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 10px; }
-            .selector-item { display: flex; align-items: center; gap: 10px; padding: 6px 10px; border-radius: 4px; cursor: pointer; transition: all 0.2s; font-size: 13px; }
-            .selector-item:hover { background: var(--gray-100); }
-            .selector-item input[type="checkbox"] { width: 16px; height: 16px; cursor: pointer; accent-color: var(--primary); flex-shrink: 0; }
-            .selector-item .item-info { flex: 1; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-            .selector-item .item-info .nombre { font-weight: 500; color: var(--gray-900); }
-            .selector-item .item-info .detalle { font-size: 12px; color: var(--gray-600); }
-            .selector-vacio { padding: 20px; text-align: center; color: var(--gray-500); font-size: 14px; }
-            .selector-actions { display: flex; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
-            .selector-actions .btn-sm { padding: 4px 12px; font-size: 12px; border-radius: 4px; border: 1px solid var(--gray-200); background: white; cursor: pointer; transition: all 0.2s; }
-            .selector-actions .btn-sm:hover { background: var(--gray-100); }
-            .selector-actions .btn-sm.seleccionar-todos { color: var(--primary); border-color: var(--primary); }
-            .selector-actions .btn-sm.seleccionar-todos:hover { background: var(--primary); color: white; }
-            .selector-actions .btn-sm.deseleccionar-todos { color: var(--danger); border-color: var(--danger); }
-            .selector-actions .btn-sm.deseleccionar-todos:hover { background: var(--danger); color: white; }
             .item-list .item-tag { display: flex; justify-content: space-between; align-items: center; background: white; padding: 8px 14px; margin-bottom: 6px; border-radius: 6px; border: 1px solid var(--gray-200); font-size: 14px; }
             .item-list .item-tag span { flex: 1; }
             .item-list .item-tag .btn-remove { background: var(--danger); color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; transition: all 0.2s; }
@@ -678,18 +395,6 @@
             .btn-sm { padding: 4px 12px; font-size: 12px; border-radius: 4px; border: 1px solid var(--gray-200); background: white; cursor: pointer; transition: all 0.2s; }
             .btn-sm:hover { background: var(--gray-100); }
             .btn-sm:disabled { opacity: 0.5; cursor: not-allowed; }
-            #listaMaterialesSelector .material-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--gray-100); transition: all 0.2s; }
-            #listaMaterialesSelector .material-item:hover { background: var(--gray-50); }
-            #listaMaterialesSelector .material-item .info { flex: 1; }
-            #listaMaterialesSelector .material-item .info .nombre { font-weight: 500; color: var(--gray-900); }
-            #listaMaterialesSelector .material-item .info .detalle { font-size: 12px; color: var(--gray-600); }
-            #listaMaterialesSelector .material-item .btn-agregar { background: var(--primary); color: white; border: none; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; transition: all 0.2s; }
-            #listaMaterialesSelector .material-item .btn-agregar:hover { background: var(--primary-dark); }
-            #listaMaterialesSelector .material-item .btn-agregar.agregado { background: var(--success); cursor: default; }
-            #listaMaterialesSelector .material-item .btn-agregar.agregado:hover { background: var(--success); }
-            #materialesSeleccionadosLista .seleccionado-item { display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; margin-bottom: 4px; background: var(--gray-50); border-radius: 4px; border: 1px solid var(--gray-200); font-size: 13px; }
-            #materialesSeleccionadosLista .seleccionado-item .btn-quitar { background: none; border: none; color: var(--danger); cursor: pointer; font-size: 14px; padding: 0 4px; }
-            #materialesSeleccionadosLista .seleccionado-item .btn-quitar:hover { color: #dc2626; }
             .categoria-tabla { margin-bottom: 20px; }
             .categoria-tabla .categoria-header { background: var(--primary); color: white; padding: 10px 16px; border-radius: 8px 8px 0 0; font-weight: 700; font-size: 16px; }
             .categoria-tabla .categoria-header .letra { background: rgba(255,255,255,0.2); padding: 2px 12px; border-radius: 4px; margin-right: 10px; }
@@ -702,17 +407,13 @@
             .categoria-tabla .categoria-body table tr:hover { background: var(--gray-50); }
             .sugerencia-item { padding: 8px 14px; cursor: pointer; transition: all 0.2s; }
             .sugerencia-item:hover { background: var(--primary); color: white; }
-            .btn-edit-categoria { background: #3b82f6; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; transition: all 0.2s; }
-            .btn-edit-categoria:hover { background: #2563eb; }
-            .btn-delete-categoria { background: #ef4444; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; transition: all 0.2s; }
-            .btn-delete-categoria:hover { background: #dc2626; }
+            .btn-edit-categoria { background: #3b82f6; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; }
+            .btn-delete-categoria { background: #ef4444; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; }
             #campo_categoria_container { position: relative; }
             #campo_unidad_container { position: relative; }
-            @media (max-width: 768px) { .selector-busqueda { flex-direction: column; } .selector-item .item-info { flex-wrap: wrap; } .selector-actions { flex-wrap: wrap; } }
         </style>
 
         <script>
-            // ===== VARIABLES GLOBALES =====
             var apus = [];
             var editandoId = null;
             var materialesData = [];
@@ -721,23 +422,17 @@
             var itemsEquipos = [];
             var itemsTransporte = [];
             var ignorarItems = false;
-
-            var categoriasGuardadas = [];  // Ahora son objetos {id, nombre}
-            var unidadesGuardadas = [];    // Ahora son objetos {id, nombre}
+            var categoriasGuardadas = [];
+            var unidadesGuardadas = [];
             var letrasDisponibles = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
             var mapaLetras = {};
-
             var materialesSelector = [];
             var materialesFiltradosSelector = [];
             var materialesSeleccionadosTemp = [];
             var paginaActualMateriales = 1;
             var itemsPorPagina = 10;
-
-            // ===== PLANTILLA =====
             var plantillaAPU = null;
             var modoPlantilla = false;
-
-            // ===== CONTROL DE RECURSIVIDAD =====
             var actualizando = false;
 
             console.log('🚀 APU.JS INICIALIZADO');
@@ -761,29 +456,25 @@
                 });
             });
 
-            // ============================================================
-            // ===== CATEGORÍAS (MYSQL) =====
-            // ============================================================
-            
+            // ===== CATEGORÍAS =====
             async function cargarCategoriasDesdeServidor() {
                 try {
-                    const response = await fetch('/api/apus/categorias');
-                    if (!response.ok) throw new Error('Error al cargar categorías');
-                    categoriasGuardadas = await response.json();
+                    const r = await fetch('/api/apus/categorias');
+                    if (!r.ok) throw new Error('Error');
+                    categoriasGuardadas = await r.json();
                     generarMapaLetras();
-                    setupCategoriaAutocomplete();
                 } catch (e) {
-                    console.error('Error cargando categorías:', e);
+                    console.error('Error categorías:', e);
                     categoriasGuardadas = [];
                 }
             }
 
             function generarMapaLetras() {
                 mapaLetras = {};
-                var categoriasOrdenadas = categoriasGuardadas.slice().sort((a, b) => a.nombre.localeCompare(b.nombre));
-                for (var i = 0; i < categoriasOrdenadas.length; i++) {
+                var ordenadas = categoriasGuardadas.slice().sort((a, b) => a.nombre.localeCompare(b.nombre));
+                for (var i = 0; i < ordenadas.length; i++) {
                     if (i < letrasDisponibles.length) {
-                        mapaLetras[categoriasOrdenadas[i].nombre.toLowerCase()] = letrasDisponibles[i];
+                        mapaLetras[ordenadas[i].nombre.toLowerCase()] = letrasDisponibles[i];
                     }
                 }
             }
@@ -791,9 +482,9 @@
             function obtenerLetraCategoria(categoria) {
                 var catLower = categoria.toLowerCase().trim();
                 if (mapaLetras[catLower]) return mapaLetras[catLower];
-                var letrasUsadas = Object.values(mapaLetras);
+                var usadas = Object.values(mapaLetras);
                 for (var i = 0; i < letrasDisponibles.length; i++) {
-                    if (letrasUsadas.indexOf(letrasDisponibles[i]) === -1) {
+                    if (usadas.indexOf(letrasDisponibles[i]) === -1) {
                         mapaLetras[catLower] = letrasDisponibles[i];
                         return letrasDisponibles[i];
                     }
@@ -803,8 +494,8 @@
 
             function setupCategoriaAutocomplete() {
                 var input = document.getElementById('categoriaInput');
+                if (!input) return;
                 var sugerencias = document.getElementById('sugerenciasCategorias');
-
                 var newInput = input.cloneNode(true);
                 input.parentNode.replaceChild(newInput, input);
                 input = document.getElementById('categoriaInput');
@@ -812,16 +503,10 @@
                 input.addEventListener('input', function() {
                     var texto = this.value.trim();
                     var catLower = texto.toLowerCase();
-
-                    var existe = categoriasGuardadas.some(function(c) {
-                        return c.nombre.toLowerCase() === catLower;
-                    });
+                    var existe = categoriasGuardadas.some(function(c) { return c.nombre.toLowerCase() === catLower; });
 
                     if (texto.length > 0) {
-                        var coincidencias = categoriasGuardadas.filter(function(c) {
-                            return c.nombre.toLowerCase().includes(catLower);
-                        });
-
+                        var coincidencias = categoriasGuardadas.filter(function(c) { return c.nombre.toLowerCase().includes(catLower); });
                         if (coincidencias.length > 0) {
                             sugerencias.style.display = 'block';
                             var html = '';
@@ -831,7 +516,6 @@
                                 html += '<div class="sugerencia-item" data-categoria="' + categoria.nombre + '">' + letra + '. ' + categoria.nombre + '</div>';
                             }
                             sugerencias.innerHTML = html;
-
                             var items = sugerencias.querySelectorAll('.sugerencia-item');
                             for (var j = 0; j < items.length; j++) {
                                 (function(item) {
@@ -840,7 +524,6 @@
                                     });
                                 })(items[j]);
                             }
-
                             document.getElementById('btnAgregarCategoria').style.display = 'none';
                         } else if (!existe) {
                             sugerencias.style.display = 'none';
@@ -855,7 +538,6 @@
                         sugerencias.style.display = 'none';
                         document.getElementById('btnAgregarCategoria').style.display = 'none';
                     }
-
                     document.getElementById('categoriaSeleccionada').value = existe ? texto : '';
                 });
 
@@ -878,11 +560,7 @@
             async function agregarCategoria() {
                 var texto = document.getElementById('categoriaInput').value.trim();
                 if (!texto) return;
-
-                var existe = categoriasGuardadas.some(function(c) {
-                    return c.nombre.toLowerCase() === texto.toLowerCase();
-                });
-
+                var existe = categoriasGuardadas.some(function(c) { return c.nombre.toLowerCase() === texto.toLowerCase(); });
                 if (!existe) {
                     try {
                         await fetch('/api/apus/categorias', {
@@ -899,67 +577,52 @@
                 }
             }
 
-            async function editarCategoria(id, nombreActual) {
+            function editarCategoria(id, nombreActual) {
                 var nuevo = prompt('Editar categoría:', nombreActual);
                 if (!nuevo || nuevo.trim() === '' || nuevo.trim() === nombreActual) return;
-
-                try {
-                    await fetch('/api/apus/categorias/' + id, {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ nombre: nuevo.trim() })
-                    });
-                    await cargarCategoriasDesdeServidor();
-                    await cargarAPU();
-                    mostrarNotificacion('Categoría actualizada');
-                } catch (e) {
-                    mostrarNotificacion('Error al actualizar');
-                }
+                fetch('/api/apus/categorias/' + id, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ nombre: nuevo.trim() })
+                })
+                .then(() => cargarCategoriasDesdeServidor())
+                .then(() => cargarAPU())
+                .then(() => mostrarNotificacion('Categoría actualizada'))
+                .catch(() => mostrarNotificacion('Error al actualizar'));
             }
 
-            async function eliminarCategoria(id, nombre) {
+            function eliminarCategoria(id, nombre) {
                 if (!confirm('¿Eliminar la categoría "' + nombre + '"?')) return;
-
-                try {
-                    await fetch('/api/apus/categorias/' + id, { method: 'DELETE' });
-                    await cargarCategoriasDesdeServidor();
-                    mostrarNotificacion('Categoría eliminada');
-                } catch (e) {
-                    mostrarNotificacion('Error al eliminar');
-                }
+                fetch('/api/apus/categorias/' + id, { method: 'DELETE' })
+                    .then(() => cargarCategoriasDesdeServidor())
+                    .then(() => mostrarNotificacion('Categoría eliminada'))
+                    .catch(() => mostrarNotificacion('Error al eliminar'));
             }
 
-            // ============================================================
-            // ===== UNIDADES (MYSQL) =====
-            // ============================================================
-
+            // ===== UNIDADES =====
             async function cargarUnidadesDesdeServidor() {
                 try {
-                    const response = await fetch('/api/apus/unidades');
-                    if (!response.ok) throw new Error('Error al cargar unidades');
-                    unidadesGuardadas = await response.json();
+                    const r = await fetch('/api/apus/unidades');
+                    if (!r.ok) throw new Error('Error');
+                    unidadesGuardadas = await r.json();
                 } catch (e) {
-                    console.error('Error cargando unidades:', e);
+                    console.error('Error unidades:', e);
                     unidadesGuardadas = [];
                 }
             }
 
             function setupUnidadAutocomplete() {
                 var input = document.getElementById('unidadInput');
+                if (!input) return;
                 var sugerencias = document.getElementById('sugerenciasUnidades');
                 var btnAgregar = document.getElementById('btnAgregarUnidad');
 
                 input.addEventListener('input', function() {
                     var texto = this.value.trim().toUpperCase();
-                    var existe = unidadesGuardadas.some(function(u) {
-                        return u.nombre.toUpperCase() === texto;
-                    });
+                    var existe = unidadesGuardadas.some(function(u) { return u.nombre.toUpperCase() === texto; });
 
                     if (texto.length > 0) {
-                        var coincidencias = unidadesGuardadas.filter(function(u) {
-                            return u.nombre.toUpperCase().includes(texto);
-                        });
-
+                        var coincidencias = unidadesGuardadas.filter(function(u) { return u.nombre.toUpperCase().includes(texto); });
                         if (coincidencias.length > 0) {
                             sugerencias.style.display = 'block';
                             var html = '';
@@ -967,7 +630,6 @@
                                 html += '<div class="sugerencia-item" data-unidad="' + coincidencias[i].nombre + '">' + coincidencias[i].nombre + '</div>';
                             }
                             sugerencias.innerHTML = html;
-
                             var items = sugerencias.querySelectorAll('.sugerencia-item');
                             for (var j = 0; j < items.length; j++) {
                                 (function(item) {
@@ -976,7 +638,6 @@
                                     });
                                 })(items[j]);
                             }
-
                             btnAgregar.style.display = 'none';
                         } else if (!existe) {
                             sugerencias.style.display = 'none';
@@ -990,14 +651,13 @@
                         sugerencias.style.display = 'none';
                         btnAgregar.style.display = 'none';
                     }
-
                     document.getElementById('unidadSeleccionada').value = existe ? texto : '';
                     document.getElementById('unidad').value = texto;
                 });
 
                 document.addEventListener('click', function(e) {
                     var container = document.getElementById('campo_unidad_container');
-                    if (!container.contains(e.target)) {
+                    if (container && !container.contains(e.target)) {
                         sugerencias.style.display = 'none';
                         btnAgregar.style.display = 'none';
                     }
@@ -1015,11 +675,7 @@
             async function agregarUnidad() {
                 var texto = document.getElementById('unidadInput').value.trim().toUpperCase();
                 if (!texto) return;
-
-                var existe = unidadesGuardadas.some(function(u) {
-                    return u.nombre.toUpperCase() === texto;
-                });
-
+                var existe = unidadesGuardadas.some(function(u) { return u.nombre.toUpperCase() === texto; });
                 if (!existe) {
                     try {
                         await fetch('/api/apus/unidades', {
@@ -1036,18 +692,14 @@
                 }
             }
 
-            // ============================================================
-            // ===== APUs (CRUD MYSQL) =====
-            // ============================================================
-
+            // ===== APUs CRUD =====
             async function cargarAPU() {
                 try {
-                    const response = await fetch('/api/apus');
-                    if (!response.ok) throw new Error('Error al cargar APUs');
-                    apus = await response.json();
+                    const r = await fetch('/api/apus');
+                    if (!r.ok) throw new Error('Error');
+                    apus = await r.json();
                     renderizarTablasAgrupadas();
-                } catch (error) {
-                    console.error('Error:', error);
+                } catch (e) {
                     apus = [];
                     renderizarTablasAgrupadas();
                 }
@@ -1056,8 +708,8 @@
             function renderizarTablasAgrupadas() {
                 var container = document.getElementById('contenedorTablas');
                 var sinDatos = document.getElementById('sinDatos');
-
                 var todasLasCategorias = [];
+
                 for (var i = 0; i < categoriasGuardadas.length; i++) {
                     if (todasLasCategorias.indexOf(categoriasGuardadas[i].nombre) === -1) {
                         todasLasCategorias.push(categoriasGuardadas[i].nombre);
@@ -1093,8 +745,8 @@
                     html += ' <span style="font-weight:400; font-size:14px; opacity:0.8;">(' + items.length + ' APUs)</span>';
                     html += ' <span class="categoria-acciones">';
                     if (catId) {
-                        html += '<button class="btn-edit-categoria" onclick="editarCategoria(' + catId + ', \'' + categoria.replace(/'/g, "\\\\'") + '\')" title="Editar"><i class="fas fa-edit"></i></button>';
-                        html += '<button class="btn-delete-categoria" onclick="eliminarCategoria(' + catId + ', \'' + categoria.replace(/'/g, "\\\\'") + '\')" title="Eliminar"><i class="fas fa-trash"></i></button>';
+                        html += '<button class="btn-edit-categoria" onclick="editarCategoria(' + catId + ')"><i class="fas fa-edit"></i></button>';
+                        html += '<button class="btn-delete-categoria" onclick="eliminarCategoria(' + catId + ')"><i class="fas fa-trash"></i></button>';
                     }
                     html += '</span>';
                     html += '</div>';
@@ -1144,10 +796,7 @@
                     .replace(/'/g, '&#39;');
             }
 
-            // ============================================================
-            // ===== FORMATEO MONEDA =====
-            // ============================================================
-            
+            // ===== FORMATO =====
             function formatearMoneda(valor) {
                 if (valor === undefined || valor === null || isNaN(valor)) return '$0';
                 return '$' + Number(valor).toLocaleString('es-CO');
@@ -1165,7 +814,6 @@
                 if (key === 'Backspace' || key === 'Delete' || key === 'Tab' || key === 'ArrowLeft' || key === 'ArrowRight' || key === 'Home' || key === 'End' || key === 'Enter') return true;
                 if (!/^[0-9]$/.test(key)) {
                     event.preventDefault();
-                    mostrarNotificacion('⚠️ Solo números');
                     return false;
                 }
                 return true;
@@ -1224,10 +872,7 @@
                 actualizando = false;
             }
 
-            // ============================================================
             // ===== CÁLCULOS =====
-            // ============================================================
-            
             function obtenerValorManoObraActual() {
                 var valorUnitario = parsearMoneda(document.getElementById('valorUnitarioCargo').value);
                 var cantidad = parseFloat(document.getElementById('cantidadCargo').value) || 0;
@@ -1360,10 +1005,7 @@
                 if (ignorarItems) actualizarTotalGeneral();
             });
 
-            // ============================================================
-            // ===== PLANTILLA (localStorage, sin cambios) =====
-            // ============================================================
-            
+            // ===== PLANTILLA =====
             function cargarPlantilla() {
                 try {
                     var data = localStorage.getItem('plantillaAPU');
@@ -1372,10 +1014,8 @@
             }
 
             function guardarPlantillaEnStorage() {
-                try {
-                    localStorage.setItem('plantillaAPU', JSON.stringify(plantillaAPU));
-                    return true;
-                } catch (e) { return false; }
+                try { localStorage.setItem('plantillaAPU', JSON.stringify(plantillaAPU)); return true; }
+                catch (e) { return false; }
             }
 
             function inicializarPlantilla() {
@@ -1407,8 +1047,7 @@
                 document.getElementById('btnGuardarAPU').style.display = 'none';
 
                 cargarPlantilla();
-                var modal = document.getElementById('modalAPU');
-                modal.style.display = 'flex';
+                document.getElementById('modalAPU').style.display = 'flex';
 
                 itemsMateriales = []; itemsCargos = []; itemsEquipos = []; itemsTransporte = [];
                 ignorarItems = false;
@@ -1424,19 +1063,6 @@
                 document.getElementById('unidadInput').value = '';
                 document.getElementById('unidadSeleccionada').value = '';
                 document.getElementById('unidad').value = '';
-                document.getElementById('descripcionCargo').value = '';
-                document.getElementById('unidadCargo').value = 'und';
-                document.getElementById('cantidadCargo').value = '1';
-                document.getElementById('valorUnitarioCargo').value = '$0';
-                document.getElementById('subtotalCargo').value = '';
-                document.getElementById('nombreEquipo').value = '';
-                document.getElementById('porcentajeEquipo').value = '0';
-                document.getElementById('valorBaseEquipo').value = '$0';
-                document.getElementById('valorBaseOrigenEquipo').value = 'manual';
-                document.getElementById('nombreTransporte').value = '';
-                document.getElementById('porcentajeTransporte').value = '0';
-                document.getElementById('valorBaseTransporte').value = '$0';
-                document.getElementById('valorBaseOrigenTransporte').value = 'manual';
 
                 if (plantillaAPU) setTimeout(function() { cargarDatosPlantilla(plantillaAPU); }, 100);
 
@@ -1497,16 +1123,11 @@
             }
 
             function guardarPlantillaActual() {
-                var nombre = document.getElementById('nombre').value.trim();
-                var categoria = document.getElementById('categoriaSeleccionada').value.trim() || document.getElementById('categoriaInput').value.trim();
-                var unidad = document.getElementById('unidadSeleccionada').value.trim().toUpperCase() || document.getElementById('unidadInput').value.trim().toUpperCase();
-                var codigo = document.getElementById('codigo').value.trim();
-
                 var plantilla = {
-                    codigo: codigo,
-                    nombre: nombre,
-                    categoria: categoria,
-                    unidad: unidad,
+                    codigo: document.getElementById('codigo').value.trim(),
+                    nombre: document.getElementById('nombre').value.trim(),
+                    categoria: document.getElementById('categoriaSeleccionada').value.trim() || document.getElementById('categoriaInput').value.trim(),
+                    unidad: (document.getElementById('unidadSeleccionada').value.trim() || document.getElementById('unidadInput').value.trim()).toUpperCase(),
                     ignorarItems: ignorarItems,
                     valorManual: parseFloat(document.getElementById('valorManual').value) || 0,
                     nombreEquipo: document.getElementById('nombreEquipo').value.trim(),
@@ -1528,23 +1149,17 @@
                         cargos: JSON.parse(JSON.stringify(itemsCargos))
                     }
                 };
-
                 plantillaAPU = plantilla;
                 guardarPlantillaEnStorage();
-
                 modoPlantilla = false;
                 document.getElementById('btnGuardarPlantilla').style.display = 'none';
                 document.getElementById('btnGuardarAPU').style.display = 'inline-flex';
                 document.getElementById('modalTitulo').textContent = 'Nuevo APU';
                 document.getElementById('modalAPU').style.display = 'none';
-
                 mostrarNotificacion('✅ Plantilla guardada');
             }
 
-            // ============================================================
             // ===== IMPORTAR =====
-            // ============================================================
-
             function abrirModalImportar() {
                 document.getElementById('modalImportarAPU').style.display = 'flex';
                 document.getElementById('importarResultadoAPU').style.display = 'none';
@@ -1577,11 +1192,9 @@
             function procesarImportacionAPU(event) {
                 var file = event.target.files[0];
                 if (!file) return;
-
                 var progress = document.getElementById('importarProgresoAPU');
                 var mensaje = document.getElementById('importarMensajeAPU');
                 var resultado = document.getElementById('importarResultadoAPU');
-
                 progress.style.display = 'block';
                 mensaje.textContent = '⏳ Leyendo archivo...';
                 resultado.style.display = 'none';
@@ -1591,7 +1204,6 @@
                     try {
                         var base64 = e.target.result.split(',')[1];
                         mensaje.textContent = '⏳ Importando...';
-
                         fetch('/api/apus/importar', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
@@ -1603,14 +1215,14 @@
                                 resultado.style.display = 'block';
                                 resultado.style.background = '#d1fae5';
                                 resultado.style.color = '#065f46';
-                                var msg = '<strong>✅ Importación exitosa!</strong><br>';
-                                msg += 'Se importaron ' + (data.apusImportados || 0) + ' APUs.';
+                                var msg = '<strong>✅ Importación exitosa!</strong><br>Se importaron ' + (data.apusImportados || 0) + ' APUs.';
                                 if (data.categoriasNuevas && data.categoriasNuevas.length > 0) {
                                     msg += '<br>📁 Categorías nuevas: ' + data.categoriasNuevas.join(', ');
                                 }
                                 resultado.innerHTML = msg;
                                 progress.style.display = 'none';
                                 await cargarCategoriasDesdeServidor();
+                                await cargarUnidadesDesdeServidor();
                                 await cargarAPU();
                                 mostrarNotificacion('✅ APUs importados');
                                 setTimeout(cerrarModalImportar, 3000);
@@ -1646,10 +1258,7 @@
                 reader.readAsDataURL(file);
             }
 
-            // ============================================================
             // ===== EVENT LISTENERS =====
-            // ============================================================
-            
             function setupEventListeners() {
                 document.getElementById('btnCrearAPU').addEventListener('click', function() {
                     modoPlantilla = false;
@@ -1692,25 +1301,18 @@
                 document.getElementById('btnPaginaSiguiente').addEventListener('click', function() { cambiarPaginaMateriales('siguiente'); });
             }
 
-            // ============================================================
-            // ===== MATERIALES DEL SELECTOR =====
-            // ============================================================
-            
+            // ===== MATERIALES SELECTOR =====
             async function cargarMateriales() {
                 try {
-                    const response = await fetch('/api/materiales');
-                    if (!response.ok) throw new Error('Error');
-                    materialesData = await response.json();
-                } catch (e) {
-                    materialesData = [];
-                }
+                    const r = await fetch('/api/materiales');
+                    if (!r.ok) throw new Error('Error');
+                    materialesData = await r.json();
+                } catch (e) { materialesData = []; }
             }
 
-            async function abrirSelectorMateriales() {
+            function abrirSelectorMateriales() {
                 var modal = document.getElementById('modalSelectorMateriales');
                 if (!modal) return;
-
-                await cargarMateriales();
                 materialesSelector = materialesData.slice();
                 materialesSeleccionadosTemp = [];
                 for (var i = 0; i < itemsMateriales.length; i++) {
@@ -1768,14 +1370,16 @@
                     }
                     container.innerHTML = html;
                     var btns = container.querySelectorAll('.btn-agregar:not(.agregado)');
-                    btns.forEach(btn => {
-                        btn.addEventListener('click', function() {
-                            var id = parseInt(this.getAttribute('data-id'));
-                            var cantidadInput = this.parentElement.querySelector('.cantidad-input');
-                            var cantidad = parseFloat(cantidadInput.value) || 1;
-                            toggleMaterialSeleccionadoTemp(id, cantidad);
-                        });
-                    });
+                    for (var k = 0; k < btns.length; k++) {
+                        (function(btn) {
+                            btn.addEventListener('click', function() {
+                                var id = parseInt(this.getAttribute('data-id'));
+                                var cantInput = this.parentElement.querySelector('.cantidad-input');
+                                var cantidad = parseFloat(cantInput.value) || 1;
+                                toggleMaterialSeleccionadoTemp(id, cantidad);
+                            });
+                        })(btns[k]);
+                    }
                 }
 
                 document.getElementById('resultadosContador').textContent = totalItems + ' resultados';
@@ -1799,7 +1403,7 @@
 
             function toggleMaterialSeleccionadoTemp(id, cantidad) {
                 var index = materialesSeleccionadosTemp.findIndex(s => s.id === id);
-                if (index === -1) materialesSeleccionadosTemp.push({ id, cantidad: cantidad || 1 });
+                if (index === -1) materialesSeleccionadosTemp.push({ id: id, cantidad: cantidad || 1 });
                 else materialesSeleccionadosTemp.splice(index, 1);
                 actualizarSeleccionadosContador();
                 renderizarListaMaterialesSelector();
@@ -1812,7 +1416,8 @@
                     container.innerHTML = '<p class="empty-items">No hay materiales seleccionados</p>';
                 } else {
                     var html = '';
-                    materialesSeleccionadosTemp.forEach(sel => {
+                    for (var i = 0; i < materialesSeleccionadosTemp.length; i++) {
+                        var sel = materialesSeleccionadosTemp[i];
                         var material = materialesSelector.find(m => m.id === sel.id);
                         if (material) {
                             html += '<div class="seleccionado-item">';
@@ -1821,19 +1426,23 @@
                             html += '<button class="btn-quitar" data-id="' + sel.id + '"><i class="fas fa-times"></i></button>';
                             html += '</div>';
                         }
-                    });
+                    }
                     container.innerHTML = html;
-                    container.querySelectorAll('.btn-quitar').forEach(btn => {
-                        btn.addEventListener('click', function() {
-                            toggleMaterialSeleccionadoTemp(parseInt(this.getAttribute('data-id')), 1);
-                        });
-                    });
+                    var quitarBtns = container.querySelectorAll('.btn-quitar');
+                    for (var j = 0; j < quitarBtns.length; j++) {
+                        (function(btn) {
+                            btn.addEventListener('click', function() {
+                                toggleMaterialSeleccionadoTemp(parseInt(this.getAttribute('data-id')), 1);
+                            });
+                        })(quitarBtns[j]);
+                    }
                 }
             }
 
             function guardarMaterialesSeleccionados() {
                 itemsMateriales = [];
-                materialesSeleccionadosTemp.forEach(sel => {
+                for (var i = 0; i < materialesSeleccionadosTemp.length; i++) {
+                    var sel = materialesSeleccionadosTemp[i];
                     var material = materialesSelector.find(m => m.id === sel.id);
                     if (material) {
                         itemsMateriales.push({
@@ -1846,7 +1455,7 @@
                             subtotal: material.precio * sel.cantidad
                         });
                     }
-                });
+                }
                 renderizarItemsMateriales();
                 actualizarSubtotales();
                 actualizarTotalGeneral();
@@ -1871,28 +1480,29 @@
                     return;
                 }
                 var html = '';
-                itemsMateriales.forEach((item, i) => {
+                for (var i = 0; i < itemsMateriales.length; i++) {
+                    var item = itemsMateriales[i];
                     html += '<div class="item-tag">';
                     html += '<span><strong>' + escapeHtml(item.nombre) + '</strong> x ' + item.cantidad + ' = ' + formatearMoneda(item.subtotal) + '</span>';
                     html += '<button type="button" class="btn-remove" data-index="' + i + '"><i class="fas fa-times"></i></button>';
                     html += '</div>';
-                });
+                }
                 container.innerHTML = html;
-                container.querySelectorAll('.btn-remove').forEach(btn => {
-                    btn.addEventListener('click', function() {
-                        itemsMateriales.splice(parseInt(this.getAttribute('data-index')), 1);
-                        renderizarItemsMateriales();
-                        actualizarSubtotales();
-                        actualizarTotalGeneral();
-                    });
-                });
+                var btns = container.querySelectorAll('.btn-remove');
+                for (var j = 0; j < btns.length; j++) {
+                    (function(btn) {
+                        btn.addEventListener('click', function() {
+                            itemsMateriales.splice(parseInt(this.getAttribute('data-index')), 1);
+                            renderizarItemsMateriales();
+                            actualizarSubtotales();
+                            actualizarTotalGeneral();
+                        });
+                    })(btns[j]);
+                }
                 actualizarSubtotales();
             }
 
-            // ============================================================
-            // ===== ITEMS (equipos, transporte, cargos) =====
-            // ============================================================
-
+            // ===== ITEMS =====
             function agregarItemCargo() {
                 if (ignorarItems) { alert('Los items están ignorados'); return; }
                 var descripcion = document.getElementById('descripcionCargo').value.trim();
@@ -1901,11 +1511,11 @@
                 var valorUnitario = parsearMoneda(document.getElementById('valorUnitarioCargo').value);
                 var subtotal = cantidad * valorUnitario;
 
-                if (!descripcion) return alert('Ingresa la descripción');
-                if (cantidad <= 0) return alert('Cantidad inválida');
-                if (valorUnitario <= 0) return alert('Valor unitario inválido');
+                if (!descripcion) { alert('Ingresa la descripción'); return; }
+                if (cantidad <= 0) { alert('Cantidad inválida'); return; }
+                if (valorUnitario <= 0) { alert('Valor unitario inválido'); return; }
 
-                itemsCargos.push({ descripcion, unidad, cantidad, valorUnitario, subtotal });
+                itemsCargos.push({ descripcion: descripcion, unidad: unidad, cantidad: cantidad, valorUnitario: valorUnitario, subtotal: subtotal });
                 renderizarItemsCargos();
                 limpiarCamposCargo();
                 actualizarSubtotales();
@@ -1931,10 +1541,11 @@
                     return;
                 }
                 var html = '';
-                itemsCargos.forEach((item, i) => {
+                for (var i = 0; i < itemsCargos.length; i++) {
+                    var item = itemsCargos[i];
                     html += '<div class="item-tag"><span><strong>' + escapeHtml(item.descripcion) + '</strong> ' + item.cantidad + ' x ' + formatearMoneda(item.valorUnitario) + ' (' + item.unidad + ') = ' + formatearMoneda(item.subtotal) + '</span>';
                     html += '<button type="button" class="btn-remove" onclick="eliminarItemCargo(' + i + ')"><i class="fas fa-times"></i></button></div>';
-                });
+                }
                 container.innerHTML = html;
                 actualizarSubtotales();
             }
@@ -1956,7 +1567,7 @@
                 var valorBase = parsearMoneda(document.getElementById('valorBaseEquipo').value);
                 var origen = document.getElementById('valorBaseOrigenEquipo').value;
 
-                if (!nombre) return alert('Ingresa el nombre del equipo');
+                if (!nombre) { alert('Ingresa el nombre del equipo'); return; }
 
                 if (origen !== 'manual') {
                     valorBase = origen === 'materiales' ? obtenerSubtotalMateriales()
@@ -1964,10 +1575,10 @@
                         : obtenerValorTotalGeneral();
                     document.getElementById('valorBaseEquipo').value = formatearMoneda(valorBase);
                 }
-                if (valorBase <= 0) return alert('Valor base debe ser mayor a 0');
+                if (valorBase <= 0) { alert('Valor base debe ser mayor a 0'); return; }
 
                 var subtotal = (porcentaje / 100) * valorBase;
-                itemsEquipos.push({ nombre, unidad: '%', porcentaje, valorBase, valorBaseOrigen: origen, subtotal });
+                itemsEquipos.push({ nombre: nombre, unidad: '%', porcentaje: porcentaje, valorBase: valorBase, valorBaseOrigen: origen, subtotal: subtotal });
                 renderizarItemsEquipos();
                 limpiarCamposEquipo();
                 actualizarSubtotales();
@@ -1989,11 +1600,12 @@
                     return;
                 }
                 var html = '';
-                itemsEquipos.forEach((item, i) => {
+                for (var i = 0; i < itemsEquipos.length; i++) {
+                    var item = itemsEquipos[i];
                     var origenLabel = { manual: 'Manual', materiales: 'Materiales', manoDeObra: 'Mano de Obra', total: 'Total' }[item.valorBaseOrigen] || 'Manual';
                     html += '<div class="item-tag"><span><strong>' + escapeHtml(item.nombre) + '</strong> ' + item.porcentaje + '% de ' + formatearMoneda(item.valorBase) + ' (' + origenLabel + ') = ' + formatearMoneda(item.subtotal) + '</span>';
                     html += '<button type="button" class="btn-remove" onclick="eliminarItemEquipo(' + i + ')"><i class="fas fa-times"></i></button></div>';
-                });
+                }
                 container.innerHTML = html;
                 actualizarSubtotales();
             }
@@ -2014,7 +1626,7 @@
                 var valorBase = parsearMoneda(document.getElementById('valorBaseTransporte').value);
                 var origen = document.getElementById('valorBaseOrigenTransporte').value;
 
-                if (!nombre) return alert('Ingresa el nombre del transporte');
+                if (!nombre) { alert('Ingresa el nombre del transporte'); return; }
 
                 if (origen !== 'manual') {
                     valorBase = origen === 'materiales' ? obtenerSubtotalMateriales()
@@ -2022,10 +1634,10 @@
                         : obtenerValorTotalGeneral();
                     document.getElementById('valorBaseTransporte').value = formatearMoneda(valorBase);
                 }
-                if (valorBase <= 0) return alert('Valor base debe ser mayor a 0');
+                if (valorBase <= 0) { alert('Valor base debe ser mayor a 0'); return; }
 
                 var subtotal = (porcentaje / 100) * valorBase;
-                itemsTransporte.push({ nombre, unidad: '%', porcentaje, valorBase, valorBaseOrigen: origen, subtotal });
+                itemsTransporte.push({ nombre: nombre, unidad: '%', porcentaje: porcentaje, valorBase: valorBase, valorBaseOrigen: origen, subtotal: subtotal });
                 renderizarItemsTransporte();
                 limpiarCamposTransporte();
                 actualizarSubtotales();
@@ -2047,11 +1659,12 @@
                     return;
                 }
                 var html = '';
-                itemsTransporte.forEach((item, i) => {
+                for (var i = 0; i < itemsTransporte.length; i++) {
+                    var item = itemsTransporte[i];
                     var origenLabel = { manual: 'Manual', materiales: 'Materiales', manoDeObra: 'Mano de Obra', total: 'Total' }[item.valorBaseOrigen] || 'Manual';
                     html += '<div class="item-tag"><span><strong>' + escapeHtml(item.nombre) + '</strong> ' + item.porcentaje + '% de ' + formatearMoneda(item.valorBase) + ' (' + origenLabel + ') = ' + formatearMoneda(item.subtotal) + '</span>';
                     html += '<button type="button" class="btn-remove" onclick="eliminarItemTransporte(' + i + ')"><i class="fas fa-times"></i></button></div>';
-                });
+                }
                 container.innerHTML = html;
                 actualizarSubtotales();
             }
@@ -2065,19 +1678,14 @@
                 ajustarAnchoInput(document.getElementById('valorBaseTransporte'));
             }
 
-            // ============================================================
             // ===== TOGGLE IGNORAR =====
-            // ============================================================
-            
             function toggleIgnorarItems() {
-                var checkbox = document.getElementById('ignorarItems');
-                ignorarItems = checkbox.checked;
-
+                ignorarItems = document.getElementById('ignorarItems').checked;
                 var secciones = ['seccionMateriales', 'seccionEquipos', 'seccionTransporte', 'seccionCargos'];
                 var seccionManual = document.getElementById('seccionValorManual');
 
                 if (ignorarItems) {
-                    secciones.forEach(id => document.getElementById(id).style.display = 'none');
+                    for (var i = 0; i < secciones.length; i++) document.getElementById(secciones[i]).style.display = 'none';
                     seccionManual.style.display = 'block';
                     itemsMateriales = []; itemsCargos = []; itemsEquipos = []; itemsTransporte = [];
                     renderizarItemsMateriales();
@@ -2085,7 +1693,7 @@
                     renderizarItemsEquipos();
                     renderizarItemsTransporte();
                 } else {
-                    secciones.forEach(id => document.getElementById(id).style.display = 'block');
+                    for (var j = 0; j < secciones.length; j++) document.getElementById(secciones[j]).style.display = 'block';
                     seccionManual.style.display = 'none';
                     document.getElementById('valorManual').value = '';
                 }
@@ -2093,14 +1701,10 @@
                 actualizarTotalGeneral();
             }
 
-            // ============================================================
             // ===== MODAL APU =====
-            // ============================================================
-            
             function abrirModal(apu) {
                 var modal = document.getElementById('modalAPU');
                 var titulo = document.getElementById('modalTitulo');
-
                 if (!modoPlantilla) {
                     titulo.textContent = apu ? 'Editar APU' : 'Nuevo APU';
                     document.getElementById('btnGuardarPlantilla').style.display = 'none';
@@ -2192,51 +1796,33 @@
                 }
             }
 
-            async function eliminarAPU(id) {
+            function eliminarAPU(id) {
                 if (!confirm('¿Eliminar este APU?')) return;
-
-                try {
-                    const response = await fetch('/api/apus/' + id, { method: 'DELETE' });
-                    if (!response.ok) throw new Error('Error');
-                    await cargarAPU();
-                    mostrarNotificacion('APU eliminado');
-                } catch (e) {
-                    mostrarNotificacion('Error al eliminar');
-                }
+                fetch('/api/apus/' + id, { method: 'DELETE' })
+                    .then(() => cargarAPU())
+                    .then(() => mostrarNotificacion('APU eliminado'))
+                    .catch(() => mostrarNotificacion('Error al eliminar'));
             }
 
-            async function borrarTodos() {
+            function borrarTodos() {
                 if (apus.length === 0) { alert('No hay APUs para borrar'); return; }
                 if (!confirm('⚠️ ¿Borrar TODOS tus APUs?')) return;
 
-                for (var i = 0; i < apus.length; i++) {
-                    await fetch('/api/apus/' + apus[i].id, { method: 'DELETE' });
-                }
-                await cargarAPU();
-                mostrarNotificacion('Todos los APUs fueron eliminados');
+                var promesas = apus.map(a => fetch('/api/apus/' + a.id, { method: 'DELETE' }));
+                Promise.all(promesas).then(() => cargarAPU()).then(() => mostrarNotificacion('Todos los APUs eliminados'));
             }
 
-            // ============================================================
-            // ===== SUBMIT FORMULARIO =====
-            // ============================================================
-            
-            document.getElementById('formAPU').addEventListener('submit', async function(e) {
-                if (modoPlantilla) {
-                    e.preventDefault();
-                    guardarPlantillaActual();
-                    return;
-                }
-
+            // ===== SUBMIT =====
+            document.getElementById('formAPU').addEventListener('submit', function(e) {
+                if (modoPlantilla) { e.preventDefault(); guardarPlantillaActual(); return; }
                 e.preventDefault();
+
                 var codigo = document.getElementById('codigo').value.trim();
                 var nombre = document.getElementById('nombre').value.trim();
                 var categoria = document.getElementById('categoriaSeleccionada').value.trim() || document.getElementById('categoriaInput').value.trim();
                 var unidad = (document.getElementById('unidadSeleccionada').value.trim() || document.getElementById('unidadInput').value.trim()).toUpperCase();
 
-                if (!codigo || !nombre || !categoria || !unidad) {
-                    alert('Completa todos los campos');
-                    return;
-                }
+                if (!codigo || !nombre || !categoria || !unidad) { alert('Completa todos los campos'); return; }
 
                 var valorTotal = 0;
                 if (ignorarItems) {
@@ -2248,65 +1834,48 @@
                 }
 
                 var apuData = {
-                    codigo, nombre, categoria, unidad,
-                    valor: valorTotal,
-                    ignorarItems: ignorarItems,
+                    codigo: codigo, nombre: nombre, categoria: categoria, unidad: unidad,
+                    valor: valorTotal, ignorarItems: ignorarItems,
                     valorManual: parseFloat(document.getElementById('valorManual').value) || 0,
-                    items: {
-                        materiales: itemsMateriales,
-                        equipos: itemsEquipos,
-                        transporte: itemsTransporte,
-                        cargos: itemsCargos
-                    }
+                    items: { materiales: itemsMateriales, equipos: itemsEquipos, transporte: itemsTransporte, cargos: itemsCargos }
                 };
 
-                try {
-                    var url = editandoId !== null ? '/api/apus/' + editandoId : '/api/apus';
-                    var method = editandoId !== null ? 'PUT' : 'POST';
+                var url = editandoId !== null ? '/api/apus/' + editandoId : '/api/apus';
+                var method = editandoId !== null ? 'PUT' : 'POST';
 
-                    var response = await fetch(url, {
-                        method: method,
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(apuData)
-                    });
-
-                    if (!response.ok) {
-                        var err = await response.json();
-                        throw new Error(err.error || 'Error al guardar');
-                    }
-
-                    // Si la categoría o unidad son nuevas, guardarlas
+                fetch(url, {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(apuData)
+                })
+                .then(r => {
+                    if (!r.ok) return r.json().then(err => { throw new Error(err.error || 'Error'); });
+                    return r.json();
+                })
+                .then(async () => {
                     if (categoria && !categoriasGuardadas.some(c => c.nombre.toLowerCase() === categoria.toLowerCase())) {
                         await fetch('/api/apus/categorias', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
+                            method: 'POST', headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ nombre: categoria })
                         });
                     }
                     if (unidad && !unidadesGuardadas.some(u => u.nombre.toUpperCase() === unidad)) {
                         await fetch('/api/apus/unidades', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
+                            method: 'POST', headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ nombre: unidad })
                         });
                     }
-
                     await cargarCategoriasDesdeServidor();
                     await cargarUnidadesDesdeServidor();
                     await cargarAPU();
                     cerrarModal();
                     mostrarNotificacion(editandoId !== null ? 'APU actualizado' : 'APU guardado');
                     editandoId = null;
-                } catch (error) {
-                    console.error('Error:', error);
-                    mostrarNotificacion('Error: ' + error.message);
-                }
+                })
+                .catch(err => mostrarNotificacion('Error: ' + err.message));
             });
 
-            // ============================================================
-            // ===== IMPRIMIR PDF =====
-            // ============================================================
-            
+            // ===== PDF =====
             function imprimirAPU(id) {
                 mostrarNotificacion('⏳ Generando PDF...');
                 fetch('/api/apu-pdf/' + id)
@@ -2328,10 +1897,7 @@
                     .catch(err => mostrarNotificacion('❌ Error: ' + err.message));
             }
 
-            // ============================================================
             // ===== NOTIFICACIONES =====
-            // ============================================================
-            
             function mostrarNotificacion(mensaje) {
                 var notificacion = document.createElement('div');
                 notificacion.className = 'notification';
