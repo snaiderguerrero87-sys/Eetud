@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= title %></title>
+    <!-- ===== FAVICON ===== -->
+    <link rel="icon" href="/assets/logo.jpg" type="image/jpeg">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/css/auth.css">
+</head>
+<body class="auth-page">
+    <div class="auth-container">
+        <div class="auth-box auth-box-registro">
+            <div class="auth-header">
+                <div class="auth-logo">
+                    <img src="/assets/logo.jpg" alt="Eetud" style="height: 50px; width: auto; border-radius: 10px;">
+                    <span style="font-size:24px; font-weight:700; color:var(--gray-900);">Eetud</span>
+                </div>
+                <h2>Crear Cuenta</h2>
+                <p>Regístrate para comenzar a usar Eetud</p>
+            </div>
+
+            <% if (error) { %>
+                <div class="auth-error">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <%= error %>
+                </div>
+            <% } %>
+
+            <form action="/registro" method="POST" class="auth-form">
+                <div class="form-row">
+                    <div class="form-group half">
+                        <label for="username">Nombre de Usuario *</label>
+                        <div class="input-group">
+                            <i class="fas fa-user"></i>
+                            <input type="text" id="username" name="username" placeholder="Ej: juanperez" required>
+                        </div>
+                    </div>
+                    <div class="form-group half">
+                        <label for="nombreCompleto">Nombre Completo</label>
+                        <div class="input-group">
+                            <i class="fas fa-user-circle"></i>
+                            <input type="text" id="nombreCompleto" name="nombreCompleto" placeholder="Ej: Juan Pérez">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="email">Correo Electrónico *</label>
+                    <div class="input-group">
+                        <i class="fas fa-envelope"></i>
+                        <input type="email" id="email" name="email" placeholder="Ej: juan@empresa.com" required>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group half">
+                        <label for="telefono">Número de Teléfono *</label>
+                        <div class="input-group">
+                            <i class="fas fa-phone"></i>
+                            <input type="tel" id="telefono" name="telefono" placeholder="Ej: 3001234567" required>
+                        </div>
+                    </div>
+                    <div class="form-group half">
+                        <label for="nit">NIT *</label>
+                        <div class="input-group">
+                            <i class="fas fa-file-invoice"></i>
+                            <input type="text" id="nit" name="nit" placeholder="Ej: 123456789-0" required>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group half">
+                        <label for="password">Contraseña *</label>
+                        <div class="input-group">
+                            <i class="fas fa-lock"></i>
+                            <input type="password" id="password" name="password" placeholder="Mínimo 6 caracteres" required>
+                        </div>
+                    </div>
+                    <div class="form-group half">
+                        <label for="confirmPassword">Confirmar Contraseña *</label>
+                        <div class="input-group">
+                            <i class="fas fa-lock"></i>
+                            <input type="password" id="confirmPassword" name="confirmPassword" placeholder="Repite la contraseña" required>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn-auth">
+                        <i class="fas fa-user-plus"></i> Registrarse
+                    </button>
+                </div>
+
+                <div class="auth-footer">
+                    <p>¿Ya tienes una cuenta? <a href="/login">Inicia sesión aquí</a></p>
+                </div>
+            </form>
+        </div>
+    </div>
+</body>
+</html>

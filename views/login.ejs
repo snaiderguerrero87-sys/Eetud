@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= title %></title>
+    <!-- ===== FAVICON ===== -->
+    <link rel="icon" href="/assets/logo.jpg" type="image/jpeg">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/css/auth.css">
+</head>
+<body class="auth-page">
+    <div class="auth-container">
+        <div class="auth-box">
+            <div class="auth-header">
+                <div class="auth-logo">
+                    <img id="loginLogo" src="/assets/logo.jpg" alt="Eetud" style="height: 50px; width: auto; border-radius: 10px;">
+                    <span style="font-size:24px; font-weight:700; color:var(--gray-900);">Eetud</span>
+                </div>
+                <h2>Iniciar Sesión</h2>
+                <p>Ingresa tus credenciales para acceder al sistema</p>
+            </div>
+
+            <% if (error) { %>
+                <div class="auth-error">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <%= error %>
+                </div>
+            <% } %>
+
+            <form action="/login" method="POST" class="auth-form">
+                <div class="form-group">
+                    <label for="username">Usuario o Correo</label>
+                    <div class="input-group">
+                        <i class="fas fa-user"></i>
+                        <input type="text" id="username" name="username" placeholder="Ingresa tu usuario o correo" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Contraseña</label>
+                    <div class="input-group">
+                        <i class="fas fa-lock"></i>
+                        <input type="password" id="password" name="password" placeholder="Ingresa tu contraseña" required>
+                        <button type="button" class="toggle-password" onclick="togglePassword()">
+                            <i class="fas fa-eye" id="toggleIcon"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-auth">
+                    <i class="fas fa-sign-in-alt"></i> Iniciar Sesión
+                </button>
+
+                <div class="auth-footer">
+                    <p>¿No tienes una cuenta? <a href="/registro">Regístrate aquí</a></p>
+                </div>
+            </form>
+
+            <!-- ===== BOTÓN TEMPORAL PARA BORRAR CACHÉ ===== -->
+            <div class="auth-dev-actions">
+                <hr class="auth-divider">
+                <button type="button" class="btn-dev-clear" onclick="borrarCacheUsuarios()">
+                    <i class="fas fa-trash-alt"></i> Borrar caché de usuarios (Pruebas)
+                </button>
+                <p class="dev-note">⚠️ Esto eliminará TODOS los usuarios registrados y datos de prueba</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function togglePassword() {
+            const password = document.getElementById('password');
+            const icon = document.getElementById('toggleIcon');
+            if (password.type === 'password') {
+                password.type = 'text';
+                icon.classList.remove('fa-eye');
+                icon.classList.add('fa-eye-slash');
+            } else {
+                password.type = 'password';
+                icon.classList.remove('fa-eye-slash');
+                icon.classList.add('fa-eye');
+            }
+        }
+
+        // ===== BORRAR CACHÉ DE USUARIOS =====
+        function borrarCacheUsuarios() {
+            if (confirm('⚠️ ¿Estás seguro de borrar TODOS los usuarios registrados y datos de prueba? Esta acción NO se puede deshacer.')) {
+                if (confirm('🔄 Confirmación final: ¿Seguro que quieres eliminar TODOS los datos?')) {
+                    // 1. Borrar usuarios del servidor (via fetch)
+                    fetch('/api/borrar-usuarios', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // 2. Borrar localStorage del navegador
+                            localStorage.clear();
+                            alert('✅ Todos los usuarios y datos han sido eliminados correctamente. La página se recargará.');
+                            location.reload();
+                        } else {
+                            alert('❌ Error al borrar usuarios: ' + data.message);
+                        }
+                    })
+                    .catch(err => {
+                        alert('❌ Error al conectar con el servidor: ' + err.message);
+                    });
+                }
+            }
+        }
+
+        // Cargar logo de la empresa
+        document.addEventListener('DOMContentLoaded', function() {
+            try {
+                var data = localStorage.getItem('empresaInfo');
+                if (data) {
+                    var empresa = JSON.parse(data);
+                    if (empresa.logo) {
+                        var logoImg = document.getElementById('loginLogo');
+                        if (logoImg) {
+                            logoImg.src = empresa.logo;
+                        }
+                    }
+                }
+            } catch (e) {}
+        });
+    </script>
+
+    <style>
+        /* ===== BOTÓN DE DESARROLLO ===== */
+        .auth-dev-actions {
+            margin-top: 20px;
+            padding-top: 16px;
+        }
+
+        .auth-divider {
+            border: none;
+            border-top: 1px solid var(--gray-200);
+            margin-bottom: 16px;
+        }
+
+        .btn-dev-clear {
+            width: 100%;
+            padding: 10px;
+            background: #dc2626;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.3s;
+        }
+
+        .btn-dev-clear:hover {
+            background: #b91c1c;
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .dev-note {
+            font-size: 12px;
+            color: var(--gray-500);
+            text-align: center;
+            margin-top: 6px;
+        }
+    </style>
+</body>
+</html>

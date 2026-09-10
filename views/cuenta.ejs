@@ -1,0 +1,461 @@
+<%- include('layouts/main', { 
+    title: 'Mi Empresa - Eetud',
+    usuario: usuario,
+    body: `
+        <div class="page-header">
+            <h1>Mi Empresa</h1>
+            <p style="color: var(--gray-600);">Información de tu compañía para cotizaciones, APU y reportes</p>
+        </div>
+
+        <section class="table-container">
+            <form id="formEmpresa" class="empresa-form">
+                <!-- ===== LOGO DE LA EMPRESA ===== -->
+                <div class="logo-section">
+                    <h4><i class="fas fa-image"></i> Logo de la Empresa</h4>
+                    <div class="logo-upload-container">
+                        <div class="logo-preview" id="logoPreview">
+                            <img id="logoImagen" src="" alt="Logo de la empresa">
+                            <div class="logo-placeholder" id="logoPlaceholder">
+                                <i class="fas fa-building"></i>
+                                <span>Sin logo</span>
+                            </div>
+                        </div>
+                        <div class="logo-upload">
+                            <label for="logoInput" class="btn-secondary">
+                                <i class="fas fa-upload"></i> Subir Logo
+                            </label>
+                            <input type="file" id="logoInput" accept="image/*" style="display:none;">
+                            <button type="button" class="btn-danger" onclick="eliminarLogo()" id="btnEliminarLogo" style="display:none;">
+                                <i class="fas fa-trash"></i> Eliminar
+                            </button>
+                        </div>
+                        <p class="logo-help">Formatos: JPG, PNG, SVG. Tamaño recomendado: 200x200px</p>
+                    </div>
+                </div>
+
+                <hr class="form-divider">
+
+                <!-- ===== DATOS DE LA EMPRESA ===== -->
+                <div class="form-row">
+                    <div class="form-group half">
+                        <label for="nombreEmpresa">Nombre de la Empresa *</label>
+                        <input type="text" id="nombreEmpresa" placeholder="Ej: Electitud S.A.S." required>
+                    </div>
+                    <div class="form-group half">
+                        <label for="nitEmpresa">NIT *</label>
+                        <input type="text" id="nitEmpresa" placeholder="Ej: 123456789-0" required>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group half">
+                        <label for="telefonoEmpresa">Teléfono</label>
+                        <input type="text" id="telefonoEmpresa" placeholder="Ej: 3001234567">
+                    </div>
+                    <div class="form-group half">
+                        <label for="emailEmpresa">Correo Electrónico</label>
+                        <input type="email" id="emailEmpresa" placeholder="Ej: contacto@electitud.com">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="direccionEmpresa">Dirección</label>
+                    <input type="text" id="direccionEmpresa" placeholder="Ej: Calle 123 #45-67, Bogotá">
+                </div>
+
+                <div class="form-group">
+                    <label for="webEmpresa">Sitio Web</label>
+                    <input type="text" id="webEmpresa" placeholder="Ej: www.electitud.com">
+                </div>
+
+                <div class="form-group">
+                    <label for="descripcionEmpresa">Descripción / Misión</label>
+                    <textarea id="descripcionEmpresa" rows="3" placeholder="Breve descripción de tu empresa..." style="width:100%; padding:10px 14px; border:1px solid var(--gray-200); border-radius:8px; font-size:14px; font-family:inherit; resize:vertical;"></textarea>
+                </div>
+
+                <hr class="form-divider">
+
+                <!-- ===== DATOS DEL USUARIO ===== -->
+                <h4><i class="fas fa-user"></i> Datos del Usuario</h4>
+                <div class="form-row">
+                    <div class="form-group half">
+                        <label for="usuarioRegistro">Nombre de Usuario</label>
+                        <input type="text" id="usuarioRegistro" readonly style="background:var(--gray-100);">
+                    </div>
+                    <div class="form-group half">
+                        <label for="emailRegistro">Correo Electrónico</label>
+                        <input type="email" id="emailRegistro" readonly style="background:var(--gray-100);">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group half">
+                        <label for="telefonoRegistro">Teléfono</label>
+                        <input type="text" id="telefonoRegistro" readonly style="background:var(--gray-100);">
+                    </div>
+                    <div class="form-group half">
+                        <label for="nitRegistro">NIT</label>
+                        <input type="text" id="nitRegistro" readonly style="background:var(--gray-100);">
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" onclick="cargarDatos()">
+                        <i class="fas fa-undo"></i> Restaurar
+                    </button>
+                    <button type="submit" class="btn-primary">
+                        <i class="fas fa-save"></i> Guardar Información
+                    </button>
+                </div>
+            </form>
+        </section>
+
+        <style>
+            /* ===== LOGO SECTION ===== */
+            .logo-section {
+                margin-bottom: 20px;
+                padding: 16px;
+                background: var(--gray-50);
+                border-radius: 8px;
+                border: 1px solid var(--gray-200);
+            }
+
+            .logo-section h4 {
+                margin-bottom: 12px;
+                color: var(--gray-900);
+            }
+
+            .logo-upload-container {
+                display: flex;
+                align-items: flex-start;
+                gap: 24px;
+                flex-wrap: wrap;
+            }
+
+            .logo-preview {
+                width: 120px;
+                height: 120px;
+                border: 2px dashed var(--gray-200);
+                border-radius: 12px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                overflow: hidden;
+                background: white;
+                position: relative;
+                flex-shrink: 0;
+            }
+
+            .logo-preview img {
+                width: 100%;
+                height: 100%;
+                object-fit: contain;
+                display: none;
+            }
+
+            .logo-preview img.mostrar {
+                display: block;
+            }
+
+            .logo-placeholder {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                color: var(--gray-400);
+                font-size: 13px;
+            }
+
+            .logo-placeholder i {
+                font-size: 36px;
+                margin-bottom: 4px;
+            }
+
+            .logo-placeholder.oculto {
+                display: none;
+            }
+
+            .logo-upload {
+                display: flex;
+                gap: 8px;
+                align-items: center;
+                flex-wrap: wrap;
+            }
+
+            .logo-help {
+                font-size: 12px;
+                color: var(--gray-500);
+                margin-top: 8px;
+                width: 100%;
+            }
+
+            /* ===== FORMULARIO ===== */
+            .empresa-form {
+                max-width: 800px;
+            }
+
+            .empresa-form .form-row {
+                display: flex;
+                gap: 16px;
+            }
+
+            .empresa-form .form-row .form-group.half {
+                flex: 1;
+            }
+
+            .empresa-form .form-actions {
+                display: flex;
+                justify-content: flex-end;
+                gap: 12px;
+                margin-top: 20px;
+            }
+
+            .empresa-form h4 {
+                margin-bottom: 12px;
+                color: var(--gray-900);
+                font-size: 16px;
+            }
+
+            .empresa-form h4 i {
+                color: var(--primary);
+                margin-right: 8px;
+            }
+
+            .form-divider {
+                border: none;
+                border-top: 1px solid var(--gray-200);
+                margin: 20px 0;
+            }
+
+            @media (max-width: 768px) {
+                .empresa-form .form-row {
+                    flex-direction: column;
+                    gap: 0;
+                }
+                .empresa-form .form-row .form-group.half {
+                    flex: none;
+                }
+                .logo-upload-container {
+                    flex-direction: column;
+                    align-items: center;
+                }
+            }
+        </style>
+
+        <script>
+            // ===== VARIABLES GLOBALES =====
+            var logoBase64 = '';
+
+            // ============================================================
+            // ===== CARGAR DATOS DESDE EL SERVIDOR =====
+            // ============================================================
+            function cargarDatos() {
+                console.log('📂 Cargando datos de la empresa...');
+                
+                fetch('/api/empresa-info')
+                    .then(response => response.json())
+                    .then(data => {
+                        console.log('📦 Datos del servidor:', data);
+                        if (data && data.nombre) {
+                            localStorage.setItem('empresaInfo', JSON.stringify(data));
+                            cargarDesdeLocalStorage(data);
+                        } else {
+                            console.log('⚠️ No hay datos en el servidor, cargando de localStorage...');
+                            cargarDesdeLocalStorage(null);
+                        }
+                    })
+                    .catch(error => {
+                        console.log('❌ Error al cargar del servidor:', error);
+                        cargarDesdeLocalStorage(null);
+                    });
+            }
+
+            function cargarDesdeLocalStorage(dataServidor) {
+                try {
+                    var data = dataServidor || localStorage.getItem('empresaInfo');
+                    if (data) {
+                        var empresa = typeof data === 'string' ? JSON.parse(data) : data;
+                        console.log('📦 Datos cargados:', empresa);
+                        
+                        document.getElementById('nombreEmpresa').value = empresa.nombre || '';
+                        document.getElementById('nitEmpresa').value = empresa.nit || '';
+                        document.getElementById('telefonoEmpresa').value = empresa.telefono || '';
+                        document.getElementById('emailEmpresa').value = empresa.email || '';
+                        document.getElementById('direccionEmpresa').value = empresa.direccion || '';
+                        document.getElementById('webEmpresa').value = empresa.web || '';
+                        document.getElementById('descripcionEmpresa').value = empresa.descripcion || '';
+
+                        if (empresa.logo) {
+                            logoBase64 = empresa.logo;
+                            mostrarLogo(empresa.logo);
+                            console.log('✅ Logo cargado correctamente');
+                        } else {
+                            logoBase64 = '';
+                            mostrarLogo(null);
+                            console.log('⚠️ No hay logo');
+                        }
+                    }
+
+                    try {
+                        var userData = localStorage.getItem('empresaInfo');
+                        if (userData) {
+                            var user = JSON.parse(userData);
+                            document.getElementById('usuarioRegistro').value = user.nombre || '';
+                            document.getElementById('emailRegistro').value = user.email || '';
+                            document.getElementById('telefonoRegistro').value = user.telefono || '';
+                            document.getElementById('nitRegistro').value = user.nit || '';
+                        }
+                    } catch (e) {}
+
+                } catch (e) {
+                    console.log('❌ Error al cargar datos:', e);
+                }
+            }
+
+            // ============================================================
+            // ===== MOSTRAR LOGO =====
+            // ============================================================
+            function mostrarLogo(base64) {
+                var img = document.getElementById('logoImagen');
+                var placeholder = document.getElementById('logoPlaceholder');
+                var btnEliminar = document.getElementById('btnEliminarLogo');
+
+                if (base64) {
+                    img.src = base64;
+                    img.classList.add('mostrar');
+                    placeholder.classList.add('oculto');
+                    btnEliminar.style.display = 'inline-flex';
+                } else {
+                    img.classList.remove('mostrar');
+                    placeholder.classList.remove('oculto');
+                    btnEliminar.style.display = 'none';
+                }
+            }
+
+            // ============================================================
+            // ===== SUBIR LOGO =====
+            // ============================================================
+            document.getElementById('logoInput').addEventListener('change', function(e) {
+                var file = e.target.files[0];
+                if (!file) return;
+
+                if (file.size > 2 * 1024 * 1024) {
+                    alert('El archivo es demasiado grande. Máximo 2MB.');
+                    this.value = '';
+                    return;
+                }
+
+                var reader = new FileReader();
+                reader.onload = function(event) {
+                    logoBase64 = event.target.result;
+                    mostrarLogo(logoBase64);
+                    console.log('✅ Logo cargado en memoria');
+                };
+                reader.readAsDataURL(file);
+            });
+
+            // ============================================================
+            // ===== ELIMINAR LOGO =====
+            // ============================================================
+            function eliminarLogo() {
+                if (confirm('¿Eliminar el logo de la empresa?')) {
+                    logoBase64 = '';
+                    mostrarLogo(null);
+                    document.getElementById('logoInput').value = '';
+                    console.log('🗑️ Logo eliminado');
+                }
+            }
+
+            // ============================================================
+            // ===== GUARDAR DATOS DE LA EMPRESA (EN SERVIDOR Y LOCAL) =====
+            // ============================================================
+            document.getElementById('formEmpresa').addEventListener('submit', function(e) {
+                e.preventDefault();
+
+                var empresa = {
+                    nombre: document.getElementById('nombreEmpresa').value.trim(),
+                    nit: document.getElementById('nitEmpresa').value.trim(),
+                    telefono: document.getElementById('telefonoEmpresa').value.trim(),
+                    email: document.getElementById('emailEmpresa').value.trim(),
+                    direccion: document.getElementById('direccionEmpresa').value.trim(),
+                    web: document.getElementById('webEmpresa').value.trim(),
+                    descripcion: document.getElementById('descripcionEmpresa').value.trim(),
+                    logo: logoBase64
+                };
+
+                if (!empresa.nombre || !empresa.nit) {
+                    alert('El nombre y NIT de la empresa son obligatorios');
+                    return;
+                }
+
+                console.log('💾 Guardando datos de la empresa...');
+                console.log('🖼️ Logo presente:', empresa.logo ? 'SÍ' : 'NO');
+
+                localStorage.setItem('empresaInfo', JSON.stringify(empresa));
+                
+                fetch('/api/guardar-empresa', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(empresa)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        console.log('✅ Datos guardados en el servidor');
+                        mostrarNotificacion('✅ Información guardada correctamente');
+                        actualizarLogoGlobal(logoBase64);
+                    } else {
+                        console.error('❌ Error del servidor:', data);
+                        mostrarNotificacion('❌ Error al guardar en el servidor');
+                    }
+                })
+                .catch(error => {
+                    console.error('❌ Error de conexión:', error);
+                    mostrarNotificacion('❌ Error al conectar con el servidor');
+                });
+            });
+
+            // ============================================================
+            // ===== ACTUALIZAR LOGO EN TODA LA WEB =====
+            // ============================================================
+            function actualizarLogoGlobal(base64) {
+                var logos = document.querySelectorAll('.sidebar-brand img, .nav-logo img, .auth-logo img, #loginLogo');
+                logos.forEach(function(img) {
+                    if (base64) {
+                        img.src = base64;
+                    } else {
+                        img.src = '/assets/logo.jpg';
+                    }
+                });
+                console.log('🔄 Logo actualizado en toda la web');
+            }
+
+            // ============================================================
+            // ===== NOTIFICACIONES =====
+            // ============================================================
+            function mostrarNotificacion(mensaje) {
+                var notificacion = document.createElement('div');
+                notificacion.className = 'notification';
+                notificacion.textContent = mensaje;
+                document.body.appendChild(notificacion);
+                setTimeout(function() {
+                    notificacion.classList.add('show');
+                }, 100);
+                setTimeout(function() {
+                    notificacion.classList.remove('show');
+                    setTimeout(function() {
+                        notificacion.remove();
+                    }, 300);
+                }, 3000);
+            }
+
+            // ============================================================
+            // ===== INICIALIZAR =====
+            // ============================================================
+            document.addEventListener('DOMContentLoaded', function() {
+                console.log('📄 Página de cuenta cargada');
+                cargarDatos();
+            });
+        </script>
+    `
+}) %>

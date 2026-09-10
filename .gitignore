@@ -1,0 +1,7 @@
+node_modules/
+.env
+data/sessions/
+data/temp_*.png
+data/*.json
+*.log
+.DS_Store

@@ -1,0 +1,3202 @@
+<%- include('layouts/main', { 
+    title: 'Listado de APU',
+    usuario: usuario,
+    body: `
+        <div class="page-header">
+            <h1>Listado de APU</h1>
+            <div style="display:flex; gap:12px; flex-wrap:wrap;">
+                <button class="btn-primary" id="btnCrearAPU">
+                    <i class="fas fa-plus"></i> Crear APU
+                </button>
+                <button class="btn-secondary" id="btnPlantillaAPU" style="background:var(--gray-100); border:1px solid var(--gray-200);">
+                    <i class="fas fa-copy"></i> Plantilla APU
+                </button>
+                <button class="btn-secondary" onclick="abrirModalImportar()" style="background:var(--gray-100); border:1px solid var(--gray-200);">
+                    <i class="fas fa-file-import"></i> Importar Listado
+                </button>
+            </div>
+        </div>
+
+        <section class="table-container">
+            <div id="contenedorTablas">
+                <!-- Las tablas se generan con JavaScript -->
+            </div>
+            <div id="sinDatos" class="empty-state">
+                <i class="fas fa-file-invoice"></i>
+                <p>No hay APU registrados</p>
+                <button class="btn-primary" id="btnCrearPrimerAPU">
+                    <i class="fas fa-plus"></i> Crear primer APU
+                </button>
+            </div>
+        </section>
+
+        <!-- Modal APU -->
+        <div id="modalAPU" class="modal modal-muy-grande">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 id="modalTitulo">Nuevo APU</h2>
+                    <span class="close" id="btnCerrarModal">&times;</span>
+                </div>
+                <form id="formAPU">
+                    <div class="form-row">
+                        <div id="campo_codigo_container" class="form-group half">
+                            <label for="codigo">Código</label>
+                            <input type="text" id="codigo" placeholder="Ej: APU-001">
+                        </div>
+                        <div id="campo_unidad_container" class="form-group half" style="position:relative;">
+                            <label for="unidad">Unidad</label>
+                            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                                <input type="text" id="unidadInput" placeholder="Escribe la unidad..." style="flex:1; padding:10px 14px; border:1px solid var(--gray-200); border-radius:8px; font-size:14px; font-family:inherit;" autocomplete="off">
+                                <button type="button" id="btnAgregarUnidad" class="btn-primary" style="display:none; white-space:nowrap;">
+                                    <i class="fas fa-plus"></i> Agregar Unidad
+                                </button>
+                            </div>
+                            <div id="sugerenciasUnidades" style="display:none; position:absolute; background:white; border:1px solid var(--gray-200); border-radius:8px; max-height:150px; overflow-y:auto; width:calc(100% - 110px); z-index:1000; box-shadow:var(--shadow-lg); margin-top:4px;"></div>
+                            <input type="hidden" id="unidadSeleccionada" value="">
+                            <input type="hidden" id="unidad" value="">
+                        </div>
+                    </div>
+                    <div id="campo_nombre_container" class="form-group">
+                        <label for="nombre">Nombre del APU</label>
+                        <input type="text" id="nombre" placeholder="Ej: Excavación Manual">
+                    </div>
+                    
+                    <!-- CAMPO CATEGORÍA CON AUTOCOMPLETADO -->
+                    <div id="campo_categoria_container" class="form-group" style="position:relative;">
+                        <label for="categoria">Categoría</label>
+                        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                            <input type="text" id="categoriaInput" placeholder="Escribe la categoría..." style="flex:1; padding:10px 14px; border:1px solid var(--gray-200); border-radius:8px; font-size:14px; font-family:inherit;" autocomplete="off">
+                            <button type="button" id="btnAgregarCategoria" class="btn-primary" style="display:none; white-space:nowrap;">
+                                <i class="fas fa-plus"></i> Agregar Categoría
+                            </button>
+                        </div>
+                        <div id="sugerenciasCategorias" style="display:none; position:absolute; background:white; border:1px solid var(--gray-200); border-radius:8px; max-height:150px; overflow-y:auto; width:calc(100% - 120px); z-index:1000; box-shadow:var(--shadow-lg); margin-top:4px;"></div>
+                        <input type="hidden" id="categoriaSeleccionada" value="">
+                    </div>
+
+                    <!-- Toggle Ignorar Items -->
+                    <div class="form-group toggle-container" style="display:flex; align-items:center; gap:12px; padding:12px 16px; background:var(--gray-50); border-radius:8px; border:1px solid var(--gray-200);">
+                        <label class="toggle-label" style="display:flex; align-items:center; gap:12px; cursor:pointer; margin:0; flex:1;">
+                            <input type="checkbox" id="ignorarItems" onchange="toggleIgnorarItems()">
+                            <span class="toggle-slider"></span>
+                            <span class="toggle-text" style="font-size:14px; font-weight:500; color:var(--gray-900);">
+                                <i class="fas fa-edit" style="color:var(--warning); margin-right:6px;"></i>
+                                Ignorar items (editar valor manualmente)
+                            </span>
+                        </label>
+                        <button type="button" id="btnToggleInfo" style="background:var(--warning); color:white; border:none; border-radius:50%; width:28px; height:28px; font-size:14px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0;" title="Al activar esta opción, se ignoran los campos de materiales, equipos, transporte y mano de obra y solo se usa el valor manual.">
+                            <i class="fas fa-info"></i>
+                        </button>
+                    </div>
+
+                    <hr class="form-divider">
+
+                    <!-- MATERIALES -->
+                    <div id="seccionMateriales">
+                        <h3 class="section-title"><i class="fas fa-cubes"></i> Materiales</h3>
+                        <div style="display:flex; gap:12px; margin-bottom:12px;">
+                            <button type="button" class="btn-primary" id="btnSeleccionarMaterial">
+                                <i class="fas fa-search"></i> Seleccionar Material
+                            </button>
+                            <span id="contadorMateriales" style="display:flex; align-items:center; color:var(--gray-600); font-size:14px;">0 materiales seleccionados</span>
+                        </div>
+                        <div id="listaMateriales" class="item-list">
+                            <p class="empty-items">No hay materiales agregados</p>
+                        </div>
+                        <div id="subtotalMateriales" style="text-align:right; margin-top:8px; font-weight:600; color:var(--primary);">
+                            Subtotal Materiales: $0
+                        </div>
+                    </div>
+
+                    <hr class="form-divider">
+
+                    <!-- EQUIPOS Y HERRAMIENTAS -->
+                    <div id="seccionEquipos">
+                        <h3 class="section-title"><i class="fas fa-tools"></i> Equipos y Herramientas</h3>
+                        <div class="item-row">
+                            <div class="form-group half">
+                                <label>Nombre del Equipo/Herramienta</label>
+                                <input type="text" id="nombreEquipo" class="form-control" placeholder="Ej: Excavadora">
+                            </div>
+                            <div class="form-group small">
+                                <label>Unidad (%)</label>
+                                <input type="text" id="unidadEquipo" value="%" readonly style="background:var(--gray-100); width:60px;">
+                            </div>
+                            <div class="form-group small">
+                                <label>Porcentaje (%)</label>
+                                <input type="number" id="porcentajeEquipo" placeholder="0" value="0" min="0" step="0.1" style="width:80px;" oninput="calcularSubtotalEquipoPreview()">
+                            </div>
+                            <div class="form-group small" style="flex:1; min-width:120px;">
+                                <label>Valor Base</label>
+                                <div style="display:flex; gap:4px; align-items:center;">
+                                    <input type="text" id="valorBaseEquipo" placeholder="$0" value="$0" style="min-width:90px; width:auto; text-align:right; font-family:monospace; padding:4px 6px;" onfocus="this.select()" onkeydown="validarNumero(event, this)" oninput="formatearYCalcularEquipo(this)">
+                                    <select id="valorBaseOrigenEquipo" style="padding:4px; border:1px solid var(--gray-200); border-radius:4px; font-size:11px; background:white; cursor:pointer;" onchange="actualizarValorBaseEquipoManual()">
+                                        <option value="manual">Manual</option>
+                                        <option value="materiales">Subtotal Materiales</option>
+                                        <option value="manoDeObra">Subtotal Mano de Obra</option>
+                                        <option value="total">Valor Total</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-group small">
+                                <label>&nbsp;</label>
+                                <button type="button" class="btn-add" onclick="agregarItemEquipo()">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div id="listaEquipos" class="item-list">
+                            <p class="empty-items">No hay equipos o herramientas agregados</p>
+                        </div>
+                        <div id="subtotalEquipos" style="text-align:right; margin-top:8px; font-weight:600; color:var(--primary);">
+                            Subtotal Equipos y Herramientas: $0
+                        </div>
+                        <div id="previewSubtotalEquipo" style="text-align:right; margin-top:4px; font-weight:600; color:var(--success); font-size:13px; display:none;">
+                            Subtotal: $0
+                        </div>
+                    </div>
+
+                    <hr class="form-divider">
+
+                    <!-- TRANSPORTE DE MATERIALES -->
+                    <div id="seccionTransporte">
+                        <h3 class="section-title"><i class="fas fa-truck"></i> Transporte de Materiales</h3>
+                        <div class="item-row">
+                            <div class="form-group half">
+                                <label>Nombre del Transporte</label>
+                                <input type="text" id="nombreTransporte" class="form-control" placeholder="Ej: Flete de materiales">
+                            </div>
+                            <div class="form-group small">
+                                <label>Unidad (%)</label>
+                                <input type="text" id="unidadTransporte" value="%" readonly style="background:var(--gray-100); width:60px;">
+                            </div>
+                            <div class="form-group small">
+                                <label>Porcentaje (%)</label>
+                                <input type="number" id="porcentajeTransporte" placeholder="0" value="0" min="0" step="0.1" style="width:80px;" oninput="calcularSubtotalTransportePreview()">
+                            </div>
+                            <div class="form-group small" style="flex:1; min-width:120px;">
+                                <label>Valor Base</label>
+                                <div style="display:flex; gap:4px; align-items:center;">
+                                    <input type="text" id="valorBaseTransporte" placeholder="$0" value="$0" style="min-width:90px; width:auto; text-align:right; font-family:monospace; padding:4px 6px;" onfocus="this.select()" onkeydown="validarNumero(event, this)" oninput="formatearYCalcularTransporte(this)">
+                                    <select id="valorBaseOrigenTransporte" style="padding:4px; border:1px solid var(--gray-200); border-radius:4px; font-size:11px; background:white; cursor:pointer;" onchange="actualizarValorBaseTransporteManual()">
+                                        <option value="manual">Manual</option>
+                                        <option value="materiales">Subtotal Materiales</option>
+                                        <option value="manoDeObra">Subtotal Mano de Obra</option>
+                                        <option value="total">Valor Total</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-group small">
+                                <label>&nbsp;</label>
+                                <button type="button" class="btn-add" onclick="agregarItemTransporte()">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div id="listaTransporte" class="item-list">
+                            <p class="empty-items">No hay transportes agregados</p>
+                        </div>
+                        <div id="subtotalTransporte" style="text-align:right; margin-top:8px; font-weight:600; color:var(--primary);">
+                            Subtotal Transporte: $0
+                        </div>
+                        <div id="previewSubtotalTransporte" style="text-align:right; margin-top:4px; font-weight:600; color:var(--success); font-size:13px; display:none;">
+                            Subtotal: $0
+                        </div>
+                    </div>
+
+                    <hr class="form-divider">
+
+                    <!-- MANO DE OBRA -->
+                    <div id="seccionCargos">
+                        <h3 class="section-title"><i class="fas fa-user-cog"></i> Mano de Obra</h3>
+                        <div class="item-row">
+                            <div class="form-group half">
+                                <label>Descripcion</label>
+                                <input type="text" id="descripcionCargo" class="form-control" placeholder="Ej: Ingeniero Civil">
+                            </div>
+                            <div class="form-group small">
+                                <label>Unidad</label>
+                                <input type="text" id="unidadCargo" placeholder="und" style="width:60px;">
+                            </div>
+                            <div class="form-group small">
+                                <label>Cantidad</label>
+                                <input type="number" id="cantidadCargo" placeholder="1" value="1" min="1" style="width:60px;" oninput="calcularSubtotalCargoPreview()">
+                            </div>
+                            <div class="form-group small" style="flex:1; min-width:120px;">
+                                <label>Valor Unitario</label>
+                                <input type="text" id="valorUnitarioCargo" placeholder="$0" value="$0" style="min-width:90px; width:auto; text-align:right; font-family:monospace; padding:4px 6px;" onfocus="this.select()" onkeydown="validarNumero(event, this)" oninput="formatearYCalcularCargo(this)">
+                            </div>
+                            <div class="form-group small">
+                                <label>Subtotal</label>
+                                <input type="text" id="subtotalCargo" readonly style="background:var(--gray-100); min-width:90px; width:auto; text-align:right; font-family:monospace; padding:4px 6px;">
+                            </div>
+                            <div class="form-group small">
+                                <label>&nbsp;</label>
+                                <button type="button" class="btn-add" onclick="agregarItemCargo()">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div id="listaCargos" class="item-list">
+                            <p class="empty-items">No hay cargos agregados</p>
+                        </div>
+                        <div id="subtotalManoObra" style="text-align:right; margin-top:8px; font-weight:600; color:var(--primary);">
+                            Subtotal Mano de Obra: $0
+                        </div>
+                        <div id="previewSubtotalCargo" style="text-align:right; margin-top:4px; font-weight:600; color:var(--success); font-size:13px; display:none;">
+                            Subtotal: $0
+                        </div>
+                    </div>
+
+                    <hr class="form-divider">
+
+                    <div id="seccionValorManual" style="display: none;">
+                        <div class="form-group">
+                            <label for="valorManual">Valor Unitario Manual (COP)</label>
+                            <input type="number" id="valorManual" placeholder="Ej: 50000" min="0" step="100" oninput="actualizarTotalGeneral()">
+                        </div>
+                    </div>
+
+                    <div class="total-container">
+                        <div class="total-label">Valor Unitario Total:</div>
+                        <div class="total-value" id="valorTotal">$0</div>
+                    </div>
+
+                    <!-- BOTONES DEL MODAL -->
+                    <div class="form-actions" style="display:flex; gap:12px; flex-wrap:wrap; justify-content:flex-end;">
+                        <button type="button" class="btn-primary" id="btnGuardarPlantilla" style="display:none;">
+                            <i class="fas fa-save"></i> Guardar Plantilla
+                        </button>
+                        <button type="submit" class="btn-primary" id="btnGuardarAPU">
+                            <i class="fas fa-save"></i> Guardar APU
+                        </button>
+                        <button type="button" class="btn-secondary" id="btnCancelarModal">Cancelar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Modal para seleccionar materiales CON CANTIDAD INDIVIDUAL -->
+        <div id="modalSelectorMateriales" class="modal modal-grande">
+            <div class="modal-content" style="max-width:95vw; width:95vw; max-height:92vh;">
+                <div class="modal-header">
+                    <h2><i class="fas fa-cubes"></i> Seleccionar Materiales</h2>
+                    <span class="close" id="btnCerrarSelectorMateriales">&times;</span>
+                </div>
+                <div style="display:flex; gap:20px; flex-wrap:wrap;">
+                    <div style="flex:2; min-width:300px;">
+                        <div style="display:flex; gap:10px; margin-bottom:12px;">
+                            <input type="text" id="buscarMaterialSelector" placeholder="Buscar material por nombre..." style="flex:1; padding:8px 12px; border:1px solid var(--gray-200); border-radius:6px; font-size:14px;" oninput="filtrarMaterialesSelector()">
+                            <span id="resultadosContador" style="display:flex; align-items:center; color:var(--gray-600); font-size:13px;">0 resultados</span>
+                        </div>
+                        <div id="listaMaterialesSelector" style="max-height:350px; overflow-y:auto; border:1px solid var(--gray-200); border-radius:6px; padding:4px;">
+                            <p class="empty-items">Cargando materiales...</p>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px; gap:10px; flex-wrap:wrap;">
+                            <div style="display:flex; gap:6px;">
+                                <button class="btn-sm" id="btnPaginaAnterior" disabled>Anterior</button>
+                                <span id="paginacionInfo" style="display:flex; align-items:center; font-size:14px; color:var(--gray-600);">Página 1 de 1</span>
+                                <button class="btn-sm" id="btnPaginaSiguiente" disabled>Siguiente</button>
+                            </div>
+                            <span id="seleccionadosContador" style="font-size:14px; color:var(--primary); font-weight:600;">0 materiales seleccionados</span>
+                        </div>
+                    </div>
+                    <div style="flex:1; min-width:280px; border-left:1px solid var(--gray-200); padding-left:20px;">
+                        <h4 style="margin-bottom:10px; color:var(--gray-900);">Seleccionados</h4>
+                        <div id="materialesSeleccionadosLista" style="max-height:300px; overflow-y:auto;">
+                            <p class="empty-items">No hay materiales seleccionados</p>
+                        </div>
+                        <div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+                            <button class="btn-primary" id="btnGuardarMateriales" style="flex:1;">
+                                <i class="fas fa-check"></i> Guardar
+                            </button>
+                            <button class="btn-secondary" id="btnCancelarSelectorMateriales">Cancelar</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal para importar APU -->
+        <div id="modalImportarAPU" class="modal">
+            <div class="modal-content" style="max-width:600px;">
+                <div class="modal-header">
+                    <h2><i class="fas fa-file-import"></i> Importar APU</h2>
+                    <span class="close" onclick="cerrarModalImportar()">&times;</span>
+                </div>
+                <div style="padding: 10px 0;">
+                    <p style="color: var(--gray-600); margin-bottom: 16px;">
+                        Descarga el formato Excel, completa los datos y luego impórtalo.
+                        Las categorías nuevas se crearán automáticamente.
+                    </p>
+                    
+                    <div style="display:flex; gap:12px; flex-wrap:wrap; justify-content:center;">
+                        <button class="btn-primary" onclick="descargarFormatoAPU()" style="flex:1; min-width:150px;">
+                            <i class="fas fa-download"></i> Descargar Formato
+                        </button>
+                        <button class="btn-secondary" onclick="document.getElementById('fileInputImportarAPU').click()" style="flex:1; min-width:150px; background:var(--gray-100); border:1px solid var(--gray-200);">
+                            <i class="fas fa-upload"></i> Importar Archivo
+                        </button>
+                        <input type="file" id="fileInputImportarAPU" accept=".xlsx,.xls" style="display:none;" onchange="procesarImportacionAPU(event)">
+                    </div>
+                    
+                    <div id="importarProgresoAPU" style="display:none; margin-top:16px; padding:12px; background:var(--gray-50); border-radius:8px; text-align:center;">
+                        <span id="importarMensajeAPU">Procesando archivo...</span>
+                    </div>
+                    
+                    <div id="importarResultadoAPU" style="display:none; margin-top:16px; padding:12px; border-radius:8px;">
+                        <!-- Se muestra con JavaScript -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <button class="btn-danger btn-cache" onclick="borrarCache()">
+            <i class="fas fa-trash"></i> Borrar Cache
+        </button>
+
+        <style>
+            /* ===== MODAL MUY GRANDE ===== */
+            .modal-muy-grande .modal-content {
+                max-width: 95vw;
+                width: 95vw;
+                max-height: 92vh;
+                padding: 24px 32px;
+            }
+            
+            @media (max-width: 768px) {
+                .modal-muy-grande .modal-content {
+                    max-width: 98vw;
+                    width: 98vw;
+                    padding: 16px;
+                    max-height: 95vh;
+                }
+                .modal-muy-grande .modal-content .form-row {
+                    flex-direction: column;
+                    gap: 0;
+                }
+                .modal-muy-grande .modal-content .form-row .form-group.half {
+                    flex: none;
+                }
+                .modal-muy-grande .modal-content .item-row {
+                    flex-wrap: wrap;
+                }
+                .modal-muy-grande .modal-content .item-row .form-group {
+                    flex: 1;
+                    min-width: 100px;
+                }
+                #modalSelectorMateriales .modal-content {
+                    max-width: 98vw;
+                    width: 98vw;
+                    padding: 16px;
+                }
+                #modalSelectorMateriales .modal-content > div {
+                    flex-direction: column;
+                }
+                #modalSelectorMateriales .modal-content > div > div {
+                    flex: none;
+                    width: 100%;
+                    border-left: none;
+                    padding-left: 0;
+                    border-top: 1px solid var(--gray-200);
+                    padding-top: 16px;
+                    margin-top: 12px;
+                }
+                .form-actions {
+                    flex-direction: column;
+                }
+                .form-actions button {
+                    width: 100%;
+                }
+                #modalSelectorMateriales .modal-content > div > div:last-child {
+                    flex-direction: column;
+                    align-items: stretch;
+                }
+                #modalSelectorMateriales .modal-content > div > div:last-child > div {
+                    flex-wrap: wrap;
+                }
+            }
+
+            /* ===== TOGGLE IGNORAR ITEMS ===== */
+            .toggle-container {
+                display: flex !important;
+                align-items: center !important;
+                gap: 12px !important;
+                padding: 12px 16px !important;
+                background: var(--gray-50) !important;
+                border-radius: 8px !important;
+                border: 1px solid var(--gray-200) !important;
+            }
+
+            .toggle-container .toggle-label {
+                display: flex !important;
+                align-items: center !important;
+                gap: 12px !important;
+                cursor: pointer !important;
+                margin: 0 !important;
+                flex: 1 !important;
+            }
+
+            .toggle-container .toggle-label .toggle-slider {
+                position: relative !important;
+                width: 44px !important;
+                height: 24px !important;
+                background: var(--gray-200) !important;
+                border-radius: 12px !important;
+                transition: all 0.3s !important;
+                flex-shrink: 0 !important;
+            }
+
+            .toggle-container .toggle-label .toggle-slider::after {
+                content: '' !important;
+                position: absolute !important;
+                top: 2px !important;
+                left: 2px !important;
+                width: 20px !important;
+                height: 20px !important;
+                background: white !important;
+                border-radius: 50% !important;
+                transition: all 0.3s !important;
+                box-shadow: var(--shadow) !important;
+            }
+
+            .toggle-container .toggle-label input:checked + .toggle-slider {
+                background: var(--primary) !important;
+            }
+
+            .toggle-container .toggle-label input:checked + .toggle-slider::after {
+                transform: translateX(20px) !important;
+            }
+
+            .toggle-container .toggle-label .toggle-text {
+                font-size: 14px !important;
+                font-weight: 500 !important;
+                color: var(--gray-900) !important;
+            }
+
+            .toggle-container .toggle-label .toggle-text i {
+                color: var(--warning) !important;
+                margin-right: 6px !important;
+            }
+
+            #btnToggleInfo {
+                background: var(--warning) !important;
+                color: white !important;
+                border: none !important;
+                border-radius: 50% !important;
+                width: 28px !important;
+                height: 28px !important;
+                font-size: 14px !important;
+                font-weight: 700 !important;
+                cursor: pointer !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                flex-shrink: 0 !important;
+                transition: all 0.3s !important;
+            }
+
+            #btnToggleInfo:hover {
+                transform: scale(1.1) !important;
+                background: #d97706 !important;
+            }
+
+            /* ===== INPUTS CON FORMATO MONEDA ===== */
+            .item-row .form-group.small input[type="text"] {
+                font-family: monospace !important;
+                text-align: right !important;
+                min-width: 90px !important;
+                width: auto !important;
+                padding: 4px 6px !important;
+                border: 1px solid var(--gray-200) !important;
+                border-radius: 4px !important;
+                font-size: 14px !important;
+                transition: width 0.1s ease !important;
+            }
+
+            .item-row .form-group.small input[type="text"]:focus {
+                border-color: var(--primary) !important;
+                box-shadow: 0 0 0 3px rgba(0, 39, 53, 0.15) !important;
+                outline: none !important;
+            }
+
+            .item-row .form-group.small {
+                flex: 0 0 auto !important;
+            }
+
+            .item-row .form-group.small[style*="flex:1"] {
+                flex: 1 !important;
+                min-width: 120px !important;
+            }
+
+            /* ===== SELECTOR DE MATERIALES - ESTILOS ===== */
+            .material-item-selector {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 8px 12px;
+                border-bottom: 1px solid var(--gray-100);
+                transition: all 0.2s;
+                gap: 8px;
+                flex-wrap: wrap;
+            }
+            .material-item-selector:hover {
+                background: var(--gray-50);
+            }
+            .material-item-selector .info {
+                flex: 1;
+                min-width: 150px;
+            }
+            .material-item-selector .info .nombre {
+                font-weight: 500;
+                color: var(--gray-900);
+            }
+            .material-item-selector .info .detalle {
+                font-size: 12px;
+                color: var(--gray-600);
+            }
+            .material-item-selector .cantidad-input {
+                width: 70px;
+                padding: 4px 6px;
+                border: 1px solid var(--gray-200);
+                border-radius: 4px;
+                font-size: 13px;
+                text-align: center;
+            }
+            .material-item-selector .cantidad-input:focus {
+                outline: none;
+                border-color: var(--primary);
+                box-shadow: 0 0 0 3px rgba(0, 39, 53, 0.15);
+            }
+            .material-item-selector .btn-agregar {
+                background: var(--primary);
+                color: white;
+                border: none;
+                padding: 4px 12px;
+                border-radius: 4px;
+                cursor: pointer;
+                font-size: 12px;
+                transition: all 0.2s;
+                white-space: nowrap;
+            }
+            .material-item-selector .btn-agregar:hover {
+                background: var(--primary-dark);
+            }
+            .material-item-selector .btn-agregar.agregado {
+                background: var(--success);
+                cursor: default;
+            }
+            .material-item-selector .btn-agregar.agregado:hover {
+                background: var(--success);
+            }
+            .material-item-selector .btn-quitar {
+                background: none;
+                border: none;
+                color: var(--danger);
+                cursor: pointer;
+                font-size: 14px;
+                padding: 4px;
+            }
+            .material-item-selector .btn-quitar:hover {
+                color: #dc2626;
+            }
+
+            .seleccionado-item {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 6px 10px;
+                margin-bottom: 4px;
+                background: var(--gray-50);
+                border-radius: 4px;
+                border: 1px solid var(--gray-200);
+                font-size: 13px;
+                gap: 8px;
+                flex-wrap: wrap;
+            }
+            .seleccionado-item .info {
+                flex: 1;
+                min-width: 120px;
+            }
+            .seleccionado-item .cantidad-info {
+                font-size: 12px;
+                color: var(--gray-600);
+                background: var(--gray-200);
+                padding: 2px 8px;
+                border-radius: 4px;
+            }
+            .seleccionado-item .btn-quitar {
+                background: none;
+                border: none;
+                color: var(--danger);
+                cursor: pointer;
+                font-size: 14px;
+                padding: 0 4px;
+            }
+            .seleccionado-item .btn-quitar:hover {
+                color: #dc2626;
+            }
+
+            /* ===== RESPONSIVE ===== */
+            @media (max-width: 768px) {
+                .toggle-container {
+                    flex-wrap: wrap !important;
+                }
+                .toggle-container .toggle-label {
+                    flex: 1 1 100% !important;
+                }
+                .item-row .form-group.small[style*="flex:1"] {
+                    flex: 1 1 100% !important;
+                    min-width: 100% !important;
+                }
+                .item-row .form-group.small input[type="text"] {
+                    width: 100% !important;
+                    min-width: 100% !important;
+                }
+                .material-item-selector {
+                    flex-wrap: wrap;
+                }
+                .material-item-selector .info {
+                    min-width: 100%;
+                }
+            }
+
+            .btn-print { background: #10b981; color: white; border: none; padding: 6px 10px; border-radius: 6px; cursor: pointer; transition: all 0.2s; margin-left: 4px; }
+            .btn-print:hover { background: #059669; transform: scale(1.05); }
+            .item-row .form-group.small input[type="number"] { width: 80px; }
+            .item-row .form-group.small input[readonly] { width: 60px; }
+            .selector-multiple { border: 1px solid var(--gray-200); border-radius: 8px; padding: 12px; background: var(--gray-50); }
+            .selector-busqueda { display: flex; gap: 12px; margin-bottom: 12px; }
+            .selector-busqueda input { flex: 1; padding: 8px 14px; border: 1px solid var(--gray-200); border-radius: 6px; font-size: 14px; font-family: inherit; }
+            .selector-busqueda input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(0, 39, 53, 0.15); }
+            .selector-lista { max-height: 150px; overflow-y: auto; background: white; border: 1px solid var(--gray-200); border-radius: 6px; padding: 4px; }
+            .selector-lista::-webkit-scrollbar { width: 6px; }
+            .selector-lista::-webkit-scrollbar-track { background: var(--gray-100); border-radius: 10px; }
+            .selector-lista::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 10px; }
+            .selector-item { display: flex; align-items: center; gap: 10px; padding: 6px 10px; border-radius: 4px; cursor: pointer; transition: all 0.2s; font-size: 13px; }
+            .selector-item:hover { background: var(--gray-100); }
+            .selector-item input[type="checkbox"] { width: 16px; height: 16px; cursor: pointer; accent-color: var(--primary); flex-shrink: 0; }
+            .selector-item .item-info { flex: 1; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+            .selector-item .item-info .nombre { font-weight: 500; color: var(--gray-900); }
+            .selector-item .item-info .detalle { font-size: 12px; color: var(--gray-600); }
+            .selector-vacio { padding: 20px; text-align: center; color: var(--gray-500); font-size: 14px; }
+            .selector-actions { display: flex; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+            .selector-actions .btn-sm { padding: 4px 12px; font-size: 12px; border-radius: 4px; border: 1px solid var(--gray-200); background: white; cursor: pointer; transition: all 0.2s; }
+            .selector-actions .btn-sm:hover { background: var(--gray-100); }
+            .selector-actions .btn-sm.seleccionar-todos { color: var(--primary); border-color: var(--primary); }
+            .selector-actions .btn-sm.seleccionar-todos:hover { background: var(--primary); color: white; }
+            .selector-actions .btn-sm.deseleccionar-todos { color: var(--danger); border-color: var(--danger); }
+            .selector-actions .btn-sm.deseleccionar-todos:hover { background: var(--danger); color: white; }
+            .item-list .item-tag { display: flex; justify-content: space-between; align-items: center; background: white; padding: 8px 14px; margin-bottom: 6px; border-radius: 6px; border: 1px solid var(--gray-200); font-size: 14px; }
+            .item-list .item-tag span { flex: 1; }
+            .item-list .item-tag .btn-remove { background: var(--danger); color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; transition: all 0.2s; }
+            .item-list .item-tag .btn-remove:hover { background: #dc2626; }
+            .item-list .empty-items { color: var(--gray-600); font-size: 14px; text-align: center; padding: 8px; background: var(--gray-50); border-radius: 6px; font-style: italic; }
+            .btn-sm { padding: 4px 12px; font-size: 12px; border-radius: 4px; border: 1px solid var(--gray-200); background: white; cursor: pointer; transition: all 0.2s; }
+            .btn-sm:hover { background: var(--gray-100); }
+            .btn-sm:disabled { opacity: 0.5; cursor: not-allowed; }
+            #listaMaterialesSelector .material-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--gray-100); transition: all 0.2s; }
+            #listaMaterialesSelector .material-item:hover { background: var(--gray-50); }
+            #listaMaterialesSelector .material-item .info { flex: 1; }
+            #listaMaterialesSelector .material-item .info .nombre { font-weight: 500; color: var(--gray-900); }
+            #listaMaterialesSelector .material-item .info .detalle { font-size: 12px; color: var(--gray-600); }
+            #listaMaterialesSelector .material-item .btn-agregar { background: var(--primary); color: white; border: none; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; transition: all 0.2s; }
+            #listaMaterialesSelector .material-item .btn-agregar:hover { background: var(--primary-dark); }
+            #listaMaterialesSelector .material-item .btn-agregar.agregado { background: var(--success); cursor: default; }
+            #listaMaterialesSelector .material-item .btn-agregar.agregado:hover { background: var(--success); }
+            #materialesSeleccionadosLista .seleccionado-item { display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; margin-bottom: 4px; background: var(--gray-50); border-radius: 4px; border: 1px solid var(--gray-200); font-size: 13px; }
+            #materialesSeleccionadosLista .seleccionado-item .btn-quitar { background: none; border: none; color: var(--danger); cursor: pointer; font-size: 14px; padding: 0 4px; }
+            #materialesSeleccionadosLista .seleccionado-item .btn-quitar:hover { color: #dc2626; }
+            .categoria-tabla { margin-bottom: 20px; }
+            .categoria-tabla .categoria-header { background: var(--primary); color: white; padding: 10px 16px; border-radius: 8px 8px 0 0; font-weight: 700; font-size: 16px; }
+            .categoria-tabla .categoria-header .letra { background: rgba(255,255,255,0.2); padding: 2px 12px; border-radius: 4px; margin-right: 10px; }
+            .categoria-tabla .categoria-header .categoria-acciones { float:right; display:flex; gap:6px; }
+            .categoria-tabla .categoria-body { border: 1px solid var(--gray-200); border-top: none; border-radius: 0 0 8px 8px; overflow: hidden; }
+            .categoria-tabla .categoria-body table { width: 100%; border-collapse: collapse; }
+            .categoria-tabla .categoria-body table th { background: var(--gray-50); padding: 10px 16px; text-align: left; font-size: 12px; text-transform: uppercase; color: var(--gray-600); font-weight: 600; border-bottom: 1px solid var(--gray-200); }
+            .categoria-tabla .categoria-body table td { padding: 10px 16px; border-bottom: 1px solid var(--gray-100); font-size: 14px; }
+            .categoria-tabla .categoria-body table tr:last-child td { border-bottom: none; }
+            .categoria-tabla .categoria-body table tr:hover { background: var(--gray-50); }
+            .sugerencia-item { padding: 8px 14px; cursor: pointer; transition: all 0.2s; }
+            .sugerencia-item:hover { background: var(--primary); color: white; }
+            .btn-edit-categoria { background: #3b82f6; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; transition: all 0.2s; }
+            .btn-edit-categoria:hover { background: #2563eb; }
+            .btn-delete-categoria { background: #ef4444; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; transition: all 0.2s; }
+            .btn-delete-categoria:hover { background: #dc2626; }
+            #campo_categoria_container { position: relative; }
+            #campo_unidad_container { position: relative; }
+            @media (max-width: 768px) { .selector-busqueda { flex-direction: column; } .selector-item .item-info { flex-wrap: wrap; } .selector-actions { flex-wrap: wrap; } }
+        </style>
+
+        <script>
+            // ===== VARIABLES GLOBALES =====
+            var apus = [];
+            var editandoId = null;
+            var materialesData = [];
+            var itemsMateriales = [];
+            var itemsCargos = [];
+            var itemsEquipos = [];
+            var itemsTransporte = [];
+            var ignorarItems = false;
+
+            var categoriasGuardadas = [];
+            var letrasDisponibles = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+            var mapaLetras = {};
+            var unidadesGuardadas = [];
+
+            var materialesSelector = [];
+            var materialesFiltradosSelector = [];
+            var materialesSeleccionadosTemp = [];
+            var paginaActualMateriales = 1;
+            var itemsPorPagina = 10;
+
+            // ===== PLANTILLA =====
+            var plantillaAPU = null;
+            var modoPlantilla = false;
+
+            // ===== CONTROL DE RECURSIVIDAD =====
+            var actualizando = false;
+
+            console.log('🚀 APU.JS INICIALIZADO');
+
+            document.addEventListener('DOMContentLoaded', function() {
+                console.log('📄 DOM cargado');
+                cargarAPU();
+                cargarMateriales();
+                cargarCategoriasGuardadas(); // <-- Esto carga las categorías desde localStorage
+                cargarUnidadesGuardadas();
+                cargarPlantilla();
+                inicializarPlantilla();
+                setupCategoriaAutocomplete();
+                setupUnidadAutocomplete();
+                setupPaginacionMateriales();
+                setupEventListeners();
+                setupPlantillaListeners();
+                
+                document.getElementById('btnToggleInfo').addEventListener('click', function() {
+                    alert('⚠️ Al activar esta opción, se ignoran los campos de materiales, equipos, transporte y mano de obra y solo se usa el valor manual.');
+                });
+            });
+
+            // ============================================================
+            // ===== FUNCIONES DE FORMATO MONEDA Y VALIDACIÓN =====
+            // ============================================================
+            
+            function formatearMoneda(valor) {
+                if (valor === undefined || valor === null || isNaN(valor)) return '$0';
+                return '$' + Number(valor).toLocaleString('es-CO');
+            }
+
+            function parsearMoneda(texto) {
+                if (!texto) return 0;
+                var limpio = texto.replace(/[$,.]/g, '').trim();
+                var num = parseFloat(limpio);
+                return isNaN(num) ? 0 : num;
+            }
+
+            function validarNumero(event, input) {
+                var key = event.key;
+                if (key === 'Backspace' || key === 'Delete' || key === 'Tab' || key === 'ArrowLeft' || key === 'ArrowRight' || key === 'Home' || key === 'End' || key === 'Enter') {
+                    return true;
+                }
+                if (!/^[0-9]$/.test(key)) {
+                    event.preventDefault();
+                    mostrarNotificacion('⚠️ Solo se permiten números en este campo');
+                    return false;
+                }
+                return true;
+            }
+
+            function ajustarAnchoInput(input) {
+                if (!input) return;
+                var valor = input.value || '';
+                var ancho = Math.max(90, valor.length * 9 + 20);
+                input.style.width = ancho + 'px';
+                input.style.minWidth = '90px';
+            }
+
+            function formatearYCalcularEquipo(input) {
+                if (actualizando) return;
+                actualizando = true;
+                
+                var valor = input.value;
+                var soloNumeros = valor.replace(/[^0-9]/g, '');
+                
+                if (soloNumeros === '' || soloNumeros === '0') {
+                    input.value = '$0';
+                    actualizando = false;
+                    ajustarAnchoInput(input);
+                    calcularSubtotalEquipoPreview();
+                    return;
+                }
+                
+                var num = parseInt(soloNumeros, 10);
+                if (isNaN(num) || num < 0) {
+                    input.value = '$0';
+                } else {
+                    input.value = formatearMoneda(num);
+                }
+                
+                ajustarAnchoInput(input);
+                calcularSubtotalEquipoPreview();
+                actualizando = false;
+            }
+
+            function formatearYCalcularTransporte(input) {
+                if (actualizando) return;
+                actualizando = true;
+                
+                var valor = input.value;
+                var soloNumeros = valor.replace(/[^0-9]/g, '');
+                
+                if (soloNumeros === '' || soloNumeros === '0') {
+                    input.value = '$0';
+                    actualizando = false;
+                    ajustarAnchoInput(input);
+                    calcularSubtotalTransportePreview();
+                    return;
+                }
+                
+                var num = parseInt(soloNumeros, 10);
+                if (isNaN(num) || num < 0) {
+                    input.value = '$0';
+                } else {
+                    input.value = formatearMoneda(num);
+                }
+                
+                ajustarAnchoInput(input);
+                calcularSubtotalTransportePreview();
+                actualizando = false;
+            }
+
+            function formatearYCalcularCargo(input) {
+                if (actualizando) return;
+                actualizando = true;
+                
+                var valor = input.value;
+                var soloNumeros = valor.replace(/[^0-9]/g, '');
+                
+                if (soloNumeros === '' || soloNumeros === '0') {
+                    input.value = '$0';
+                    actualizando = false;
+                    ajustarAnchoInput(input);
+                    calcularSubtotalCargoPreview();
+                    return;
+                }
+                
+                var num = parseInt(soloNumeros, 10);
+                if (isNaN(num) || num < 0) {
+                    input.value = '$0';
+                } else {
+                    input.value = formatearMoneda(num);
+                }
+                
+                ajustarAnchoInput(input);
+                calcularSubtotalCargoPreview();
+                actualizando = false;
+            }
+
+            // ============================================================
+            // ===== FUNCIONES DE CÁLCULO =====
+            // ============================================================
+            
+            function obtenerValorManoObraActual() {
+                var valorUnitario = parsearMoneda(document.getElementById('valorUnitarioCargo').value);
+                var cantidad = parseFloat(document.getElementById('cantidadCargo').value) || 0;
+                return valorUnitario * cantidad;
+            }
+
+            function obtenerSubtotalManoObra() {
+                var total = 0;
+                for (var i = 0; i < itemsCargos.length; i++) {
+                    total += itemsCargos[i].subtotal || 0;
+                }
+                var valorActual = obtenerValorManoObraActual();
+                if (valorActual > 0) {
+                    var descripcion = document.getElementById('descripcionCargo').value.trim();
+                    var existe = false;
+                    if (descripcion) {
+                        existe = itemsCargos.some(function(c) {
+                            return c.descripcion === descripcion;
+                        });
+                    }
+                    if (!existe) {
+                        total += valorActual;
+                    }
+                }
+                return total;
+            }
+
+            function obtenerSubtotalMateriales() {
+                var total = 0;
+                for (var i = 0; i < itemsMateriales.length; i++) {
+                    total += itemsMateriales[i].subtotal || 0;
+                }
+                return total;
+            }
+
+            function obtenerSubtotalEquipos() {
+                var total = 0;
+                for (var i = 0; i < itemsEquipos.length; i++) {
+                    total += itemsEquipos[i].subtotal || 0;
+                }
+                return total;
+            }
+
+            function obtenerSubtotalTransporte() {
+                var total = 0;
+                for (var i = 0; i < itemsTransporte.length; i++) {
+                    total += itemsTransporte[i].subtotal || 0;
+                }
+                return total;
+            }
+
+            function obtenerValorTotalGeneral() {
+                var total = obtenerSubtotalMateriales();
+                total += obtenerSubtotalManoObra();
+                total += obtenerSubtotalEquipos();
+                total += obtenerSubtotalTransporte();
+                return total;
+            }
+
+            // ============================================================
+            // ===== FUNCIONES DE PREVIEW DE SUBTOTALES =====
+            // ============================================================
+            
+            function calcularSubtotalEquipoPreview() {
+                if (actualizando) return;
+                var porcentaje = parseFloat(document.getElementById('porcentajeEquipo').value) || 0;
+                var valorBase = parsearMoneda(document.getElementById('valorBaseEquipo').value);
+                var subtotal = (porcentaje / 100) * valorBase;
+                var preview = document.getElementById('previewSubtotalEquipo');
+                if (subtotal > 0 || (porcentaje > 0 && valorBase > 0)) {
+                    preview.style.display = 'block';
+                    preview.textContent = 'Subtotal: ' + formatearMoneda(subtotal);
+                } else {
+                    preview.style.display = 'none';
+                }
+                setTimeout(function() {
+                    actualizarTotalGeneral();
+                }, 10);
+            }
+
+            function calcularSubtotalTransportePreview() {
+                if (actualizando) return;
+                var porcentaje = parseFloat(document.getElementById('porcentajeTransporte').value) || 0;
+                var valorBase = parsearMoneda(document.getElementById('valorBaseTransporte').value);
+                var subtotal = (porcentaje / 100) * valorBase;
+                var preview = document.getElementById('previewSubtotalTransporte');
+                if (subtotal > 0 || (porcentaje > 0 && valorBase > 0)) {
+                    preview.style.display = 'block';
+                    preview.textContent = 'Subtotal: ' + formatearMoneda(subtotal);
+                } else {
+                    preview.style.display = 'none';
+                }
+                setTimeout(function() {
+                    actualizarTotalGeneral();
+                }, 10);
+            }
+
+            function calcularSubtotalCargoPreview() {
+                if (actualizando) return;
+                var cantidad = parseFloat(document.getElementById('cantidadCargo').value) || 0;
+                var valorUnitario = parsearMoneda(document.getElementById('valorUnitarioCargo').value);
+                var subtotal = cantidad * valorUnitario;
+                document.getElementById('subtotalCargo').value = formatearMoneda(subtotal);
+                var preview = document.getElementById('previewSubtotalCargo');
+                if (subtotal > 0) {
+                    preview.style.display = 'block';
+                    preview.textContent = 'Subtotal: ' + formatearMoneda(subtotal);
+                } else {
+                    preview.style.display = 'none';
+                }
+                setTimeout(function() {
+                    actualizarValorBaseEquipoManual();
+                    actualizarValorBaseTransporteManual();
+                    actualizarTotalGeneral();
+                }, 10);
+            }
+
+            // ============================================================
+            // ===== FUNCIONES PARA ACTUALIZAR VALOR BASE =====
+            // ============================================================
+            
+            function actualizarValorBaseEquipoManual() {
+                if (actualizando) return;
+                var origen = document.getElementById('valorBaseOrigenEquipo').value;
+                var valorBase = 0;
+                
+                if (origen === 'manual') {
+                    valorBase = parsearMoneda(document.getElementById('valorBaseEquipo').value);
+                } else if (origen === 'materiales') {
+                    valorBase = obtenerSubtotalMateriales();
+                    document.getElementById('valorBaseEquipo').value = formatearMoneda(valorBase);
+                } else if (origen === 'manoDeObra') {
+                    valorBase = obtenerSubtotalManoObra();
+                    document.getElementById('valorBaseEquipo').value = formatearMoneda(valorBase);
+                } else if (origen === 'total') {
+                    valorBase = obtenerValorTotalGeneral();
+                    document.getElementById('valorBaseEquipo').value = formatearMoneda(valorBase);
+                }
+                ajustarAnchoInput(document.getElementById('valorBaseEquipo'));
+                calcularSubtotalEquipoPreview();
+                return valorBase;
+            }
+
+            function actualizarValorBaseTransporteManual() {
+                if (actualizando) return;
+                var origen = document.getElementById('valorBaseOrigenTransporte').value;
+                var valorBase = 0;
+                
+                if (origen === 'manual') {
+                    valorBase = parsearMoneda(document.getElementById('valorBaseTransporte').value);
+                } else if (origen === 'materiales') {
+                    valorBase = obtenerSubtotalMateriales();
+                    document.getElementById('valorBaseTransporte').value = formatearMoneda(valorBase);
+                } else if (origen === 'manoDeObra') {
+                    valorBase = obtenerSubtotalManoObra();
+                    document.getElementById('valorBaseTransporte').value = formatearMoneda(valorBase);
+                } else if (origen === 'total') {
+                    valorBase = obtenerValorTotalGeneral();
+                    document.getElementById('valorBaseTransporte').value = formatearMoneda(valorBase);
+                }
+                ajustarAnchoInput(document.getElementById('valorBaseTransporte'));
+                calcularSubtotalTransportePreview();
+                return valorBase;
+            }
+
+            // ============================================================
+            // ===== ACTUALIZAR TOTAL GENERAL =====
+            // ============================================================
+            
+            function actualizarTotalGeneral() {
+                if (actualizando) return;
+                actualizando = true;
+                
+                var total = 0;
+                if (ignorarItems) {
+                    total = parseFloat(document.getElementById('valorManual').value) || 0;
+                } else {
+                    total = obtenerValorTotalGeneral();
+                }
+                document.getElementById('valorTotal').textContent = formatearMoneda(total);
+                actualizarSubtotales();
+                actualizando = false;
+            }
+
+            function calcularTotal() {
+                actualizarTotalGeneral();
+            }
+
+            // ============================================================
+            // ===== FUNCIONES DE PLANTILLA =====
+            // ============================================================
+            
+            function cargarPlantilla() {
+                try {
+                    var data = localStorage.getItem('plantillaAPU');
+                    if (data) {
+                        plantillaAPU = JSON.parse(data);
+                        console.log('📋 Plantilla cargada:', plantillaAPU);
+                    } else {
+                        plantillaAPU = null;
+                    }
+                } catch (e) {
+                    plantillaAPU = null;
+                }
+            }
+
+            function guardarPlantillaEnStorage() {
+                try {
+                    localStorage.setItem('plantillaAPU', JSON.stringify(plantillaAPU));
+                    console.log('💾 Plantilla guardada en localStorage');
+                    return true;
+                } catch (e) {
+                    console.error('Error al guardar plantilla:', e);
+                    return false;
+                }
+            }
+
+            function inicializarPlantilla() {
+                if (!plantillaAPU) {
+                    plantillaAPU = {
+                        codigo: '',
+                        nombre: '',
+                        categoria: '',
+                        unidad: '',
+                        ignorarItems: false,
+                        valorManual: 0,
+                        nombreEquipo: '',
+                        porcentajeEquipo: 0,
+                        valorBaseEquipo: 0,
+                        origenEquipo: 'manual',
+                        nombreTransporte: '',
+                        porcentajeTransporte: 0,
+                        valorBaseTransporte: 0,
+                        origenTransporte: 'manual',
+                        descripcionCargo: '',
+                        unidadCargo: 'und',
+                        cantidadCargo: 0,
+                        valorUnitarioCargo: 0,
+                        items: {
+                            materiales: [],
+                            equipos: [],
+                            transporte: [],
+                            cargos: []
+                        }
+                    };
+                    guardarPlantillaEnStorage();
+                    console.log('📋 Plantilla vacía inicializada');
+                }
+            }
+
+            function setupPlantillaListeners() {
+                document.getElementById('btnPlantillaAPU').addEventListener('click', function() {
+                    abrirModalPlantilla();
+                });
+
+                document.getElementById('btnGuardarPlantilla').addEventListener('click', function(e) {
+                    e.preventDefault();
+                    guardarPlantillaActual();
+                });
+            }
+
+            function abrirModalPlantilla() {
+                console.log('📋 Abriendo modal para editar plantilla');
+                modoPlantilla = true;
+                
+                document.getElementById('modalTitulo').textContent = 'Editar Plantilla APU';
+                document.getElementById('btnGuardarPlantilla').style.display = 'inline-flex';
+                document.getElementById('btnGuardarAPU').style.display = 'none';
+                
+                cargarPlantilla();
+                
+                var modal = document.getElementById('modalAPU');
+                modal.style.display = 'flex';
+                
+                itemsMateriales = [];
+                itemsCargos = [];
+                itemsEquipos = [];
+                itemsTransporte = [];
+                ignorarItems = false;
+                document.getElementById('ignorarItems').checked = false;
+                document.getElementById('seccionValorManual').style.display = 'none';
+                document.getElementById('valorManual').value = '';
+
+                document.getElementById('seccionMateriales').style.display = 'block';
+                document.getElementById('seccionEquipos').style.display = 'block';
+                document.getElementById('seccionTransporte').style.display = 'block';
+                document.getElementById('seccionCargos').style.display = 'block';
+
+                document.getElementById('categoriaInput').value = '';
+                document.getElementById('categoriaSeleccionada').value = '';
+                document.getElementById('sugerenciasCategorias').style.display = 'none';
+                document.getElementById('btnAgregarCategoria').style.display = 'none';
+                
+                document.getElementById('unidadInput').value = '';
+                document.getElementById('unidadSeleccionada').value = '';
+                document.getElementById('unidad').value = '';
+                document.getElementById('sugerenciasUnidades').style.display = 'none';
+                document.getElementById('btnAgregarUnidad').style.display = 'none';
+                
+                document.getElementById('descripcionCargo').value = '';
+                document.getElementById('unidadCargo').value = 'und';
+                document.getElementById('cantidadCargo').value = '1';
+                document.getElementById('valorUnitarioCargo').value = '$0';
+                document.getElementById('subtotalCargo').value = '';
+                
+                document.getElementById('nombreEquipo').value = '';
+                document.getElementById('porcentajeEquipo').value = '0';
+                document.getElementById('valorBaseEquipo').value = '$0';
+                document.getElementById('valorBaseOrigenEquipo').value = 'manual';
+                
+                document.getElementById('nombreTransporte').value = '';
+                document.getElementById('porcentajeTransporte').value = '0';
+                document.getElementById('valorBaseTransporte').value = '$0';
+                document.getElementById('valorBaseOrigenTransporte').value = 'manual';
+                
+                if (plantillaAPU) {
+                    console.log('📋 Cargando datos de plantilla existente');
+                    setTimeout(function() {
+                        cargarDatosPlantilla(plantillaAPU);
+                    }, 100);
+                } else {
+                    console.log('📋 No hay plantilla guardada, mostrando vacío');
+                }
+
+                cargarMateriales();
+                cargarCategoriasGuardadas();
+                cargarUnidadesGuardadas();
+                actualizarSubtotales();
+                actualizarTotalGeneral();
+                renderizarItemsMateriales();
+            }
+
+            function cargarDatosPlantilla(plantilla) {
+                console.log('📋 Cargando datos de plantilla:', plantilla);
+                
+                document.getElementById('codigo').value = plantilla.codigo || '';
+                document.getElementById('nombre').value = plantilla.nombre || '';
+                document.getElementById('categoriaInput').value = plantilla.categoria || '';
+                document.getElementById('categoriaSeleccionada').value = plantilla.categoria || '';
+                document.getElementById('unidadInput').value = plantilla.unidad || '';
+                document.getElementById('unidadSeleccionada').value = plantilla.unidad || '';
+                document.getElementById('unidad').value = plantilla.unidad || '';
+                
+                if (plantilla.ignorarItems) {
+                    document.getElementById('ignorarItems').checked = true;
+                    toggleIgnorarItems();
+                    document.getElementById('valorManual').value = plantilla.valorManual || 0;
+                } else {
+                    document.getElementById('ignorarItems').checked = false;
+                    toggleIgnorarItems();
+                }
+                
+                document.getElementById('nombreEquipo').value = plantilla.nombreEquipo || '';
+                document.getElementById('porcentajeEquipo').value = plantilla.porcentajeEquipo || 0;
+                document.getElementById('valorBaseEquipo').value = formatearMoneda(plantilla.valorBaseEquipo || 0);
+                document.getElementById('valorBaseOrigenEquipo').value = plantilla.origenEquipo || 'manual';
+                
+                document.getElementById('nombreTransporte').value = plantilla.nombreTransporte || '';
+                document.getElementById('porcentajeTransporte').value = plantilla.porcentajeTransporte || 0;
+                document.getElementById('valorBaseTransporte').value = formatearMoneda(plantilla.valorBaseTransporte || 0);
+                document.getElementById('valorBaseOrigenTransporte').value = plantilla.origenTransporte || 'manual';
+                
+                document.getElementById('descripcionCargo').value = plantilla.descripcionCargo || '';
+                document.getElementById('unidadCargo').value = plantilla.unidadCargo || 'und';
+                document.getElementById('cantidadCargo').value = plantilla.cantidadCargo || 0;
+                document.getElementById('valorUnitarioCargo').value = formatearMoneda(plantilla.valorUnitarioCargo || 0);
+                
+                ajustarAnchoInput(document.getElementById('valorBaseEquipo'));
+                ajustarAnchoInput(document.getElementById('valorBaseTransporte'));
+                ajustarAnchoInput(document.getElementById('valorUnitarioCargo'));
+                
+                if (plantilla.items && plantilla.items.materiales) {
+                    itemsMateriales = JSON.parse(JSON.stringify(plantilla.items.materiales));
+                    renderizarItemsMateriales();
+                } else {
+                    itemsMateriales = [];
+                    renderizarItemsMateriales();
+                }
+                
+                if (plantilla.items && plantilla.items.equipos && plantilla.items.equipos.length > 0) {
+                    itemsEquipos = JSON.parse(JSON.stringify(plantilla.items.equipos));
+                    renderizarItemsEquipos();
+                } else {
+                    itemsEquipos = [];
+                    renderizarItemsEquipos();
+                }
+                
+                if (plantilla.items && plantilla.items.transporte && plantilla.items.transporte.length > 0) {
+                    itemsTransporte = JSON.parse(JSON.stringify(plantilla.items.transporte));
+                    renderizarItemsTransporte();
+                } else {
+                    itemsTransporte = [];
+                    renderizarItemsTransporte();
+                }
+                
+                if (plantilla.items && plantilla.items.cargos && plantilla.items.cargos.length > 0) {
+                    itemsCargos = JSON.parse(JSON.stringify(plantilla.items.cargos));
+                    renderizarItemsCargos();
+                } else {
+                    itemsCargos = [];
+                    renderizarItemsCargos();
+                }
+                
+                actualizarSubtotales();
+                actualizarTotalGeneral();
+                
+                console.log('✅ Datos de plantilla cargados correctamente');
+            }
+
+            function guardarPlantillaActual() {
+                console.log('💾 === GUARDANDO PLANTILLA ACTUAL ===');
+                
+                var nombre = document.getElementById('nombre').value.trim();
+                var categoria = document.getElementById('categoriaSeleccionada').value.trim();
+                if (!categoria) {
+                    categoria = document.getElementById('categoriaInput').value.trim();
+                }
+                var unidad = document.getElementById('unidadSeleccionada').value.trim().toUpperCase();
+                if (!unidad) {
+                    unidad = document.getElementById('unidadInput').value.trim().toUpperCase();
+                }
+                var codigo = document.getElementById('codigo').value.trim();
+                
+                var nombreEquipo = document.getElementById('nombreEquipo').value.trim();
+                var porcentajeEquipo = parseFloat(document.getElementById('porcentajeEquipo').value) || 0;
+                var valorBaseEquipo = parsearMoneda(document.getElementById('valorBaseEquipo').value);
+                var origenEquipo = document.getElementById('valorBaseOrigenEquipo').value;
+                
+                var nombreTransporte = document.getElementById('nombreTransporte').value.trim();
+                var porcentajeTransporte = parseFloat(document.getElementById('porcentajeTransporte').value) || 0;
+                var valorBaseTransporte = parsearMoneda(document.getElementById('valorBaseTransporte').value);
+                var origenTransporte = document.getElementById('valorBaseOrigenTransporte').value;
+                
+                var descripcionCargo = document.getElementById('descripcionCargo').value.trim();
+                var unidadCargo = document.getElementById('unidadCargo').value.trim() || 'und';
+                var cantidadCargo = parseFloat(document.getElementById('cantidadCargo').value) || 0;
+                var valorUnitarioCargo = parsearMoneda(document.getElementById('valorUnitarioCargo').value);
+                
+                var plantilla = {
+                    codigo: codigo,
+                    nombre: nombre,
+                    categoria: categoria,
+                    unidad: unidad,
+                    ignorarItems: ignorarItems,
+                    valorManual: parseFloat(document.getElementById('valorManual').value) || 0,
+                    nombreEquipo: nombreEquipo,
+                    porcentajeEquipo: porcentajeEquipo,
+                    valorBaseEquipo: valorBaseEquipo,
+                    origenEquipo: origenEquipo,
+                    nombreTransporte: nombreTransporte,
+                    porcentajeTransporte: porcentajeTransporte,
+                    valorBaseTransporte: valorBaseTransporte,
+                    origenTransporte: origenTransporte,
+                    descripcionCargo: descripcionCargo,
+                    unidadCargo: unidadCargo,
+                    cantidadCargo: cantidadCargo,
+                    valorUnitarioCargo: valorUnitarioCargo,
+                    items: {
+                        materiales: JSON.parse(JSON.stringify(itemsMateriales)),
+                        equipos: JSON.parse(JSON.stringify(itemsEquipos)),
+                        transporte: JSON.parse(JSON.stringify(itemsTransporte)),
+                        cargos: JSON.parse(JSON.stringify(itemsCargos))
+                    }
+                };
+                
+                plantillaAPU = plantilla;
+                var guardado = guardarPlantillaEnStorage();
+                
+                if (guardado) {
+                    mostrarNotificacion('✅ Plantilla guardada correctamente');
+                } else {
+                    mostrarNotificacion('❌ Error al guardar la plantilla');
+                    return;
+                }
+                
+                modoPlantilla = false;
+                document.getElementById('btnGuardarPlantilla').style.display = 'none';
+                document.getElementById('btnGuardarAPU').style.display = 'inline-flex';
+                document.getElementById('modalTitulo').textContent = 'Nuevo APU';
+                
+                document.getElementById('modalAPU').style.display = 'none';
+                document.getElementById('formAPU').reset();
+                editandoId = null;
+                itemsMateriales = [];
+                itemsCargos = [];
+                itemsEquipos = [];
+                itemsTransporte = [];
+                ignorarItems = false;
+                document.getElementById('ignorarItems').checked = false;
+                document.getElementById('seccionMateriales').style.display = 'block';
+                document.getElementById('seccionEquipos').style.display = 'block';
+                document.getElementById('seccionTransporte').style.display = 'block';
+                document.getElementById('seccionCargos').style.display = 'block';
+                document.getElementById('seccionValorManual').style.display = 'none';
+                document.getElementById('categoriaInput').value = '';
+                document.getElementById('categoriaSeleccionada').value = '';
+                document.getElementById('unidadInput').value = '';
+                document.getElementById('unidadSeleccionada').value = '';
+                document.getElementById('unidad').value = '';
+                renderizarItemsMateriales();
+                renderizarItemsEquipos();
+                renderizarItemsTransporte();
+                renderizarItemsCargos();
+                actualizarSubtotales();
+                actualizarTotalGeneral();
+                
+                console.log('✅ Modal cerrado y limpiado');
+            }
+
+            // ============================================================
+            // ===== FUNCIONES DE IMPORTACIÓN =====
+            // ============================================================
+
+            function abrirModalImportar() {
+                document.getElementById('modalImportarAPU').style.display = 'flex';
+                document.getElementById('importarResultadoAPU').style.display = 'none';
+                document.getElementById('importarProgresoAPU').style.display = 'none';
+                document.getElementById('fileInputImportarAPU').value = '';
+            }
+
+            function cerrarModalImportar() {
+                document.getElementById('modalImportarAPU').style.display = 'none';
+            }
+
+            function descargarFormatoAPU() {
+                var notificacion = document.createElement('div');
+                notificacion.className = 'notification';
+                notificacion.textContent = '⏳ Generando formato...';
+                document.body.appendChild(notificacion);
+                setTimeout(function() { notificacion.classList.add('show'); }, 100);
+                
+                fetch('/api/apus/exportar-formato')
+                    .then(function(response) {
+                        if (!response.ok) {
+                            throw new Error('Error al descargar formato');
+                        }
+                        return response.blob();
+                    })
+                    .then(function(blob) {
+                        var url = window.URL.createObjectURL(blob);
+                        var a = document.createElement('a');
+                        a.href = url;
+                        a.download = 'formato_apu.xlsx';
+                        document.body.appendChild(a);
+                        a.click();
+                        window.URL.revokeObjectURL(url);
+                        a.remove();
+                        notificacion.classList.remove('show');
+                        setTimeout(function() { notificacion.remove(); }, 300);
+                        mostrarNotificacion('✅ Formato descargado');
+                    })
+                    .catch(function(error) {
+                        notificacion.classList.remove('show');
+                        setTimeout(function() { notificacion.remove(); }, 300);
+                        mostrarNotificacion('❌ Error: ' + error.message);
+                    });
+            }
+
+            function procesarImportacionAPU(event) {
+                var file = event.target.files[0];
+                if (!file) return;
+                
+                var progress = document.getElementById('importarProgresoAPU');
+                var mensaje = document.getElementById('importarMensajeAPU');
+                var resultado = document.getElementById('importarResultadoAPU');
+                
+                progress.style.display = 'block';
+                mensaje.textContent = '⏳ Leyendo archivo...';
+                resultado.style.display = 'none';
+                
+                var reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        var base64 = e.target.result.split(',')[1];
+                        mensaje.textContent = '⏳ Enviando al servidor...';
+                        
+                        fetch('/api/apus/importar', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({ file: base64 })
+                        })
+                        .then(function(response) { return response.json(); })
+                        .then(function(data) {
+                            if (data.success) {
+                                var apusExistentes = JSON.parse(localStorage.getItem('apu') || '[]');
+                                var categoriasExistentes = JSON.parse(localStorage.getItem('categorias') || '[]');
+                                
+                                var maxId = 0;
+                                for (var i = 0; i < apusExistentes.length; i++) {
+                                    if (apusExistentes[i].id > maxId) {
+                                        maxId = apusExistentes[i].id;
+                                    }
+                                }
+                                
+                                var contador = 0;
+                                var categoriasNuevas = [];
+                                
+                                for (var j = 0; j < data.apus.length; j++) {
+                                    var apu = data.apus[j];
+                                    var existe = false;
+                                    
+                                    var categoriaExiste = false;
+                                    for (var k = 0; k < categoriasExistentes.length; k++) {
+                                        if (categoriasExistentes[k].toLowerCase() === apu.categoria.toLowerCase()) {
+                                            categoriaExiste = true;
+                                            break;
+                                        }
+                                    }
+                                    
+                                    if (!categoriaExiste && apu.categoria) {
+                                        categoriasExistentes.push(apu.categoria);
+                                        categoriasNuevas.push(apu.categoria);
+                                    }
+                                    
+                                    for (var l = 0; l < apusExistentes.length; l++) {
+                                        if (apusExistentes[l].codigo === apu.codigo) {
+                                            apusExistentes[l] = apu;
+                                            apusExistentes[l].id = apusExistentes[l].id || (maxId + 1);
+                                            existe = true;
+                                            contador++;
+                                            break;
+                                        }
+                                    }
+                                    
+                                    if (!existe) {
+                                        maxId++;
+                                        apu.id = maxId;
+                                        apusExistentes.push(apu);
+                                        contador++;
+                                    }
+                                }
+                                
+                                localStorage.setItem('apu', JSON.stringify(apusExistentes));
+                                localStorage.setItem('categorias', JSON.stringify(categoriasExistentes));
+                                
+                                apus = apusExistentes;
+                                categoriasGuardadas = categoriasExistentes;
+                                generarMapaLetras();
+                                renderizarTablasAgrupadas();
+                                
+                                var mensajeCategorias = '';
+                                if (categoriasNuevas.length > 0) {
+                                    mensajeCategorias = '<br>📁 Categorías nuevas creadas: ' + categoriasNuevas.join(', ');
+                                }
+                                
+                                resultado.style.display = 'block';
+                                resultado.style.background = '#d1fae5';
+                                resultado.style.color = '#065f46';
+                                resultado.innerHTML = '<strong>✅ Importación exitosa!</strong><br>' + 
+                                    'Se importaron/actualizaron ' + contador + ' APUs.' + mensajeCategorias;
+                                
+                                progress.style.display = 'none';
+                                mostrarNotificacion('✅ APUs importados: ' + contador);
+                                
+                                setTimeout(function() {
+                                    cerrarModalImportar();
+                                }, 3000);
+                                
+                            } else if (data.error) {
+                                resultado.style.display = 'block';
+                                resultado.style.background = '#fee2e2';
+                                resultado.style.color = '#991b1b';
+                                
+                                var errorMsg = '<strong>❌ Error:</strong> ' + data.error;
+                                if (data.detalles && data.detalles.length > 0) {
+                                    errorMsg += '<br><ul style="margin-top:8px; padding-left:20px;">';
+                                    for (var m = 0; m < data.detalles.length; m++) {
+                                        errorMsg += '<li>' + data.detalles[m] + '</li>';
+                                    }
+                                    errorMsg += '</ul>';
+                                }
+                                resultado.innerHTML = errorMsg;
+                                progress.style.display = 'none';
+                            }
+                        })
+                        .catch(function(error) {
+                            resultado.style.display = 'block';
+                            resultado.style.background = '#fee2e2';
+                            resultado.style.color = '#991b1b';
+                            resultado.innerHTML = '<strong>❌ Error:</strong> ' + error.message;
+                            progress.style.display = 'none';
+                        });
+                        
+                    } catch (error) {
+                        resultado.style.display = 'block';
+                        resultado.style.background = '#fee2e2';
+                        resultado.style.color = '#991b1b';
+                        resultado.innerHTML = '<strong>❌ Error:</strong> ' + error.message;
+                        progress.style.display = 'none';
+                    }
+                };
+                
+                reader.readAsDataURL(file);
+            }
+
+            // ============================================================
+            // ===== EVENT LISTENERS =====
+            // ============================================================
+            
+            function setupEventListeners() {
+                document.getElementById('btnCrearAPU').addEventListener('click', function() {
+                    modoPlantilla = false;
+                    document.getElementById('btnGuardarPlantilla').style.display = 'none';
+                    document.getElementById('btnGuardarAPU').style.display = 'inline-flex';
+                    document.getElementById('modalTitulo').textContent = 'Nuevo APU';
+                    abrirModal();
+                });
+                
+                document.getElementById('btnCrearPrimerAPU').addEventListener('click', function() {
+                    modoPlantilla = false;
+                    document.getElementById('btnGuardarPlantilla').style.display = 'none';
+                    document.getElementById('btnGuardarAPU').style.display = 'inline-flex';
+                    document.getElementById('modalTitulo').textContent = 'Nuevo APU';
+                    abrirModal();
+                });
+                
+                document.getElementById('btnCerrarModal').addEventListener('click', function() {
+                    modoPlantilla = false;
+                    document.getElementById('btnGuardarPlantilla').style.display = 'none';
+                    document.getElementById('btnGuardarAPU').style.display = 'inline-flex';
+                    document.getElementById('modalTitulo').textContent = 'Nuevo APU';
+                    cerrarModal();
+                });
+                
+                document.getElementById('btnCancelarModal').addEventListener('click', function() {
+                    modoPlantilla = false;
+                    document.getElementById('btnGuardarPlantilla').style.display = 'none';
+                    document.getElementById('btnGuardarAPU').style.display = 'inline-flex';
+                    document.getElementById('modalTitulo').textContent = 'Nuevo APU';
+                    cerrarModal();
+                });
+                
+                document.getElementById('btnCerrarSelectorMateriales').addEventListener('click', function() {
+                    cerrarSelectorMateriales();
+                });
+                document.getElementById('btnCancelarSelectorMateriales').addEventListener('click', function() {
+                    cerrarSelectorMateriales();
+                });
+                
+                document.getElementById('btnSeleccionarMaterial').addEventListener('click', function() {
+                    abrirSelectorMateriales();
+                });
+                
+                document.getElementById('btnGuardarMateriales').addEventListener('click', function() {
+                    guardarMaterialesSeleccionados();
+                });
+                
+                document.getElementById('btnAgregarCategoria').addEventListener('click', function() {
+                    agregarCategoria();
+                });
+                
+                document.getElementById('btnAgregarUnidad').addEventListener('click', function() {
+                    agregarUnidad();
+                });
+            }
+
+            // ============================================================
+            // ===== PAGINACIÓN DE MATERIALES =====
+            // ============================================================
+            
+            function setupPaginacionMateriales() {
+                document.getElementById('btnPaginaAnterior').addEventListener('click', function() {
+                    cambiarPaginaMateriales('anterior');
+                });
+                document.getElementById('btnPaginaSiguiente').addEventListener('click', function() {
+                    cambiarPaginaMateriales('siguiente');
+                });
+            }
+
+            // ============================================================
+            // ===== CATEGORÍAS - CARGA Y AUTOCOMPLETADO =====
+            // ============================================================
+
+            function cargarCategoriasGuardadas() {
+                try {
+                    var data = localStorage.getItem('categorias');
+                    if (data) {
+                        categoriasGuardadas = JSON.parse(data);
+                    } else {
+                        categoriasGuardadas = [];
+                    }
+                    generarMapaLetras();
+                    // Actualizar el autocompletado
+                    setupCategoriaAutocomplete();
+                } catch (e) {
+                    categoriasGuardadas = [];
+                }
+            }
+
+            function guardarCategorias() {
+                localStorage.setItem('categorias', JSON.stringify(categoriasGuardadas));
+                generarMapaLetras();
+            }
+
+            function generarMapaLetras() {
+                mapaLetras = {};
+                var categoriasOrdenadas = categoriasGuardadas.slice().sort();
+                for (var i = 0; i < categoriasOrdenadas.length; i++) {
+                    if (i < letrasDisponibles.length) {
+                        mapaLetras[categoriasOrdenadas[i].toLowerCase()] = letrasDisponibles[i];
+                    }
+                }
+            }
+
+            function obtenerLetraCategoria(categoria) {
+                var catLower = categoria.toLowerCase().trim();
+                if (mapaLetras[catLower]) {
+                    return mapaLetras[catLower];
+                }
+                var letrasUsadas = Object.values(mapaLetras);
+                for (var i = 0; i < letrasDisponibles.length; i++) {
+                    if (letrasUsadas.indexOf(letrasDisponibles[i]) === -1) {
+                        mapaLetras[catLower] = letrasDisponibles[i];
+                        return letrasDisponibles[i];
+                    }
+                }
+                return 'Z';
+            }
+
+            function setupCategoriaAutocomplete() {
+                var input = document.getElementById('categoriaInput');
+                var sugerencias = document.getElementById('sugerenciasCategorias');
+
+                // Limpiar event listeners antiguos clonando el input
+                var newInput = input.cloneNode(true);
+                input.parentNode.replaceChild(newInput, input);
+                input = document.getElementById('categoriaInput');
+
+                input.addEventListener('input', function() {
+                    var texto = this.value.trim();
+                    var catLower = texto.toLowerCase();
+                    
+                    // Verificar si la categoría ya existe
+                    var existe = categoriasGuardadas.some(function(c) {
+                        return c.toLowerCase() === catLower;
+                    });
+
+                    if (texto.length > 0) {
+                        // Buscar coincidencias en las categorías guardadas
+                        var coincidencias = categoriasGuardadas.filter(function(c) {
+                            return c.toLowerCase().includes(catLower);
+                        });
+
+                        if (coincidencias.length > 0) {
+                            sugerencias.style.display = 'block';
+                            var html = '';
+                            for (var i = 0; i < coincidencias.length; i++) {
+                                var categoria = coincidencias[i];
+                                var letra = obtenerLetraCategoria(categoria);
+                                html += '<div class="sugerencia-item" data-categoria="' + categoria + '">' + letra + '. ' + categoria + '</div>';
+                            }
+                            sugerencias.innerHTML = html;
+                            
+                            var items = sugerencias.querySelectorAll('.sugerencia-item');
+                            for (var j = 0; j < items.length; j++) {
+                                (function(item) {
+                                    item.addEventListener('click', function() {
+                                        var categoria = this.getAttribute('data-categoria');
+                                        seleccionarCategoria(categoria);
+                                    });
+                                })(items[j]);
+                            }
+                            
+                            document.getElementById('btnAgregarCategoria').style.display = 'none';
+                        } else if (!existe) {
+                            sugerencias.style.display = 'none';
+                            document.getElementById('btnAgregarCategoria').style.display = 'inline-flex';
+                            document.getElementById('btnAgregarCategoria').textContent = 'Agregar "' + texto + '"';
+                        } else {
+                            sugerencias.style.display = 'none';
+                            document.getElementById('btnAgregarCategoria').style.display = 'none';
+                        }
+                    } else {
+                        sugerencias.style.display = 'none';
+                        document.getElementById('btnAgregarCategoria').style.display = 'none';
+                    }
+
+                    if (existe) {
+                        document.getElementById('categoriaSeleccionada').value = texto;
+                    } else {
+                        document.getElementById('categoriaSeleccionada').value = '';
+                    }
+                });
+
+                document.addEventListener('click', function(e) {
+                    var container = document.getElementById('campo_categoria_container');
+                    if (container && !container.contains(e.target)) {
+                        sugerencias.style.display = 'none';
+                        document.getElementById('btnAgregarCategoria').style.display = 'none';
+                    }
+                });
+            }
+
+            function seleccionarCategoria(categoria) {
+                document.getElementById('categoriaInput').value = categoria;
+                document.getElementById('categoriaSeleccionada').value = categoria;
+                document.getElementById('sugerenciasCategorias').style.display = 'none';
+                document.getElementById('btnAgregarCategoria').style.display = 'none';
+            }
+
+            function agregarCategoria() {
+                var texto = document.getElementById('categoriaInput').value.trim();
+                if (!texto) return;
+                
+                var catLower = texto.toLowerCase();
+                var existe = categoriasGuardadas.some(function(c) {
+                    return c.toLowerCase() === catLower;
+                });
+
+                if (!existe) {
+                    categoriasGuardadas.push(texto);
+                    guardarCategorias();
+                    seleccionarCategoria(texto);
+                    mostrarNotificacion('Categoría "' + texto + '" agregada');
+                    // Recargar autocompletado
+                    setupCategoriaAutocomplete();
+                }
+            }
+
+            // ============================================================
+            // ===== FUNCIONES PARA MANEJAR CATEGORÍAS DESDE EL LISTADO =====
+            // ============================================================
+
+            function editarCategoria(categoria) {
+                var nuevaCategoria = prompt('Editar categoría:', categoria);
+                if (nuevaCategoria && nuevaCategoria.trim() !== '' && nuevaCategoria.trim() !== categoria) {
+                    var nuevaCategoriaTrim = nuevaCategoria.trim();
+                    var existe = categoriasGuardadas.some(function(c) {
+                        return c.toLowerCase() === nuevaCategoriaTrim.toLowerCase() && c !== categoria;
+                    });
+                    
+                    if (existe) {
+                        alert('Ya existe una categoría con ese nombre');
+                        return;
+                    }
+                    
+                    for (var i = 0; i < categoriasGuardadas.length; i++) {
+                        if (categoriasGuardadas[i] === categoria) {
+                            categoriasGuardadas[i] = nuevaCategoriaTrim;
+                            break;
+                        }
+                    }
+                    
+                    for (var j = 0; j < apus.length; j++) {
+                        if (apus[j].categoria === categoria) {
+                            apus[j].categoria = nuevaCategoriaTrim;
+                        }
+                    }
+                    
+                    guardarCategorias();
+                    guardarAPU();
+                    renderizarTablasAgrupadas();
+                    mostrarNotificacion('Categoría "' + categoria + '" actualizada a "' + nuevaCategoriaTrim + '"');
+                    setupCategoriaAutocomplete();
+                }
+            }
+
+            function eliminarCategoria(categoria) {
+                var apusCategoria = apus.filter(function(a) {
+                    return a.categoria === categoria;
+                });
+                
+                var mensaje = '¿Eliminar la categoría "' + categoria + '"?';
+                if (apusCategoria.length > 0) {
+                    mensaje = mensaje + ' Esta categoría tiene ' + apusCategoria.length + ' APU(s). Si eliminas la categoría, los APUs quedarán sin categoría.';
+                }
+                
+                if (confirm(mensaje)) {
+                    categoriasGuardadas = categoriasGuardadas.filter(function(c) {
+                        return c !== categoria;
+                    });
+                    
+                    var eliminarAPUs = false;
+                    if (apusCategoria.length > 0) {
+                        eliminarAPUs = confirm('¿También quieres eliminar los ' + apusCategoria.length + ' APU(s) de esta categoría?');
+                    }
+                    
+                    if (eliminarAPUs) {
+                        apus = apus.filter(function(a) {
+                            return a.categoria !== categoria;
+                        });
+                        guardarAPU();
+                    } else {
+                        for (var i = 0; i < apus.length; i++) {
+                            if (apus[i].categoria === categoria) {
+                                apus[i].categoria = '';
+                            }
+                        }
+                        guardarAPU();
+                    }
+                    
+                    guardarCategorias();
+                    renderizarTablasAgrupadas();
+                    mostrarNotificacion('Categoría "' + categoria + '" eliminada');
+                    setupCategoriaAutocomplete();
+                }
+            }
+
+            // ============================================================
+            // ===== UNIDADES - AUTOCOMPLETADO =====
+            // ============================================================
+
+            function cargarUnidadesGuardadas() {
+                try {
+                    var data = localStorage.getItem('unidades');
+                    if (data) {
+                        unidadesGuardadas = JSON.parse(data);
+                    } else {
+                        unidadesGuardadas = [];
+                    }
+                } catch (e) {
+                    unidadesGuardadas = [];
+                }
+            }
+
+            function guardarUnidades() {
+                localStorage.setItem('unidades', JSON.stringify(unidadesGuardadas));
+            }
+
+            function setupUnidadAutocomplete() {
+                var input = document.getElementById('unidadInput');
+                var sugerencias = document.getElementById('sugerenciasUnidades');
+                var btnAgregar = document.getElementById('btnAgregarUnidad');
+
+                input.addEventListener('input', function() {
+                    var texto = this.value.trim().toUpperCase();
+                    var existe = unidadesGuardadas.some(function(u) {
+                        return u.toUpperCase() === texto;
+                    });
+
+                    if (texto.length > 0) {
+                        var coincidencias = unidadesGuardadas.filter(function(u) {
+                            return u.toUpperCase().includes(texto);
+                        });
+
+                        if (coincidencias.length > 0) {
+                            sugerencias.style.display = 'block';
+                            var html = '';
+                            for (var i = 0; i < coincidencias.length; i++) {
+                                var unidad = coincidencias[i];
+                                html += '<div class="sugerencia-item" data-unidad="' + unidad + '">' + unidad + '</div>';
+                            }
+                            sugerencias.innerHTML = html;
+                            
+                            var items = sugerencias.querySelectorAll('.sugerencia-item');
+                            for (var j = 0; j < items.length; j++) {
+                                (function(item) {
+                                    item.addEventListener('click', function() {
+                                        var unidad = this.getAttribute('data-unidad');
+                                        seleccionarUnidad(unidad);
+                                    });
+                                })(items[j]);
+                            }
+                            
+                            btnAgregar.style.display = 'none';
+                        } else if (!existe) {
+                            sugerencias.style.display = 'none';
+                            btnAgregar.style.display = 'inline-flex';
+                            btnAgregar.textContent = 'Agregar "' + texto + '"';
+                        } else {
+                            sugerencias.style.display = 'none';
+                            btnAgregar.style.display = 'none';
+                        }
+                    } else {
+                        sugerencias.style.display = 'none';
+                        btnAgregar.style.display = 'none';
+                    }
+
+                    if (existe) {
+                        document.getElementById('unidadSeleccionada').value = texto;
+                        document.getElementById('unidad').value = texto;
+                    } else {
+                        document.getElementById('unidadSeleccionada').value = '';
+                        document.getElementById('unidad').value = texto;
+                    }
+                });
+
+                document.addEventListener('click', function(e) {
+                    var container = document.getElementById('campo_unidad_container');
+                    if (!container.contains(e.target)) {
+                        sugerencias.style.display = 'none';
+                        btnAgregar.style.display = 'none';
+                    }
+                });
+            }
+
+            function seleccionarUnidad(unidad) {
+                document.getElementById('unidadInput').value = unidad;
+                document.getElementById('unidadSeleccionada').value = unidad;
+                document.getElementById('unidad').value = unidad;
+                document.getElementById('sugerenciasUnidades').style.display = 'none';
+                document.getElementById('btnAgregarUnidad').style.display = 'none';
+            }
+
+            function agregarUnidad() {
+                var texto = document.getElementById('unidadInput').value.trim().toUpperCase();
+                if (!texto) return;
+                
+                var existe = unidadesGuardadas.some(function(u) {
+                    return u.toUpperCase() === texto;
+                });
+
+                if (!existe) {
+                    unidadesGuardadas.push(texto);
+                    guardarUnidades();
+                    seleccionarUnidad(texto);
+                    mostrarNotificacion('Unidad "' + texto + '" agregada');
+                }
+            }
+
+            // ============================================================
+            // ===== TOGGLE IGNORAR ITEMS =====
+            // ============================================================
+            
+            function toggleIgnorarItems() {
+                var checkbox = document.getElementById('ignorarItems');
+                ignorarItems = checkbox.checked;
+                
+                var seccionMateriales = document.getElementById('seccionMateriales');
+                var seccionEquipos = document.getElementById('seccionEquipos');
+                var seccionTransporte = document.getElementById('seccionTransporte');
+                var seccionCargos = document.getElementById('seccionCargos');
+                var seccionManual = document.getElementById('seccionValorManual');
+
+                if (ignorarItems) {
+                    seccionMateriales.style.display = 'none';
+                    seccionEquipos.style.display = 'none';
+                    seccionTransporte.style.display = 'none';
+                    seccionCargos.style.display = 'none';
+                    seccionManual.style.display = 'block';
+                    itemsMateriales = [];
+                    itemsCargos = [];
+                    itemsEquipos = [];
+                    itemsTransporte = [];
+                    renderizarItemsMateriales();
+                    renderizarItemsCargos();
+                    renderizarItemsEquipos();
+                    renderizarItemsTransporte();
+                    actualizarSubtotales();
+                    actualizarTotalGeneral();
+                } else {
+                    seccionMateriales.style.display = 'block';
+                    seccionEquipos.style.display = 'block';
+                    seccionTransporte.style.display = 'block';
+                    seccionCargos.style.display = 'block';
+                    seccionManual.style.display = 'none';
+                    document.getElementById('valorManual').value = '';
+                    actualizarSubtotales();
+                    actualizarTotalGeneral();
+                }
+            }
+
+            // ============================================================
+            // ===== CARGAR DATOS =====
+            // ============================================================
+            
+            function cargarMateriales() {
+                var data = localStorage.getItem('materiales');
+                if (data) {
+                    materialesData = JSON.parse(data);
+                } else {
+                    materialesData = [];
+                }
+            }
+
+            // ============================================================
+            // ===== SELECTOR DE MATERIALES CON CANTIDAD INDIVIDUAL =====
+            // ============================================================
+            
+            function abrirSelectorMateriales() {
+                var modal = document.getElementById('modalSelectorMateriales');
+                if (!modal) return;
+                
+                var data = localStorage.getItem('materiales');
+                if (data) {
+                    materialesSelector = JSON.parse(data);
+                } else {
+                    materialesSelector = [];
+                }
+                
+                materialesSeleccionadosTemp = [];
+                for (var i = 0; i < itemsMateriales.length; i++) {
+                    materialesSeleccionadosTemp.push({
+                        id: itemsMateriales[i].id,
+                        cantidad: itemsMateriales[i].cantidad || 1
+                    });
+                }
+                
+                materialesFiltradosSelector = materialesSelector.slice();
+                paginaActualMateriales = 1;
+                renderizarListaMaterialesSelector();
+                actualizarSeleccionadosContador();
+                modal.style.display = 'flex';
+            }
+
+            function cerrarSelectorMateriales() {
+                document.getElementById('modalSelectorMateriales').style.display = 'none';
+            }
+
+            function filtrarMaterialesSelector() {
+                var busqueda = document.getElementById('buscarMaterialSelector').value.toLowerCase().trim();
+                if (busqueda === '') {
+                    materialesFiltradosSelector = materialesSelector.slice();
+                } else {
+                    materialesFiltradosSelector = materialesSelector.filter(function(m) {
+                        return m.nombre.toLowerCase().includes(busqueda);
+                    });
+                }
+                paginaActualMateriales = 1;
+                renderizarListaMaterialesSelector();
+            }
+
+            function renderizarListaMaterialesSelector() {
+                var container = document.getElementById('listaMaterialesSelector');
+                if (!container) return;
+                
+                var totalItems = materialesFiltradosSelector.length;
+                var totalPaginas = Math.ceil(totalItems / itemsPorPagina) || 1;
+                
+                if (paginaActualMateriales > totalPaginas) {
+                    paginaActualMateriales = totalPaginas;
+                }
+                if (paginaActualMateriales < 1) {
+                    paginaActualMateriales = 1;
+                }
+                
+                var inicio = (paginaActualMateriales - 1) * itemsPorPagina;
+                var fin = Math.min(inicio + itemsPorPagina, totalItems);
+                var paginaItems = materialesFiltradosSelector.slice(inicio, fin);
+                
+                if (paginaItems.length === 0) {
+                    container.innerHTML = '<div class="selector-vacio">No hay materiales disponibles</div>';
+                } else {
+                    var html = '';
+                    for (var i = 0; i < paginaItems.length; i++) {
+                        var m = paginaItems[i];
+                        var seleccionado = materialesSeleccionadosTemp.some(function(s) {
+                            return s.id === m.id;
+                        });
+                        var precioFormateado = '$' + Number(m.precio).toLocaleString('es-CO');
+                        var cantidad = 1;
+                        if (seleccionado) {
+                            for (var s = 0; s < materialesSeleccionadosTemp.length; s++) {
+                                if (materialesSeleccionadosTemp[s].id === m.id) {
+                                    cantidad = materialesSeleccionadosTemp[s].cantidad || 1;
+                                    break;
+                                }
+                            }
+                        }
+                        var btnClase = seleccionado ? 'btn-agregar agregado' : 'btn-agregar';
+                        var btnText = seleccionado ? '✓ Agregado' : 'Agregar';
+                        
+                        html += '<div class="material-item-selector" data-id="' + m.id + '">';
+                        html += '<div class="info">';
+                        html += '<div class="nombre">' + m.nombre + '</div>';
+                        html += '<div class="detalle">' + (m.proveedor || 'Sin proveedor') + ' - ' + precioFormateado + '</div>';
+                        html += '</div>';
+                        html += '<input type="number" class="cantidad-input" value="' + cantidad + '" min="0.1" step="0.1" data-id="' + m.id + '" ' + (seleccionado ? '' : 'disabled') + ' onchange="actualizarCantidadSeleccionada(' + m.id + ', this.value)">';
+                        html += '<button class="' + btnClase + '" data-id="' + m.id + '" ' + (seleccionado ? 'disabled' : '') + '>';
+                        html += btnText;
+                        html += '</button>';
+                        html += '</div>';
+                    }
+                    container.innerHTML = html;
+                    
+                    var btns = container.querySelectorAll('.btn-agregar:not(.agregado)');
+                    for (var j = 0; j < btns.length; j++) {
+                        (function(btn) {
+                            btn.addEventListener('click', function() {
+                                var id = parseInt(this.getAttribute('data-id'));
+                                var cantidadInput = this.parentElement.querySelector('.cantidad-input');
+                                var cantidad = parseFloat(cantidadInput.value) || 1;
+                                if (cantidad <= 0) cantidad = 1;
+                                toggleMaterialSeleccionadoTemp(id, cantidad);
+                            });
+                        })(btns[j]);
+                    }
+                }
+                
+                document.getElementById('resultadosContador').textContent = totalItems + ' resultados';
+                document.getElementById('seleccionadosContador').textContent = materialesSeleccionadosTemp.length + ' materiales seleccionados';
+                
+                var pagInfo = document.getElementById('paginacionInfo');
+                if (pagInfo) {
+                    pagInfo.textContent = 'Página ' + paginaActualMateriales + ' de ' + totalPaginas;
+                }
+                
+                document.getElementById('btnPaginaAnterior').disabled = paginaActualMateriales <= 1;
+                document.getElementById('btnPaginaSiguiente').disabled = paginaActualMateriales >= totalPaginas;
+            }
+
+            function actualizarCantidadSeleccionada(id, valor) {
+                var cantidad = parseFloat(valor) || 1;
+                if (cantidad <= 0) cantidad = 1;
+                for (var i = 0; i < materialesSeleccionadosTemp.length; i++) {
+                    if (materialesSeleccionadosTemp[i].id === id) {
+                        materialesSeleccionadosTemp[i].cantidad = cantidad;
+                        break;
+                    }
+                }
+                actualizarSeleccionadosContador();
+            }
+
+            function toggleMaterialSeleccionadoTemp(id, cantidad) {
+                var index = -1;
+                for (var i = 0; i < materialesSeleccionadosTemp.length; i++) {
+                    if (materialesSeleccionadosTemp[i].id === id) {
+                        index = i;
+                        break;
+                    }
+                }
+                if (index === -1) {
+                    materialesSeleccionadosTemp.push({ id: id, cantidad: cantidad || 1 });
+                } else {
+                    materialesSeleccionadosTemp.splice(index, 1);
+                }
+                actualizarSeleccionadosContador();
+                renderizarListaMaterialesSelector();
+            }
+
+            function actualizarSeleccionadosContador() {
+                var span = document.getElementById('seleccionadosContador');
+                if (span) {
+                    span.textContent = materialesSeleccionadosTemp.length + ' materiales seleccionados';
+                }
+                var container = document.getElementById('materialesSeleccionadosLista');
+                if (container) {
+                    if (materialesSeleccionadosTemp.length === 0) {
+                        container.innerHTML = '<p class="empty-items">No hay materiales seleccionados</p>';
+                    } else {
+                        var html = '';
+                        for (var i = 0; i < materialesSeleccionadosTemp.length; i++) {
+                            var sel = materialesSeleccionadosTemp[i];
+                            var material = null;
+                            for (var j = 0; j < materialesSelector.length; j++) {
+                                if (materialesSelector[j].id === sel.id) {
+                                    material = materialesSelector[j];
+                                    break;
+                                }
+                            }
+                            if (material) {
+                                var precioFormateado = '$' + Number(material.precio).toLocaleString('es-CO');
+                                html += '<div class="seleccionado-item">';
+                                html += '<span class="info"><strong>' + material.nombre + '</strong> - ' + precioFormateado + '</span>';
+                                html += '<span class="cantidad-info">Cant: ' + sel.cantidad + '</span>';
+                                html += '<button class="btn-quitar" data-id="' + sel.id + '"><i class="fas fa-times"></i></button>';
+                                html += '</div>';
+                            }
+                        }
+                        container.innerHTML = html;
+                        
+                        var quitarBtns = container.querySelectorAll('.btn-quitar');
+                        for (var k = 0; k < quitarBtns.length; k++) {
+                            (function(btn) {
+                                btn.addEventListener('click', function() {
+                                    var id = parseInt(this.getAttribute('data-id'));
+                                    toggleMaterialSeleccionadoTemp(id, 1);
+                                });
+                            })(quitarBtns[k]);
+                        }
+                    }
+                }
+            }
+
+            function guardarMaterialesSeleccionados() {
+                itemsMateriales = [];
+                for (var i = 0; i < materialesSeleccionadosTemp.length; i++) {
+                    var sel = materialesSeleccionadosTemp[i];
+                    var material = null;
+                    for (var j = 0; j < materialesSelector.length; j++) {
+                        if (materialesSelector[j].id === sel.id) {
+                            material = materialesSelector[j];
+                            break;
+                        }
+                    }
+                    if (material) {
+                        var subtotal = material.precio * sel.cantidad;
+                        itemsMateriales.push({
+                            id: material.id,
+                            nombre: material.nombre,
+                            proveedor: material.proveedor,
+                            precio: material.precio,
+                            cantidad: sel.cantidad,
+                            subtotal: subtotal
+                        });
+                    }
+                }
+                renderizarItemsMateriales();
+                actualizarSubtotales();
+                actualizarTotalGeneral();
+                cerrarSelectorMateriales();
+                mostrarNotificacion('Materiales guardados: ' + itemsMateriales.length);
+            }
+
+            function cambiarPaginaMateriales(direccion) {
+                var totalItems = materialesFiltradosSelector.length;
+                var totalPaginas = Math.ceil(totalItems / itemsPorPagina) || 1;
+                
+                if (direccion === 'anterior' && paginaActualMateriales > 1) {
+                    paginaActualMateriales--;
+                } else if (direccion === 'siguiente' && paginaActualMateriales < totalPaginas) {
+                    paginaActualMateriales++;
+                }
+                renderizarListaMaterialesSelector();
+            }
+
+            // ============================================================
+            // ===== RENDERIZAR MATERIALES AGREGADOS =====
+            // ============================================================
+            
+            function renderizarItemsMateriales() {
+                var container = document.getElementById('listaMateriales');
+                if (!container) return;
+                
+                var contador = document.getElementById('contadorMateriales');
+                if (contador) {
+                    contador.textContent = itemsMateriales.length + ' materiales seleccionados';
+                }
+                
+                if (itemsMateriales.length === 0) {
+                    container.innerHTML = '<p class="empty-items">No hay materiales agregados</p>';
+                    actualizarSubtotales();
+                    return;
+                }
+                var html = '';
+                for (var i = 0; i < itemsMateriales.length; i++) {
+                    var item = itemsMateriales[i];
+                    var subtotalFormateado = formatearMoneda(item.subtotal);
+                    html += '<div class="item-tag">';
+                    html += '<span><strong>' + item.nombre + '</strong> x ' + item.cantidad + ' = ' + subtotalFormateado + '</span>';
+                    html += '<button type="button" class="btn-remove" data-index="' + i + '"><i class="fas fa-times"></i></button>';
+                    html += '</div>';
+                }
+                container.innerHTML = html;
+                
+                var removeBtns = container.querySelectorAll('.btn-remove');
+                for (var j = 0; j < removeBtns.length; j++) {
+                    (function(btn) {
+                        btn.addEventListener('click', function() {
+                            var index = parseInt(this.getAttribute('data-index'));
+                            eliminarItemMaterial(index);
+                        });
+                    })(removeBtns[j]);
+                }
+                
+                actualizarSubtotales();
+            }
+
+            function eliminarItemMaterial(index) {
+                itemsMateriales.splice(index, 1);
+                renderizarItemsMateriales();
+                actualizarSubtotales();
+                actualizarTotalGeneral();
+            }
+
+            // ============================================================
+            // ===== MANO DE OBRA =====
+            // ============================================================
+
+            function agregarItemCargo() {
+                if (ignorarItems) {
+                    alert('Los items estan ignorados');
+                    return;
+                }
+                var descripcion = document.getElementById('descripcionCargo').value.trim();
+                var unidad = document.getElementById('unidadCargo').value.trim() || 'und';
+                var cantidad = parseFloat(document.getElementById('cantidadCargo').value) || 0;
+                var valorUnitario = parsearMoneda(document.getElementById('valorUnitarioCargo').value);
+                var subtotal = cantidad * valorUnitario;
+                
+                if (!descripcion) {
+                    alert('Ingresa la descripción del cargo');
+                    return;
+                }
+                if (cantidad <= 0) {
+                    alert('Ingresa una cantidad válida');
+                    return;
+                }
+                if (valorUnitario <= 0) {
+                    alert('Ingresa un valor unitario válido');
+                    return;
+                }
+                
+                var item = {
+                    descripcion: descripcion,
+                    unidad: unidad,
+                    cantidad: cantidad,
+                    valorUnitario: valorUnitario,
+                    subtotal: subtotal
+                };
+                itemsCargos.push(item);
+                console.log('Cargo agregado:', item);
+                renderizarItemsCargos();
+                limpiarCamposCargo();
+                actualizarSubtotales();
+                actualizarTotalGeneral();
+                actualizarValorBaseEquipoManual();
+                actualizarValorBaseTransporteManual();
+            }
+
+            function eliminarItemCargo(index) {
+                itemsCargos.splice(index, 1);
+                renderizarItemsCargos();
+                actualizarSubtotales();
+                actualizarTotalGeneral();
+                actualizarValorBaseEquipoManual();
+                actualizarValorBaseTransporteManual();
+            }
+
+            function renderizarItemsCargos() {
+                var container = document.getElementById('listaCargos');
+                if (itemsCargos.length === 0) {
+                    container.innerHTML = '<p class="empty-items">No hay cargos agregados</p>';
+                    actualizarSubtotales();
+                    return;
+                }
+                var html = '';
+                for (var i = 0; i < itemsCargos.length; i++) {
+                    var item = itemsCargos[i];
+                    var subtotalFormateado = formatearMoneda(item.subtotal);
+                    var valorUnitarioFormateado = formatearMoneda(item.valorUnitario);
+                    html += '<div class="item-tag">';
+                    html += '<span><strong>' + item.descripcion + '</strong> ' + item.cantidad + ' x ' + valorUnitarioFormateado + ' (' + item.unidad + ') = ' + subtotalFormateado + '</span>';
+                    html += '<button type="button" class="btn-remove" data-index="' + i + '"><i class="fas fa-times"></i></button>';
+                    html += '</div>';
+                }
+                container.innerHTML = html;
+                
+                var removeBtns = container.querySelectorAll('.btn-remove');
+                for (var j = 0; j < removeBtns.length; j++) {
+                    (function(btn) {
+                        btn.addEventListener('click', function() {
+                            var index = parseInt(this.getAttribute('data-index'));
+                            eliminarItemCargo(index);
+                        });
+                    })(removeBtns[j]);
+                }
+                
+                actualizarSubtotales();
+            }
+
+            function limpiarCamposCargo() {
+                document.getElementById('descripcionCargo').value = '';
+                document.getElementById('unidadCargo').value = 'und';
+                document.getElementById('cantidadCargo').value = '1';
+                document.getElementById('valorUnitarioCargo').value = '$0';
+                document.getElementById('subtotalCargo').value = '';
+                document.getElementById('previewSubtotalCargo').style.display = 'none';
+                ajustarAnchoInput(document.getElementById('valorUnitarioCargo'));
+            }
+
+            // ============================================================
+            // ===== EQUIPOS Y HERRAMIENTAS =====
+            // ============================================================
+            
+            function agregarItemEquipo() {
+                if (ignorarItems) {
+                    alert('Los items estan ignorados');
+                    return;
+                }
+                var nombre = document.getElementById('nombreEquipo').value.trim();
+                var porcentaje = parseFloat(document.getElementById('porcentajeEquipo').value) || 0;
+                var valorBase = parsearMoneda(document.getElementById('valorBaseEquipo').value);
+                var origen = document.getElementById('valorBaseOrigenEquipo').value;
+                
+                if (!nombre) {
+                    alert('Ingresa el nombre del equipo');
+                    return;
+                }
+                
+                if (origen !== 'manual') {
+                    valorBase = obtenerValorBase(origen);
+                    document.getElementById('valorBaseEquipo').value = formatearMoneda(valorBase);
+                }
+                
+                if (valorBase <= 0 && origen !== 'manual') {
+                    alert('El valor base del origen seleccionado es 0. Agrega materiales o mano de obra primero.');
+                    return;
+                }
+                
+                if (valorBase <= 0 && origen === 'manual') {
+                    alert('Ingresa un valor base mayor a 0');
+                    return;
+                }
+                
+                var subtotal = (porcentaje / 100) * valorBase;
+                
+                var item = {
+                    nombre: nombre,
+                    unidad: '%',
+                    porcentaje: porcentaje,
+                    valorBase: valorBase,
+                    valorBaseOrigen: origen,
+                    subtotal: subtotal
+                };
+                itemsEquipos.push(item);
+                console.log('Equipo agregado:', item);
+                renderizarItemsEquipos();
+                limpiarCamposEquipo();
+                actualizarSubtotales();
+                actualizarTotalGeneral();
+            }
+
+            function eliminarItemEquipo(index) {
+                itemsEquipos.splice(index, 1);
+                renderizarItemsEquipos();
+                actualizarSubtotales();
+                actualizarTotalGeneral();
+            }
+
+            function renderizarItemsEquipos() {
+                var container = document.getElementById('listaEquipos');
+                if (itemsEquipos.length === 0) {
+                    container.innerHTML = '<p class="empty-items">No hay equipos agregados</p>';
+                    actualizarSubtotales();
+                    return;
+                }
+                var html = '';
+                for (var i = 0; i < itemsEquipos.length; i++) {
+                    var item = itemsEquipos[i];
+                    var subtotalFormateado = formatearMoneda(item.subtotal);
+                    var origenLabel = {
+                        'manual': 'Manual',
+                        'materiales': 'Materiales',
+                        'manoDeObra': 'Mano de Obra',
+                        'total': 'Total'
+                    }[item.valorBaseOrigen] || 'Manual';
+                    html += '<div class="item-tag">';
+                    html += '<span><strong>' + item.nombre + '</strong> ' + item.porcentaje + '% de ' + formatearMoneda(item.valorBase) + ' (' + origenLabel + ') = ' + subtotalFormateado + '</span>';
+                    html += '<button type="button" class="btn-remove" onclick="eliminarItemEquipo(' + i + ')"><i class="fas fa-times"></i></button>';
+                    html += '</div>';
+                }
+                container.innerHTML = html;
+                actualizarSubtotales();
+            }
+
+            function limpiarCamposEquipo() {
+                document.getElementById('nombreEquipo').value = '';
+                document.getElementById('porcentajeEquipo').value = '0';
+                document.getElementById('valorBaseEquipo').value = '$0';
+                document.getElementById('valorBaseOrigenEquipo').value = 'manual';
+                document.getElementById('previewSubtotalEquipo').style.display = 'none';
+                ajustarAnchoInput(document.getElementById('valorBaseEquipo'));
+            }
+
+            // ============================================================
+            // ===== TRANSPORTE DE MATERIALES =====
+            // ============================================================
+            
+            function agregarItemTransporte() {
+                if (ignorarItems) {
+                    alert('Los items estan ignorados');
+                    return;
+                }
+                var nombre = document.getElementById('nombreTransporte').value.trim();
+                var porcentaje = parseFloat(document.getElementById('porcentajeTransporte').value) || 0;
+                var valorBase = parsearMoneda(document.getElementById('valorBaseTransporte').value);
+                var origen = document.getElementById('valorBaseOrigenTransporte').value;
+                
+                if (!nombre) {
+                    alert('Ingresa el nombre del transporte');
+                    return;
+                }
+                
+                if (origen !== 'manual') {
+                    valorBase = obtenerValorBase(origen);
+                    document.getElementById('valorBaseTransporte').value = formatearMoneda(valorBase);
+                }
+                
+                if (valorBase <= 0 && origen !== 'manual') {
+                    alert('El valor base del origen seleccionado es 0. Agrega materiales o mano de obra primero.');
+                    return;
+                }
+                
+                if (valorBase <= 0 && origen === 'manual') {
+                    alert('Ingresa un valor base mayor a 0');
+                    return;
+                }
+                
+                var subtotal = (porcentaje / 100) * valorBase;
+                
+                var item = {
+                    nombre: nombre,
+                    unidad: '%',
+                    porcentaje: porcentaje,
+                    valorBase: valorBase,
+                    valorBaseOrigen: origen,
+                    subtotal: subtotal
+                };
+                itemsTransporte.push(item);
+                console.log('Transporte agregado:', item);
+                renderizarItemsTransporte();
+                limpiarCamposTransporte();
+                actualizarSubtotales();
+                actualizarTotalGeneral();
+            }
+
+            function eliminarItemTransporte(index) {
+                itemsTransporte.splice(index, 1);
+                renderizarItemsTransporte();
+                actualizarSubtotales();
+                actualizarTotalGeneral();
+            }
+
+            function renderizarItemsTransporte() {
+                var container = document.getElementById('listaTransporte');
+                if (itemsTransporte.length === 0) {
+                    container.innerHTML = '<p class="empty-items">No hay transportes agregados</p>';
+                    actualizarSubtotales();
+                    return;
+                }
+                var html = '';
+                for (var i = 0; i < itemsTransporte.length; i++) {
+                    var item = itemsTransporte[i];
+                    var subtotalFormateado = formatearMoneda(item.subtotal);
+                    var origenLabel = {
+                        'manual': 'Manual',
+                        'materiales': 'Materiales',
+                        'manoDeObra': 'Mano de Obra',
+                        'total': 'Total'
+                    }[item.valorBaseOrigen] || 'Manual';
+                    html += '<div class="item-tag">';
+                    html += '<span><strong>' + item.nombre + '</strong> ' + item.porcentaje + '% de ' + formatearMoneda(item.valorBase) + ' (' + origenLabel + ') = ' + subtotalFormateado + '</span>';
+                    html += '<button type="button" class="btn-remove" onclick="eliminarItemTransporte(' + i + ')"><i class="fas fa-times"></i></button>';
+                    html += '</div>';
+                }
+                container.innerHTML = html;
+                actualizarSubtotales();
+            }
+
+            function limpiarCamposTransporte() {
+                document.getElementById('nombreTransporte').value = '';
+                document.getElementById('porcentajeTransporte').value = '0';
+                document.getElementById('valorBaseTransporte').value = '$0';
+                document.getElementById('valorBaseOrigenTransporte').value = 'manual';
+                document.getElementById('previewSubtotalTransporte').style.display = 'none';
+                ajustarAnchoInput(document.getElementById('valorBaseTransporte'));
+            }
+
+            // ============================================================
+            // ===== FUNCIÓN OBTENER VALOR BASE =====
+            // ============================================================
+            
+            function obtenerValorBase(origen) {
+                if (origen === 'materiales') {
+                    return obtenerSubtotalMateriales();
+                } else if (origen === 'manoDeObra') {
+                    return obtenerSubtotalManoObra();
+                } else if (origen === 'total') {
+                    return obtenerValorTotalGeneral();
+                }
+                return 0;
+            }
+
+            // ============================================================
+            // ===== ACTUALIZAR SUBTOTALES =====
+            // ============================================================
+            
+            function actualizarSubtotales() {
+                var totalMateriales = obtenerSubtotalMateriales();
+                document.getElementById('subtotalMateriales').textContent = 'Subtotal Materiales: ' + formatearMoneda(totalMateriales);
+                
+                var totalEquipos = obtenerSubtotalEquipos();
+                document.getElementById('subtotalEquipos').textContent = 'Subtotal Equipos y Herramientas: ' + formatearMoneda(totalEquipos);
+                
+                var totalTransporte = obtenerSubtotalTransporte();
+                document.getElementById('subtotalTransporte').textContent = 'Subtotal Transporte: ' + formatearMoneda(totalTransporte);
+                
+                var totalManoObra = obtenerSubtotalManoObra();
+                document.getElementById('subtotalManoObra').textContent = 'Subtotal Mano de Obra: ' + formatearMoneda(totalManoObra);
+            }
+
+            document.getElementById('valorManual').addEventListener('input', function() {
+                if (ignorarItems) { actualizarTotalGeneral(); }
+            });
+
+            // ============================================================
+            // ===== FUNCIONES APU =====
+            // ============================================================
+            
+            function cargarAPU() {
+                fetch('/api/apus')
+                    .then(function(response) {
+                        if (!response.ok) { throw new Error('Error al cargar APUs'); }
+                        return response.json();
+                    })
+                    .then(function(data) {
+                        if (data && data.length > 0) {
+                            apus = data;
+                            localStorage.setItem('apu', JSON.stringify(apus));
+                            renderizarTablasAgrupadas();
+                        } else {
+                            cargarAPULocal();
+                        }
+                    })
+                    .catch(function(error) { cargarAPULocal(); });
+            }
+
+            function cargarAPULocal() {
+                var data = localStorage.getItem('apu');
+                if (data) {
+                    try { apus = JSON.parse(data); } catch (e) { apus = []; }
+                } else { apus = []; }
+                renderizarTablasAgrupadas();
+            }
+
+            function guardarAPU() {
+                localStorage.setItem('apu', JSON.stringify(apus));
+                fetch('/api/guardar-apus', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(apus)
+                }).catch(function(e) { console.log('Error al sincronizar', e); });
+                renderizarTablasAgrupadas();
+            }
+
+            // ============================================================
+            // ===== RENDERIZAR TABLAS AGRUPADAS POR CATEGORÍA =====
+            // ============================================================
+            
+            function renderizarTablasAgrupadas() {
+                var container = document.getElementById('contenedorTablas');
+                var sinDatos = document.getElementById('sinDatos');
+                
+                var todasLasCategorias = [];
+                
+                for (var i = 0; i < categoriasGuardadas.length; i++) {
+                    if (todasLasCategorias.indexOf(categoriasGuardadas[i]) === -1) {
+                        todasLasCategorias.push(categoriasGuardadas[i]);
+                    }
+                }
+                
+                for (var j = 0; j < apus.length; j++) {
+                    if (apus[j].categoria && todasLasCategorias.indexOf(apus[j].categoria) === -1) {
+                        todasLasCategorias.push(apus[j].categoria);
+                    }
+                }
+                
+                todasLasCategorias.sort();
+                
+                if (todasLasCategorias.length === 0) {
+                    container.innerHTML = '';
+                    sinDatos.style.display = 'block';
+                    return;
+                }
+                sinDatos.style.display = 'none';
+                
+                var html = '';
+                
+                for (var c = 0; c < todasLasCategorias.length; c++) {
+                    var categoria = todasLasCategorias[c];
+                    var items = apus.filter(function(a) {
+                        return a.categoria === categoria;
+                    });
+                    var letra = obtenerLetraCategoria(categoria);
+                    var tieneAPUs = items.length > 0;
+                    
+                    html += '<div class="categoria-tabla">';
+                    html += '<div class="categoria-header">';
+                    html += '<span class="letra">' + letra + '</span>';
+                    html += categoria.toUpperCase();
+                    html += ' <span style="font-weight:400; font-size:14px; opacity:0.8;">(' + items.length + ' APUs)</span>';
+                    html += ' <span class="categoria-acciones">';
+                    html += '<button class="btn-edit-categoria" data-categoria="' + categoria + '" title="Editar categoría"><i class="fas fa-edit"></i></button>';
+                    html += '<button class="btn-delete-categoria" data-categoria="' + categoria + '" title="Eliminar categoría"><i class="fas fa-trash"></i></button>';
+                    html += '</span>';
+                    html += '</div>';
+                    html += '<div class="categoria-body">';
+                    
+                    html += '<table>';
+                    html += '<thead><tr>';
+                    html += '<th>Código</th>';
+                    html += '<th>Nombre</th>';
+                    html += '<th>Unidad</th>';
+                    html += '<th>Valor Unitario</th>';
+                    html += '<th>Acciones</th>';
+                    html += '</tr></thead>';
+                    html += '<tbody>';
+                    
+                    if (tieneAPUs) {
+                        for (var j = 0; j < items.length; j++) {
+                            var apu = items[j];
+                            var valorFormateado = formatearMoneda(apu.valor);
+                            html += '<tr>';
+                            html += '<td><strong>' + apu.codigo + '</strong></td>';
+                            html += '<td>' + apu.nombre + '</td>';
+                            html += '<td>' + apu.unidad + '</td>';
+                            html += '<td>' + valorFormateado + '</td>';
+                            html += '<td>';
+                            html += '<button class="btn-edit" data-id="' + apu.id + '"><i class="fas fa-edit"></i></button>';
+                            html += '<button class="btn-delete" data-id="' + apu.id + '"><i class="fas fa-trash"></i></button>';
+                            html += '<button class="btn-print" data-id="' + apu.id + '"><i class="fas fa-file-pdf"></i></button>';
+                            html += '</td>';
+                            html += '</tr>';
+                        }
+                    } else {
+                        html += '<tr>';
+                        html += '<td colspan="5" style="text-align:center; color:var(--gray-500); padding:20px;">';
+                        html += '<i class="fas fa-info-circle"></i> No hay APUs en esta categoría';
+                        html += '</td>';
+                        html += '</tr>';
+                    }
+                    
+                    html += '</tbody></table>';
+                    html += '</div>';
+                    html += '</div>';
+                }
+                
+                container.innerHTML = html;
+                
+                var editBtns = container.querySelectorAll('.btn-edit');
+                for (var e = 0; e < editBtns.length; e++) {
+                    (function(btn) {
+                        btn.addEventListener('click', function() {
+                            var id = parseInt(this.getAttribute('data-id'));
+                            editarAPU(id);
+                        });
+                    })(editBtns[e]);
+                }
+                
+                var deleteBtns = container.querySelectorAll('.btn-delete');
+                for (var d = 0; d < deleteBtns.length; d++) {
+                    (function(btn) {
+                        btn.addEventListener('click', function() {
+                            var id = parseInt(this.getAttribute('data-id'));
+                            eliminarAPU(id);
+                        });
+                    })(deleteBtns[d]);
+                }
+                
+                var printBtns = container.querySelectorAll('.btn-print');
+                for (var p = 0; p < printBtns.length; p++) {
+                    (function(btn) {
+                        btn.addEventListener('click', function() {
+                            var id = parseInt(this.getAttribute('data-id'));
+                            imprimirAPU(id);
+                        });
+                    })(printBtns[p]);
+                }
+                
+                var editCategoriaBtns = container.querySelectorAll('.btn-edit-categoria');
+                for (var ec = 0; ec < editCategoriaBtns.length; ec++) {
+                    (function(btn) {
+                        btn.addEventListener('click', function() {
+                            var categoria = this.getAttribute('data-categoria');
+                            editarCategoria(categoria);
+                        });
+                    })(editCategoriaBtns[ec]);
+                }
+                
+                var deleteCategoriaBtns = container.querySelectorAll('.btn-delete-categoria');
+                for (var dc = 0; dc < deleteCategoriaBtns.length; dc++) {
+                    (function(btn) {
+                        btn.addEventListener('click', function() {
+                            var categoria = this.getAttribute('data-categoria');
+                            eliminarCategoria(categoria);
+                        });
+                    })(deleteCategoriaBtns[dc]);
+                }
+            }
+
+            // ============================================================
+            // ===== IMPRIMIR APU =====
+            // ============================================================
+            
+            function imprimirAPU(id) {
+                var notificacion = document.createElement('div');
+                notificacion.className = 'notification';
+                notificacion.textContent = 'Generando PDF...';
+                document.body.appendChild(notificacion);
+                setTimeout(function() { notificacion.classList.add('show'); }, 100);
+                fetch('/api/apu-pdf/' + id)
+                    .then(function(response) {
+                        if (!response.ok) {
+                            return response.json().then(function(err) {
+                                throw new Error(err.error || 'Error al generar PDF');
+                            });
+                        }
+                        return response.blob();
+                    })
+                    .then(function(blob) {
+                        var url = window.URL.createObjectURL(blob);
+                        var a = document.createElement('a');
+                        a.href = url;
+                        a.download = 'APU_' + id + '_' + new Date().toISOString().slice(0,10) + '.pdf';
+                        document.body.appendChild(a);
+                        a.click();
+                        window.URL.revokeObjectURL(url);
+                        a.remove();
+                        notificacion.classList.remove('show');
+                        setTimeout(function() { notificacion.remove(); }, 300);
+                        mostrarNotificacion('PDF generado correctamente');
+                    })
+                    .catch(function(error) {
+                        notificacion.classList.remove('show');
+                        setTimeout(function() { notificacion.remove(); }, 300);
+                        mostrarNotificacion('Error: ' + error.message);
+                    });
+            }
+
+            // ============================================================
+            // ===== ABRIR MODAL =====
+            // ============================================================
+            
+            function abrirModal(apu) {
+                console.log('📂 Abriendo modal para:', apu ? 'editar APU ' + apu.codigo : 'nuevo APU');
+                var modal = document.getElementById('modalAPU');
+                var titulo = document.getElementById('modalTitulo');
+
+                if (!modoPlantilla) {
+                    titulo.textContent = 'Nuevo APU';
+                    document.getElementById('btnGuardarPlantilla').style.display = 'none';
+                    document.getElementById('btnGuardarAPU').style.display = 'inline-flex';
+                }
+
+                itemsMateriales = [];
+                itemsCargos = [];
+                itemsEquipos = [];
+                itemsTransporte = [];
+                ignorarItems = false;
+                document.getElementById('ignorarItems').checked = false;
+                document.getElementById('seccionValorManual').style.display = 'none';
+                document.getElementById('valorManual').value = '';
+
+                document.getElementById('seccionMateriales').style.display = 'block';
+                document.getElementById('seccionEquipos').style.display = 'block';
+                document.getElementById('seccionTransporte').style.display = 'block';
+                document.getElementById('seccionCargos').style.display = 'block';
+
+                var camposBasicos = ['codigo', 'unidad', 'nombre', 'categoria'];
+                for (var i = 0; i < camposBasicos.length; i++) {
+                    var campo = camposBasicos[i];
+                    var container = document.getElementById('campo_' + campo + '_container');
+                    if (container) {
+                        container.style.display = 'block';
+                    }
+                }
+
+                document.getElementById('categoriaInput').value = '';
+                document.getElementById('categoriaSeleccionada').value = '';
+                document.getElementById('sugerenciasCategorias').style.display = 'none';
+                document.getElementById('btnAgregarCategoria').style.display = 'none';
+                
+                document.getElementById('unidadInput').value = '';
+                document.getElementById('unidadSeleccionada').value = '';
+                document.getElementById('unidad').value = '';
+                document.getElementById('sugerenciasUnidades').style.display = 'none';
+                document.getElementById('btnAgregarUnidad').style.display = 'none';
+                
+                document.getElementById('descripcionCargo').value = '';
+                document.getElementById('unidadCargo').value = 'und';
+                document.getElementById('cantidadCargo').value = '1';
+                document.getElementById('valorUnitarioCargo').value = '$0';
+                document.getElementById('subtotalCargo').value = '';
+                
+                document.getElementById('nombreEquipo').value = '';
+                document.getElementById('porcentajeEquipo').value = '0';
+                document.getElementById('valorBaseEquipo').value = '$0';
+                document.getElementById('valorBaseOrigenEquipo').value = 'manual';
+                
+                document.getElementById('nombreTransporte').value = '';
+                document.getElementById('porcentajeTransporte').value = '0';
+                document.getElementById('valorBaseTransporte').value = '$0';
+                document.getElementById('valorBaseOrigenTransporte').value = 'manual';
+
+                ajustarAnchoInput(document.getElementById('valorBaseEquipo'));
+                ajustarAnchoInput(document.getElementById('valorBaseTransporte'));
+                ajustarAnchoInput(document.getElementById('valorUnitarioCargo'));
+
+                if (!apu && !modoPlantilla) {
+                    cargarPlantilla();
+                    if (plantillaAPU) {
+                        console.log('📋 Cargando plantilla automáticamente para nuevo APU');
+                        setTimeout(function() {
+                            cargarDatosPlantilla(plantillaAPU);
+                        }, 50);
+                    }
+                }
+
+                if (apu) {
+                    titulo.textContent = 'Editar APU';
+                    document.getElementById('codigo').value = apu.codigo || '';
+                    document.getElementById('nombre').value = apu.nombre || '';
+                    document.getElementById('categoriaInput').value = apu.categoria || '';
+                    document.getElementById('categoriaSeleccionada').value = apu.categoria || '';
+                    document.getElementById('unidadInput').value = apu.unidad || '';
+                    document.getElementById('unidadSeleccionada').value = apu.unidad || '';
+                    document.getElementById('unidad').value = apu.unidad || '';
+                    editandoId = apu.id;
+
+                    if (apu.items) {
+                        if (apu.items.materiales) { itemsMateriales = apu.items.materiales; renderizarItemsMateriales(); }
+                        if (apu.items.equipos) { itemsEquipos = apu.items.equipos; renderizarItemsEquipos(); }
+                        if (apu.items.transporte) { itemsTransporte = apu.items.transporte; renderizarItemsTransporte(); }
+                        if (apu.items.cargos) { itemsCargos = apu.items.cargos; renderizarItemsCargos(); }
+                    }
+                    
+                    if (apu.ignorarItems) {
+                        ignorarItems = true;
+                        document.getElementById('ignorarItems').checked = true;
+                        document.getElementById('seccionMateriales').style.display = 'none';
+                        document.getElementById('seccionEquipos').style.display = 'none';
+                        document.getElementById('seccionTransporte').style.display = 'none';
+                        document.getElementById('seccionCargos').style.display = 'none';
+                        document.getElementById('seccionValorManual').style.display = 'block';
+                        document.getElementById('valorManual').value = apu.valorManual || apu.valor;
+                    }
+                }
+
+                cargarMateriales();
+                cargarCategoriasGuardadas();
+                cargarUnidadesGuardadas();
+                actualizarSubtotales();
+                actualizarTotalGeneral();
+                renderizarItemsMateriales();
+                modal.style.display = 'flex';
+            }
+
+            function cerrarModal() {
+                document.getElementById('modalAPU').style.display = 'none';
+                document.getElementById('formAPU').reset();
+                editandoId = null;
+                itemsMateriales = [];
+                itemsCargos = [];
+                itemsEquipos = [];
+                itemsTransporte = [];
+                ignorarItems = false;
+                document.getElementById('ignorarItems').checked = false;
+                document.getElementById('seccionMateriales').style.display = 'block';
+                document.getElementById('seccionEquipos').style.display = 'block';
+                document.getElementById('seccionTransporte').style.display = 'block';
+                document.getElementById('seccionCargos').style.display = 'block';
+                document.getElementById('seccionValorManual').style.display = 'none';
+                document.getElementById('categoriaInput').value = '';
+                document.getElementById('categoriaSeleccionada').value = '';
+                document.getElementById('unidadInput').value = '';
+                document.getElementById('unidadSeleccionada').value = '';
+                document.getElementById('unidad').value = '';
+                renderizarItemsMateriales();
+                renderizarItemsEquipos();
+                renderizarItemsTransporte();
+                renderizarItemsCargos();
+                actualizarSubtotales();
+                actualizarTotalGeneral();
+            }
+
+            function editarAPU(id) {
+                var apu = null;
+                for (var i = 0; i < apus.length; i++) {
+                    if (apus[i].id === id) { apu = apus[i]; break; }
+                }
+                if (apu) { 
+                    modoPlantilla = false;
+                    document.getElementById('btnGuardarPlantilla').style.display = 'none';
+                    document.getElementById('btnGuardarAPU').style.display = 'inline-flex';
+                    document.getElementById('modalTitulo').textContent = 'Editar APU';
+                    abrirModal(apu); 
+                }
+            }
+
+            function eliminarAPU(id) {
+                if (confirm('Eliminar este APU?')) {
+                    var nuevosApus = [];
+                    for (var i = 0; i < apus.length; i++) {
+                        if (apus[i].id !== id) nuevosApus.push(apus[i]);
+                    }
+                    apus = nuevosApus;
+                    guardarAPU();
+                    mostrarNotificacion('APU eliminado');
+                }
+            }
+
+            // ===== SUBMIT FORMULARIO =====
+            document.getElementById('formAPU').addEventListener('submit', function(e) {
+                if (modoPlantilla) {
+                    e.preventDefault();
+                    guardarPlantillaActual();
+                    return;
+                }
+                
+                e.preventDefault();
+                var codigo = document.getElementById('codigo').value.trim();
+                var nombre = document.getElementById('nombre').value.trim();
+                var categoria = document.getElementById('categoriaSeleccionada').value.trim();
+                if (!categoria) {
+                    categoria = document.getElementById('categoriaInput').value.trim();
+                }
+                var unidad = document.getElementById('unidadSeleccionada').value.trim().toUpperCase();
+                if (!unidad) {
+                    unidad = document.getElementById('unidadInput').value.trim().toUpperCase();
+                }
+                
+                if (!codigo || !nombre || !categoria || !unidad) {
+                    alert('Completa todos los campos');
+                    return;
+                }
+                
+                var valorTotal = 0;
+                if (ignorarItems) {
+                    valorTotal = parseFloat(document.getElementById('valorManual').value) || 0;
+                    if (valorTotal <= 0) {
+                        alert('Ingresa un valor manual valido');
+                        return;
+                    }
+                } else {
+                    valorTotal = obtenerValorTotalGeneral();
+                    if (valorTotal <= 0) {
+                        alert('Agrega al menos un item o activa Ignorar');
+                        return;
+                    }
+                }
+                
+                var apuData = {
+                    codigo: codigo,
+                    nombre: nombre,
+                    categoria: categoria,
+                    unidad: unidad,
+                    valor: valorTotal,
+                    ignorarItems: ignorarItems,
+                    valorManual: parseFloat(document.getElementById('valorManual').value) || 0,
+                    items: {
+                        materiales: itemsMateriales,
+                        equipos: itemsEquipos,
+                        transporte: itemsTransporte,
+                        cargos: itemsCargos
+                    }
+                };
+                
+                if (editandoId !== null) {
+                    for (var m = 0; m < apus.length; m++) {
+                        if (apus[m].id === editandoId) {
+                            apus[m] = { id: editandoId };
+                            for (var key in apuData) { apus[m][key] = apuData[key]; }
+                            break;
+                        }
+                    }
+                } else {
+                    var nuevoId = 1;
+                    if (apus.length > 0) {
+                        var maxId = 0;
+                        for (var n = 0; n < apus.length; n++) { if (apus[n].id > maxId) maxId = apus[n].id; }
+                        nuevoId = maxId + 1;
+                    }
+                    apus.push({ id: nuevoId });
+                    var ultimoIndex = apus.length - 1;
+                    for (var key2 in apuData) { apus[ultimoIndex][key2] = apuData[key2]; }
+                    
+                    cargarCategoriasGuardadas();
+                }
+                
+                guardarAPU();
+                cerrarModal();
+                mostrarNotificacion('APU guardado');
+                editandoId = null;
+            });
+
+            // ============================================================
+            // ===== BORRAR CACHÉ =====
+            // ============================================================
+
+            function borrarCache() {
+                if (confirm('Borrar todos los datos?')) {
+                    localStorage.clear();
+                    apus = [];
+                    guardarAPU();
+                    mostrarNotificacion('Cache borrada');
+                }
+            }
+
+            function mostrarNotificacion(mensaje) {
+                var notificacion = document.createElement('div');
+                notificacion.className = 'notification';
+                notificacion.textContent = mensaje;
+                document.body.appendChild(notificacion);
+                setTimeout(function() { notificacion.classList.add('show'); }, 100);
+                setTimeout(function() {
+                    notificacion.classList.remove('show');
+                    setTimeout(function() { notificacion.remove(); }, 300);
+                }, 3000);
+            }
+
+            window.onclick = function(event) {
+                var modal = document.getElementById('modalAPU');
+                if (event.target === modal) { 
+                    modoPlantilla = false;
+                    document.getElementById('btnGuardarPlantilla').style.display = 'none';
+                    document.getElementById('btnGuardarAPU').style.display = 'inline-flex';
+                    document.getElementById('modalTitulo').textContent = 'Nuevo APU';
+                    cerrarModal(); 
+                }
+                var modalSelector = document.getElementById('modalSelectorMateriales');
+                if (event.target === modalSelector) { cerrarSelectorMateriales(); }
+                var modalImportar = document.getElementById('modalImportarAPU');
+                if (event.target === modalImportar) { cerrarModalImportar(); }
+            };
+        </script>
+    `
+}) %>

@@ -1,0 +1,364 @@
+<%- include('layouts/main', { 
+    title: 'Dashboard',
+    usuario: usuario,
+    usuarioData: usuarioData,
+    body: `
+        <!-- ===== CARDS DE RESUMEN ===== -->
+        <section class="dashboard-cards">
+            <!-- Proyectos -->
+            <div class="card">
+                <div class="card-icon blue">
+                    <i class="fas fa-project-diagram"></i>
+                </div>
+                <div class="card-info">
+                    <h3 id="totalProyectos">0</h3>
+                    <p>Proyectos</p>
+                    <div class="card-detalle">
+                        <span id="proyectosCompletos">0</span> completos · 
+                        <span id="proyectosFaltantes" style="color: var(--warning);">0</span> en curso
+                    </div>
+                </div>
+            </div>
+
+            <!-- Cotizaciones -->
+            <div class="card">
+                <div class="card-icon green">
+                    <i class="fas fa-file-invoice"></i>
+                </div>
+                <div class="card-info">
+                    <h3 id="totalCotizaciones">0</h3>
+                    <p>Cotizaciones</p>
+                    <div class="card-detalle">
+                        <span id="cotizacionesActivas">0</span> activas
+                    </div>
+                </div>
+            </div>
+
+            <!-- Herramientas -->
+            <div class="card">
+                <div class="card-icon orange">
+                    <i class="fas fa-tools"></i>
+                </div>
+                <div class="card-info">
+                    <h3 id="totalHerramientas">0</h3>
+                    <p>Herramientas</p>
+                    <div class="card-detalle">
+                        <span id="herramientasAsignadas">0</span> en obra · 
+                        <span id="herramientasDisponibles">0</span> disponibles
+                    </div>
+                </div>
+            </div>
+
+            <!-- Empleados -->
+            <div class="card">
+                <div class="card-icon purple">
+                    <i class="fas fa-users"></i>
+                </div>
+                <div class="card-info">
+                    <h3 id="totalEmpleados">0</h3>
+                    <p>Empleados</p>
+                    <div class="card-detalle">
+                        <span id="empleadosEnObra">0</span> en obra · 
+                        <span id="empleadosDisponibles">0</span> disponibles
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===== DETALLE UNIFICADO ===== -->
+        <section class="dashboard-detalle">
+            <!-- Columna 1: Proyectos en curso -->
+            <div class="detalle-columna">
+                <div class="detalle-header">
+                    <h3><i class="fas fa-chart-line" style="color: var(--warning);"></i> Proyectos en Curso</h3>
+                    <a href="/proyectos" class="view-all">Ver todos</a>
+                </div>
+                <div id="listaProyectosCurso">
+                    <!-- Se carga con JavaScript -->
+                </div>
+                <div id="sinProyectosCurso" class="empty-state-detalle" style="display:none;">
+                    <i class="fas fa-check-circle" style="color: var(--success);"></i>
+                    <p>Todos los proyectos están completos</p>
+                </div>
+            </div>
+
+            <!-- Columna 2: Herramientas en Obra -->
+            <div class="detalle-columna">
+                <div class="detalle-header">
+                    <h3><i class="fas fa-tools" style="color: var(--orange);"></i> Herramientas en Obra</h3>
+                    <a href="/herramientas" class="view-all">Ver todas</a>
+                </div>
+                <div id="listaHerramientasObra">
+                    <!-- Se carga con JavaScript -->
+                </div>
+                <div id="sinHerramientasObra" class="empty-state-detalle" style="display:none;">
+                    <i class="fas fa-tools"></i>
+                    <p>No hay herramientas asignadas</p>
+                </div>
+            </div>
+
+            <!-- Columna 3: Empleados en Obra -->
+            <div class="detalle-columna">
+                <div class="detalle-header">
+                    <h3><i class="fas fa-user-hard-hat" style="color: var(--purple);"></i> Empleados en Obra</h3>
+                    <a href="/asistencia" class="view-all">Ver todos</a>
+                </div>
+                <div id="listaEmpleadosObra">
+                    <!-- Se carga con JavaScript -->
+                </div>
+                <div id="sinEmpleadosObra" class="empty-state-detalle" style="display:none;">
+                    <i class="fas fa-users"></i>
+                    <p>No hay empleados asignados</p>
+                </div>
+            </div>
+        </section>
+
+        <script>
+            // ===== GUARDAR DATOS DEL USUARIO EN LOCALSTORAGE =====
+            function guardarDatosUsuario() {
+                try {
+                    var usuarioData = window._usuarioData || {};
+                    if (usuarioData && usuarioData.username) {
+                        var empresaInfo = {
+                            nombre: usuarioData.nombreCompleto || usuarioData.username,
+                            nit: usuarioData.nit || '',
+                            telefono: usuarioData.telefono || '',
+                            email: usuarioData.email || '',
+                            direccion: '',
+                            web: '',
+                            descripcion: '',
+                            logo: ''
+                        };
+                        localStorage.setItem('empresaInfo', JSON.stringify(empresaInfo));
+                    }
+                } catch (e) {
+                    console.log('Error al guardar datos del usuario:', e);
+                }
+            }
+
+            // ===== CARGAR TODOS LOS DATOS =====
+            function cargarDashboard() {
+                cargarProyectos();
+                cargarCotizaciones();
+                cargarHerramientas();
+                cargarEmpleados();
+            }
+
+            // ===== 1. PROYECTOS =====
+            function cargarProyectos() {
+                try {
+                    var data = localStorage.getItem('proyectos');
+                    var proyectos = data ? JSON.parse(data) : [];
+                    
+                    var total = proyectos.length;
+                    var completos = 0;
+                    var faltantes = 0;
+                    var html = '';
+
+                    for (var i = 0; i < proyectos.length; i++) {
+                        var p = proyectos[i];
+                        var avance = p.avanceTotal || 0;
+                        if (avance >= 100) {
+                            completos++;
+                        } else {
+                            faltantes++;
+                            html += '<div class="item-detalle">';
+                            html += '<div class="item-info">';
+                            html += '<strong>' + (p.nombre || 'Proyecto #' + p.id) + '</strong>';
+                            html += '<span class="item-sub">' + (p.cliente || '-') + '</span>';
+                            html += '</div>';
+                            html += '<div class="item-progress">';
+                            html += '<div class="progress-bar-mini">';
+                            html += '<div class="progress-fill-mini" style="width:' + avance + '%;"></div>';
+                            html += '<span class="progress-text-mini">' + Math.round(avance) + '%</span>';
+                            html += '</div>';
+                            html += '</div>';
+                            html += '</div>';
+                        }
+                    }
+
+                    document.getElementById('totalProyectos').textContent = total;
+                    document.getElementById('proyectosCompletos').textContent = completos;
+                    document.getElementById('proyectosFaltantes').textContent = faltantes;
+
+                    var container = document.getElementById('listaProyectosCurso');
+                    var sinDatos = document.getElementById('sinProyectosCurso');
+
+                    if (faltantes === 0) {
+                        container.innerHTML = '';
+                        sinDatos.style.display = 'block';
+                    } else {
+                        sinDatos.style.display = 'none';
+                        container.innerHTML = html;
+                    }
+
+                } catch (e) {
+                    console.log('Error al cargar proyectos:', e);
+                }
+            }
+
+            // ===== 2. COTIZACIONES =====
+            function cargarCotizaciones() {
+                try {
+                    var data = localStorage.getItem('cotizaciones');
+                    var cotizaciones = data ? JSON.parse(data) : [];
+                    var total = cotizaciones.length;
+                    document.getElementById('totalCotizaciones').textContent = total;
+                    document.getElementById('cotizacionesActivas').textContent = total;
+                } catch (e) {
+                    document.getElementById('totalCotizaciones').textContent = '0';
+                    document.getElementById('cotizacionesActivas').textContent = '0';
+                }
+            }
+
+            // ===== 3. HERRAMIENTAS =====
+            function cargarHerramientas() {
+                try {
+                    var dataHerramientas = localStorage.getItem('herramientas');
+                    var herramientas = dataHerramientas ? JSON.parse(dataHerramientas) : [];
+                    var total = herramientas.length;
+
+                    var dataProyectos = localStorage.getItem('proyectos');
+                    var proyectos = dataProyectos ? JSON.parse(dataProyectos) : [];
+                    
+                    var herramientasAsignadas = {};
+                    for (var i = 0; i < proyectos.length; i++) {
+                        if (proyectos[i].herramientasObra) {
+                            for (var j = 0; j < proyectos[i].herramientasObra.length; j++) {
+                                var herr = proyectos[i].herramientasObra[j];
+                                var nombreHerramienta = '';
+                                for (var k = 0; k < herramientas.length; k++) {
+                                    if (herramientas[k].id === herr.herramientaId) {
+                                        nombreHerramienta = herramientas[k].nombre || 'Herramienta #' + herr.herramientaId;
+                                        break;
+                                    }
+                                }
+                                herramientasAsignadas[herr.herramientaId] = {
+                                    nombre: nombreHerramienta || 'Herramienta #' + herr.herramientaId,
+                                    proyecto: proyectos[i].nombre || 'Proyecto #' + proyectos[i].id
+                                };
+                            }
+                        }
+                    }
+
+                    var asignadas = Object.keys(herramientasAsignadas).length;
+                    var disponibles = total - asignadas;
+
+                    document.getElementById('totalHerramientas').textContent = total;
+                    document.getElementById('herramientasAsignadas').textContent = asignadas;
+                    document.getElementById('herramientasDisponibles').textContent = disponibles;
+
+                    var container = document.getElementById('listaHerramientasObra');
+                    var sinDatos = document.getElementById('sinHerramientasObra');
+
+                    var listaHerramientas = Object.values(herramientasAsignadas);
+                    if (listaHerramientas.length === 0) {
+                        container.innerHTML = '';
+                        sinDatos.style.display = 'block';
+                    } else {
+                        sinDatos.style.display = 'none';
+                        var html = '';
+                        for (var m = 0; m < listaHerramientas.length; m++) {
+                            var h = listaHerramientas[m];
+                            html += '<div class="item-detalle">';
+                            html += '<div class="item-info">';
+                            html += '<strong>' + h.nombre + '</strong>';
+                            html += '<span class="item-sub">' + h.proyecto + '</span>';
+                            html += '</div>';
+                            html += '<div class="item-badge">';
+                            html += '<span class="badge-success">Asignada</span>';
+                            html += '</div>';
+                            html += '</div>';
+                        }
+                        container.innerHTML = html;
+                    }
+
+                } catch (e) {
+                    console.log('Error al cargar herramientas:', e);
+                }
+            }
+
+            // ===== 4. EMPLEADOS =====
+            function cargarEmpleados() {
+                try {
+                    var dataEmpleados = localStorage.getItem('empleados');
+                    var empleados = dataEmpleados ? JSON.parse(dataEmpleados) : [];
+                    var total = empleados.length;
+
+                    var dataProyectos = localStorage.getItem('proyectos');
+                    var proyectos = dataProyectos ? JSON.parse(dataProyectos) : [];
+                    
+                    var empleadosAsignados = {};
+                    for (var i = 0; i < proyectos.length; i++) {
+                        if (proyectos[i].herramientasObra) {
+                            for (var j = 0; j < proyectos[i].herramientasObra.length; j++) {
+                                var herr = proyectos[i].herramientasObra[j];
+                                if (herr.responsableId) {
+                                    var nombreEmpleado = '';
+                                    for (var k = 0; k < empleados.length; k++) {
+                                        if (empleados[k].id === herr.responsableId) {
+                                            nombreEmpleado = empleados[k].nombre || 'Empleado #' + herr.responsableId;
+                                            break;
+                                        }
+                                    }
+                                    empleadosAsignados[herr.responsableId] = {
+                                        nombre: nombreEmpleado || 'Empleado #' + herr.responsableId,
+                                        proyecto: proyectos[i].nombre || 'Proyecto #' + proyectos[i].id
+                                    };
+                                }
+                            }
+                        }
+                    }
+
+                    var enObra = Object.keys(empleadosAsignados).length;
+                    var disponibles = total - enObra;
+
+                    document.getElementById('totalEmpleados').textContent = total;
+                    document.getElementById('empleadosEnObra').textContent = enObra;
+                    document.getElementById('empleadosDisponibles').textContent = disponibles;
+
+                    var container = document.getElementById('listaEmpleadosObra');
+                    var sinDatos = document.getElementById('sinEmpleadosObra');
+
+                    var listaEmpleados = Object.values(empleadosAsignados);
+                    if (listaEmpleados.length === 0) {
+                        container.innerHTML = '';
+                        sinDatos.style.display = 'block';
+                    } else {
+                        sinDatos.style.display = 'none';
+                        var html = '';
+                        for (var m = 0; m < listaEmpleados.length; m++) {
+                            var e = listaEmpleados[m];
+                            html += '<div class="item-detalle">';
+                            html += '<div class="item-info">';
+                            html += '<strong>' + e.nombre + '</strong>';
+                            html += '<span class="item-sub">' + e.proyecto + '</span>';
+                            html += '</div>';
+                            html += '<div class="item-badge">';
+                            html += '<span class="badge-success">En obra</span>';
+                            html += '</div>';
+                            html += '</div>';
+                        }
+                        container.innerHTML = html;
+                    }
+
+                } catch (e) {
+                    console.log('Error al cargar empleados:', e);
+                }
+            }
+
+            // ===== ESCUCHAR CAMBIOS =====
+            window.addEventListener('storage', function(e) {
+                if (e.key === 'proyectos' || e.key === 'cotizaciones' || e.key === 'herramientas' || e.key === 'empleados') {
+                    cargarDashboard();
+                }
+            });
+
+            // ===== INICIALIZAR =====
+            document.addEventListener('DOMContentLoaded', function() {
+                guardarDatosUsuario();
+                cargarDashboard();
+            });
+        </script>
+    `
+}) %>

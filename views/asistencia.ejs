@@ -1,0 +1,327 @@
+<%- include('layouts/main', { 
+    title: 'Asistencia - Empleados',
+    usuario: 'Administrador',
+    body: `
+        <div class="page-header">
+            <h1>Gestión de Empleados</h1>
+            <button class="btn-primary" onclick="abrirModal()">
+                <i class="fas fa-user-plus"></i> Crear Empleado
+            </button>
+        </div>
+
+        <!-- Tabla de Empleados -->
+        <section class="table-container">
+            <table class="data-table" id="tablaEmpleados">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Nombre</th>
+                        <th>Cargo</th>
+                        <th>Costo Día</th>
+                        <th>Costo Mes</th>
+                        <th>Costo Hora</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="cuerpoTabla">
+                    <!-- Los datos se cargan con JavaScript -->
+                </tbody>
+            </table>
+            <div id="sinDatos" class="empty-state">
+                <i class="fas fa-users"></i>
+                <p>No hay empleados registrados</p>
+                <button class="btn-primary" onclick="abrirModal()">
+                    <i class="fas fa-user-plus"></i> Crear primer empleado
+                </button>
+            </div>
+        </section>
+
+        <!-- Modal para crear/editar empleado -->
+        <div id="modalEmpleado" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 id="modalTitulo">Nuevo Empleado</h2>
+                    <span class="close" onclick="cerrarModal()">&times;</span>
+                </div>
+                <form id="formEmpleado">
+                    <div class="form-group">
+                        <label for="nombre">Nombre completo *</label>
+                        <input type="text" id="nombre" placeholder="Ej: Juan Pérez" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="cargo">Cargo *</label>
+                        <input type="text" id="cargo" placeholder="Ej: Ingeniero Civil" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="costoDia">Costo por Día (COP) *</label>
+                        <input type="number" id="costoDia" placeholder="Ej: 80000" required oninput="calcularCostos()">
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group half">
+                            <label for="costoMes">Costo Mensual (COP)</label>
+                            <input type="text" id="costoMes" readonly style="background: var(--gray-100);">
+                        </div>
+                        <div class="form-group half">
+                            <label for="costoHora">Costo por Hora (COP)</label>
+                            <input type="text" id="costoHora" readonly style="background: var(--gray-100);">
+                        </div>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn-secondary" onclick="cerrarModal()">Cancelar</button>
+                        <button type="submit" class="btn-primary">Guardar Empleado</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Botón para borrar caché -->
+        <button class="btn-danger btn-cache" onclick="borrarCache()">
+            <i class="fas fa-trash"></i> Borrar Caché
+        </button>
+
+        <script>
+            // ===== VARIABLES GLOBALES =====
+            var empleados = [];
+            var editandoId = null;
+
+            // ===== CARGAR DATOS AL INICIAR =====
+            document.addEventListener('DOMContentLoaded', function() {
+                cargarEmpleados();
+            });
+
+            // ===== CALCULAR COSTOS =====
+            function calcularCostos() {
+                var costoDia = parseFloat(document.getElementById('costoDia').value) || 0;
+                var costoMes = costoDia * 30; // 30 días
+                var costoHora = costoDia / 8; // 8 horas por día
+                
+                document.getElementById('costoMes').value = '$' + Number(costoMes).toLocaleString('es-CO');
+                document.getElementById('costoHora').value = '$' + Number(costoHora).toLocaleString('es-CO');
+            }
+
+            // ===== FUNCIONES PRINCIPALES =====
+
+            // Cargar empleados desde localStorage
+            function cargarEmpleados() {
+                var data = localStorage.getItem('empleados');
+                if (data) {
+                    empleados = JSON.parse(data);
+                } else {
+                    empleados = [];
+                    guardarEmpleados();
+                }
+                renderizarTabla();
+            }
+
+            // Guardar empleados en localStorage
+            function guardarEmpleados() {
+                localStorage.setItem('empleados', JSON.stringify(empleados));
+                renderizarTabla();
+            }
+
+            // Renderizar la tabla
+            function renderizarTabla() {
+                var tbody = document.getElementById('cuerpoTabla');
+                var sinDatos = document.getElementById('sinDatos');
+                var tabla = document.getElementById('tablaEmpleados');
+
+                if (empleados.length === 0) {
+                    tbody.innerHTML = '';
+                    sinDatos.style.display = 'block';
+                    tabla.style.display = 'none';
+                    return;
+                }
+
+                sinDatos.style.display = 'none';
+                tabla.style.display = 'table';
+
+                var html = '';
+                for (var i = 0; i < empleados.length; i++) {
+                    var empleado = empleados[i];
+                    var costoDiaFormateado = '$' + Number(empleado.costoDia).toLocaleString('es-CO');
+                    var costoMesFormateado = '$' + Number(empleado.costoMes).toLocaleString('es-CO');
+                    var costoHoraFormateado = '$' + Number(empleado.costoHora).toLocaleString('es-CO');
+                    
+                    html += '<tr>';
+                    html += '<td><strong>' + empleado.id + '</strong></td>';
+                    html += '<td>' + empleado.nombre + '</td>';
+                    html += '<td>' + empleado.cargo + '</td>';
+                    html += '<td>' + costoDiaFormateado + '</td>';
+                    html += '<td>' + costoMesFormateado + '</td>';
+                    html += '<td>' + costoHoraFormateado + '</td>';
+                    html += '<td>';
+                    html += '<button class="btn-edit" onclick="editarEmpleado(' + empleado.id + ')">';
+                    html += '<i class="fas fa-edit"></i>';
+                    html += '</button>';
+                    html += '<button class="btn-delete" onclick="eliminarEmpleado(' + empleado.id + ')">';
+                    html += '<i class="fas fa-trash"></i>';
+                    html += '</button>';
+                    html += '</td>';
+                    html += '</tr>';
+                }
+                tbody.innerHTML = html;
+            }
+
+            // ===== MODAL =====
+
+            function abrirModal(empleado) {
+                var modal = document.getElementById('modalEmpleado');
+                var form = document.getElementById('formEmpleado');
+                var titulo = document.getElementById('modalTitulo');
+
+                if (empleado) {
+                    titulo.textContent = 'Editar Empleado';
+                    document.getElementById('nombre').value = empleado.nombre;
+                    document.getElementById('cargo').value = empleado.cargo;
+                    document.getElementById('costoDia').value = empleado.costoDia;
+                    editandoId = empleado.id;
+                    calcularCostos();
+                } else {
+                    titulo.textContent = 'Nuevo Empleado';
+                    form.reset();
+                    editandoId = null;
+                    document.getElementById('costoMes').value = '';
+                    document.getElementById('costoHora').value = '';
+                }
+
+                modal.style.display = 'flex';
+            }
+
+            function cerrarModal() {
+                document.getElementById('modalEmpleado').style.display = 'none';
+                document.getElementById('formEmpleado').reset();
+                editandoId = null;
+                document.getElementById('costoMes').value = '';
+                document.getElementById('costoHora').value = '';
+            }
+
+            // ===== CRUD =====
+
+            // Guardar empleado (crear o editar)
+            document.getElementById('formEmpleado').addEventListener('submit', function(e) {
+                e.preventDefault();
+
+                var nombre = document.getElementById('nombre').value.trim();
+                var cargo = document.getElementById('cargo').value.trim();
+                var costoDia = parseFloat(document.getElementById('costoDia').value.trim());
+
+                if (!nombre || !cargo || !costoDia) {
+                    alert('Por favor, completa todos los campos obligatorios (*)');
+                    return;
+                }
+
+                var costoMes = costoDia * 30;
+                var costoHora = costoDia / 8;
+
+                if (editandoId !== null) {
+                    var index = -1;
+                    for (var i = 0; i < empleados.length; i++) {
+                        if (empleados[i].id === editandoId) {
+                            index = i;
+                            break;
+                        }
+                    }
+                    if (index !== -1) {
+                        empleados[index] = { 
+                            id: editandoId, 
+                            nombre: nombre, 
+                            cargo: cargo, 
+                            costoDia: costoDia,
+                            costoMes: costoMes,
+                            costoHora: costoHora
+                        };
+                    }
+                } else {
+                    var nuevoId = 1;
+                    if (empleados.length > 0) {
+                        var maxId = 0;
+                        for (var j = 0; j < empleados.length; j++) {
+                            if (empleados[j].id > maxId) {
+                                maxId = empleados[j].id;
+                            }
+                        }
+                        nuevoId = maxId + 1;
+                    }
+                    empleados.push({ 
+                        id: nuevoId, 
+                        nombre: nombre, 
+                        cargo: cargo, 
+                        costoDia: costoDia,
+                        costoMes: costoMes,
+                        costoHora: costoHora
+                    });
+                }
+
+                guardarEmpleados();
+                cerrarModal();
+                var mensaje = editandoId !== null ? 'Empleado actualizado' : 'Empleado creado';
+                mostrarNotificacion(mensaje);
+                editandoId = null;
+            });
+
+            // Editar empleado
+            function editarEmpleado(id) {
+                var empleado = null;
+                for (var i = 0; i < empleados.length; i++) {
+                    if (empleados[i].id === id) {
+                        empleado = empleados[i];
+                        break;
+                    }
+                }
+                if (empleado) {
+                    abrirModal(empleado);
+                }
+            }
+
+            // Eliminar empleado
+            function eliminarEmpleado(id) {
+                if (confirm('¿Estás seguro de eliminar este empleado?')) {
+                    var nuevosEmpleados = [];
+                    for (var i = 0; i < empleados.length; i++) {
+                        if (empleados[i].id !== id) {
+                            nuevosEmpleados.push(empleados[i]);
+                        }
+                    }
+                    empleados = nuevosEmpleados;
+                    guardarEmpleados();
+                    mostrarNotificacion('Empleado eliminado');
+                }
+            }
+
+            // ===== BORRAR CACHÉ =====
+            function borrarCache() {
+                if (confirm('⚠️ ¿Estás seguro de borrar TODOS los datos guardados? Esta acción no se puede deshacer.')) {
+                    localStorage.clear();
+                    empleados = [];
+                    guardarEmpleados();
+                    mostrarNotificacion('🗑️ Caché borrada correctamente');
+                }
+            }
+
+            // ===== NOTIFICACIONES =====
+            function mostrarNotificacion(mensaje) {
+                var notificacion = document.createElement('div');
+                notificacion.className = 'notification';
+                notificacion.textContent = mensaje;
+                document.body.appendChild(notificacion);
+                setTimeout(function() {
+                    notificacion.classList.add('show');
+                }, 100);
+                setTimeout(function() {
+                    notificacion.classList.remove('show');
+                    setTimeout(function() {
+                        notificacion.remove();
+                    }, 300);
+                }, 3000);
+            }
+
+            // Cerrar modal al hacer clic fuera
+            window.onclick = function(event) {
+                var modal = document.getElementById('modalEmpleado');
+                if (event.target === modal) {
+                    cerrarModal();
+                }
+            };
+        </script>
+    `
+}) %>

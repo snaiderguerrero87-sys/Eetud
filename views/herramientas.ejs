@@ -1,0 +1,351 @@
+<%- include('layouts/main', { 
+    title: 'Listado de Herramientas',
+    usuario: 'Administrador',
+    body: `
+        <div class="page-header">
+            <h1>Listado de Herramientas</h1>
+            <button class="btn-primary" onclick="abrirModal()">
+                <i class="fas fa-plus"></i> Crear Herramienta
+            </button>
+        </div>
+
+        <!-- Tabla de Herramientas -->
+        <section class="table-container">
+            <table class="data-table" id="tablaHerramientas">
+                <thead>
+                    <tr>
+                        <th>Código</th>
+                        <th>Nombre</th>
+                        <th>Marca</th>
+                        <th>Ubicación</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="cuerpoTabla">
+                    <!-- Los datos se cargan con JavaScript -->
+                </tbody>
+            </table>
+            <div id="sinDatos" class="empty-state">
+                <i class="fas fa-tools"></i>
+                <p>No hay herramientas registradas</p>
+                <button class="btn-primary" onclick="abrirModal()">
+                    <i class="fas fa-plus"></i> Crear primera herramienta
+                </button>
+            </div>
+        </section>
+
+        <!-- Modal para crear herramienta (SIN ubicación) -->
+        <div id="modalHerramienta" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Nueva Herramienta</h2>
+                    <span class="close" onclick="cerrarModal()">&times;</span>
+                </div>
+                <form id="formHerramienta">
+                    <div class="form-group">
+                        <label for="codigo">Código *</label>
+                        <input type="text" id="codigo" placeholder="Ej: HER-001" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="nombre">Nombre *</label>
+                        <input type="text" id="nombre" placeholder="Ej: Taladro eléctrico" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="marca">Marca *</label>
+                        <input type="text" id="marca" placeholder="Ej: Bosch" required>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn-secondary" onclick="cerrarModal()">Cancelar</button>
+                        <button type="submit" class="btn-primary">Guardar Herramienta</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Botón para borrar caché -->
+        <button class="btn-danger btn-cache" onclick="borrarCache()">
+            <i class="fas fa-trash"></i> Borrar Caché
+        </button>
+
+        <script>
+            // ===== VARIABLES GLOBALES =====
+            var herramientas = [];
+            var editandoId = null;
+            var proyectosData = [];
+
+            // ===== FUNCIÓN PARA OBTENER UBICACIÓN DE HERRAMIENTA =====
+            function obtenerUbicacionHerramienta(herramientaId) {
+                var ubicacion = '';
+                try {
+                    var data = localStorage.getItem('proyectos');
+                    if (data) {
+                        proyectosData = JSON.parse(data);
+                        for (var i = 0; i < proyectosData.length; i++) {
+                            var proyecto = proyectosData[i];
+                            if (proyecto.herramientasObra) {
+                                for (var j = 0; j < proyecto.herramientasObra.length; j++) {
+                                    if (proyecto.herramientasObra[j].herramientaId === herramientaId) {
+                                        ubicacion = proyecto.nombre || 'Proyecto #' + proyecto.id;
+                                        break;
+                                    }
+                                }
+                            }
+                            if (ubicacion) break;
+                        }
+                    }
+                } catch (e) {
+                    proyectosData = [];
+                }
+                return ubicacion || '';
+            }
+
+            // ===== CARGAR DATOS AL INICIAR =====
+            document.addEventListener('DOMContentLoaded', function() {
+                cargarHerramientas();
+            });
+
+            // ===== FUNCIONES PRINCIPALES =====
+
+            function cargarHerramientas() {
+                var data = localStorage.getItem('herramientas');
+                if (data) {
+                    herramientas = JSON.parse(data);
+                } else {
+                    herramientas = [];
+                    guardarHerramientas();
+                }
+                actualizarUbicaciones();
+                renderizarTabla();
+            }
+
+            function actualizarUbicaciones() {
+                try {
+                    var data = localStorage.getItem('proyectos');
+                    if (data) {
+                        proyectosData = JSON.parse(data);
+                        var ubicacionMap = {};
+                        for (var i = 0; i < proyectosData.length; i++) {
+                            var proyecto = proyectosData[i];
+                            if (proyecto.herramientasObra) {
+                                for (var j = 0; j < proyecto.herramientasObra.length; j++) {
+                                    var herr = proyecto.herramientasObra[j];
+                                    ubicacionMap[herr.herramientaId] = proyecto.nombre || 'Proyecto #' + proyecto.id;
+                                }
+                            }
+                        }
+                        for (var k = 0; k < herramientas.length; k++) {
+                            var herrId = herramientas[k].id;
+                            if (ubicacionMap[herrId]) {
+                                herramientas[k].ubicacion = ubicacionMap[herrId];
+                            } else {
+                                herramientas[k].ubicacion = '';
+                            }
+                        }
+                        guardarHerramientas();
+                    }
+                } catch (e) {
+                    proyectosData = [];
+                }
+            }
+
+            function guardarHerramientas() {
+                localStorage.setItem('herramientas', JSON.stringify(herramientas));
+                renderizarTabla();
+            }
+
+            function renderizarTabla() {
+                var tbody = document.getElementById('cuerpoTabla');
+                var sinDatos = document.getElementById('sinDatos');
+                var tabla = document.getElementById('tablaHerramientas');
+
+                if (herramientas.length === 0) {
+                    tbody.innerHTML = '';
+                    sinDatos.style.display = 'block';
+                    tabla.style.display = 'none';
+                    return;
+                }
+
+                sinDatos.style.display = 'none';
+                tabla.style.display = 'table';
+
+                var html = '';
+                for (var i = 0; i < herramientas.length; i++) {
+                    var herramienta = herramientas[i];
+                    var ubicacionMostrar = herramienta.ubicacion || '-';
+                    var ubicacionHtml = ubicacionMostrar !== '-' 
+                        ? '<span class="ubicacion-asignada"><i class="fas fa-check-circle" style="color:var(--success);"></i> ' + ubicacionMostrar + '</span>' 
+                        : '<span class="ubicacion-vacia">-</span>';
+                    
+                    html += '<tr>';
+                    html += '<td><strong>' + herramienta.codigo + '</strong></td>';
+                    html += '<td>' + herramienta.nombre + '</td>';
+                    html += '<td>' + herramienta.marca + '</td>';
+                    html += '<td>' + ubicacionHtml + '</td>';
+                    html += '<td>';
+                    html += '<button class="btn-edit" onclick="editarHerramienta(' + herramienta.id + ')">';
+                    html += '<i class="fas fa-edit"></i>';
+                    html += '</button>';
+                    html += '<button class="btn-delete" onclick="eliminarHerramienta(' + herramienta.id + ')">';
+                    html += '<i class="fas fa-trash"></i>';
+                    html += '</button>';
+                    html += '</td>';
+                    html += '</tr>';
+                }
+                tbody.innerHTML = html;
+            }
+
+            // ===== MODAL =====
+
+            function abrirModal(herramienta) {
+                var modal = document.getElementById('modalHerramienta');
+                var form = document.getElementById('formHerramienta');
+                var titulo = modal.querySelector('.modal-header h2');
+
+                if (herramienta) {
+                    titulo.textContent = 'Editar Herramienta';
+                    document.getElementById('codigo').value = herramienta.codigo;
+                    document.getElementById('nombre').value = herramienta.nombre;
+                    document.getElementById('marca').value = herramienta.marca;
+                    editandoId = herramienta.id;
+                } else {
+                    titulo.textContent = 'Nueva Herramienta';
+                    form.reset();
+                    editandoId = null;
+                    var ultimo = herramientas.length > 0 ? herramientas[herramientas.length - 1] : null;
+                    var nuevoCodigo = 'HER-001';
+                    if (ultimo) {
+                        var num = parseInt(ultimo.codigo.split('-')[1]) + 1;
+                        nuevoCodigo = 'HER-' + String(num).padStart(3, '0');
+                    }
+                    document.getElementById('codigo').value = nuevoCodigo;
+                }
+
+                modal.style.display = 'flex';
+            }
+
+            function cerrarModal() {
+                document.getElementById('modalHerramienta').style.display = 'none';
+                document.getElementById('formHerramienta').reset();
+                editandoId = null;
+            }
+
+            // ===== CRUD =====
+
+            document.getElementById('formHerramienta').addEventListener('submit', function(e) {
+                e.preventDefault();
+
+                var codigo = document.getElementById('codigo').value.trim();
+                var nombre = document.getElementById('nombre').value.trim();
+                var marca = document.getElementById('marca').value.trim();
+
+                if (!codigo || !nombre || !marca) {
+                    alert('Por favor, completa todos los campos obligatorios (*)');
+                    return;
+                }
+
+                if (editandoId !== null) {
+                    var index = herramientas.findIndex(function(h) { return h.id === editandoId; });
+                    if (index !== -1) {
+                        herramientas[index] = { 
+                            id: editandoId, 
+                            codigo: codigo, 
+                            nombre: nombre, 
+                            marca: marca, 
+                            ubicacion: herramientas[index].ubicacion || ''
+                        };
+                    }
+                } else {
+                    var nuevoId = 1;
+                    if (herramientas.length > 0) {
+                        var ids = herramientas.map(function(h) { return h.id; });
+                        nuevoId = Math.max.apply(null, ids) + 1;
+                    }
+                    herramientas.push({ 
+                        id: nuevoId, 
+                        codigo: codigo, 
+                        nombre: nombre, 
+                        marca: marca, 
+                        ubicacion: ''
+                    });
+                }
+
+                guardarHerramientas();
+                cerrarModal();
+                if (editandoId !== null) {
+                    mostrarNotificacion('Herramienta actualizada');
+                } else {
+                    mostrarNotificacion('Herramienta creada');
+                }
+                editandoId = null;
+            });
+
+            function editarHerramienta(id) {
+                var herramienta = null;
+                for (var i = 0; i < herramientas.length; i++) {
+                    if (herramientas[i].id === id) {
+                        herramienta = herramientas[i];
+                        break;
+                    }
+                }
+                if (herramienta) {
+                    abrirModal(herramienta);
+                }
+            }
+
+            function eliminarHerramienta(id) {
+                if (confirm('¿Estás seguro de eliminar esta herramienta?')) {
+                    var nuevasHerramientas = [];
+                    for (var i = 0; i < herramientas.length; i++) {
+                        if (herramientas[i].id !== id) {
+                            nuevasHerramientas.push(herramientas[i]);
+                        }
+                    }
+                    herramientas = nuevasHerramientas;
+                    guardarHerramientas();
+                    mostrarNotificacion('Herramienta eliminada');
+                }
+            }
+
+            // ===== BORRAR CACHÉ =====
+            function borrarCache() {
+                if (confirm('⚠️ ¿Estás seguro de borrar TODOS los datos guardados? Esta acción no se puede deshacer.')) {
+                    localStorage.clear();
+                    herramientas = [];
+                    guardarHerramientas();
+                    mostrarNotificacion('🗑️ Caché borrada correctamente');
+                }
+            }
+
+            // ===== NOTIFICACIONES =====
+            function mostrarNotificacion(mensaje) {
+                var notificacion = document.createElement('div');
+                notificacion.className = 'notification';
+                notificacion.textContent = mensaje;
+                document.body.appendChild(notificacion);
+                setTimeout(function() {
+                    notificacion.classList.add('show');
+                }, 100);
+                setTimeout(function() {
+                    notificacion.classList.remove('show');
+                    setTimeout(function() {
+                        notificacion.remove();
+                    }, 300);
+                }, 3000);
+            }
+
+            // Cerrar modal al hacer clic fuera
+            window.onclick = function(event) {
+                var modal = document.getElementById('modalHerramienta');
+                if (event.target === modal) {
+                    cerrarModal();
+                }
+            };
+
+            // ===== FUNCIÓN PARA ACTUALIZAR DESDE PROYECTOS =====
+            window.actualizarUbicacionesHerramientas = function() {
+                actualizarUbicaciones();
+                renderizarTabla();
+            };
+        </script>
+    `
+}) %>

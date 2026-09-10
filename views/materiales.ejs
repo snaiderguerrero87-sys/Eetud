@@ -1,0 +1,510 @@
+<%- include('layouts/main', { 
+    title: 'Listado de Materiales',
+    usuario: usuario,
+    body: `
+        <div class="page-header">
+            <h1>Listado de Materiales</h1>
+            <div style="display:flex; gap:12px; flex-wrap:wrap;">
+                <button class="btn-primary" onclick="abrirModal()">
+                    <i class="fas fa-plus"></i> Crear Material
+                </button>
+                <button class="btn-secondary" onclick="abrirModalImportar()" style="background:var(--gray-100); border:1px solid var(--gray-200);">
+                    <i class="fas fa-file-import"></i> Importar Listado
+                </button>
+            </div>
+        </div>
+
+        <section class="table-container">
+            <table class="data-table" id="tablaMateriales">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Nombre</th>
+                        <th>Proveedor</th>
+                        <th>Unidad</th>
+                        <th>Precio Unitario</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="cuerpoTabla">
+                    <!-- Los datos se cargan con JavaScript -->
+                </tbody>
+            </table>
+            <div id="sinDatos" class="empty-state">
+                <i class="fas fa-cubes"></i>
+                <p>No hay materiales registrados</p>
+                <button class="btn-primary" onclick="abrirModal()">
+                    <i class="fas fa-plus"></i> Crear primer material
+                </button>
+            </div>
+        </section>
+
+        <!-- Modal para crear/editar material -->
+        <div id="modalMaterial" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 id="modalTitulo">Nuevo Material</h2>
+                    <span class="close" onclick="cerrarModal()">&times;</span>
+                </div>
+                <form id="formMaterial">
+                    <div class="form-group">
+                        <label for="nombre">Nombre del Material *</label>
+                        <input type="text" id="nombre" placeholder="Ej: Cemento Gris" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="proveedor">Proveedor *</label>
+                        <input type="text" id="proveedor" placeholder="Ej: Cementos Argos" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="unidad">Unidad *</label>
+                        <input type="text" id="unidad" placeholder="Ej: Und, m3, kg, ml" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="precio">Precio Unitario (COP) *</label>
+                        <input type="number" id="precio" placeholder="Ej: 25000" required>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn-secondary" onclick="cerrarModal()">Cancelar</button>
+                        <button type="submit" class="btn-primary">Guardar Material</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Modal para importar materiales -->
+        <div id="modalImportar" class="modal">
+            <div class="modal-content" style="max-width:500px;">
+                <div class="modal-header">
+                    <h2><i class="fas fa-file-import"></i> Importar Materiales</h2>
+                    <span class="close" onclick="cerrarModalImportar()">&times;</span>
+                </div>
+                <div style="padding: 10px 0;">
+                    <p style="color: var(--gray-600); margin-bottom: 16px;">
+                        Descarga el formato Excel, completa los datos y luego impórtalo.
+                    </p>
+                    
+                    <div style="display:flex; gap:12px; flex-wrap:wrap; justify-content:center;">
+                        <button class="btn-primary" onclick="descargarFormato()" style="flex:1; min-width:150px;">
+                            <i class="fas fa-download"></i> Descargar Formato
+                        </button>
+                        <button class="btn-secondary" onclick="document.getElementById('fileInputImportar').click()" style="flex:1; min-width:150px; background:var(--gray-100); border:1px solid var(--gray-200);">
+                            <i class="fas fa-upload"></i> Importar Archivo
+                        </button>
+                        <input type="file" id="fileInputImportar" accept=".xlsx,.xls" style="display:none;" onchange="procesarImportacion(event)">
+                    </div>
+                    
+                    <div id="importarProgreso" style="display:none; margin-top:16px; padding:12px; background:var(--gray-50); border-radius:8px; text-align:center;">
+                        <span id="importarMensaje">Procesando archivo...</span>
+                    </div>
+                    
+                    <div id="importarResultado" style="display:none; margin-top:16px; padding:12px; border-radius:8px;">
+                        <!-- Se muestra con JavaScript -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Botón para borrar caché -->
+        <button class="btn-danger btn-cache" onclick="borrarCache()">
+            <i class="fas fa-trash"></i> Borrar Caché
+        </button>
+
+        <script>
+            // ===== VARIABLES GLOBALES =====
+            var materiales = [];
+            var editandoId = null;
+
+            // ===== CARGAR DATOS AL INICIAR =====
+            document.addEventListener('DOMContentLoaded', function() {
+                cargarMateriales();
+            });
+
+            // ===== FUNCIONES PRINCIPALES =====
+
+            function cargarMateriales() {
+                var data = localStorage.getItem('materiales');
+                if (data) {
+                    materiales = JSON.parse(data);
+                } else {
+                    materiales = [];
+                    guardarMateriales();
+                }
+                renderizarTabla();
+            }
+
+            function guardarMateriales() {
+                localStorage.setItem('materiales', JSON.stringify(materiales));
+                renderizarTabla();
+            }
+
+            function renderizarTabla() {
+                var tbody = document.getElementById('cuerpoTabla');
+                var sinDatos = document.getElementById('sinDatos');
+                var tabla = document.getElementById('tablaMateriales');
+
+                if (materiales.length === 0) {
+                    tbody.innerHTML = '';
+                    sinDatos.style.display = 'block';
+                    tabla.style.display = 'none';
+                    return;
+                }
+
+                sinDatos.style.display = 'none';
+                tabla.style.display = 'table';
+
+                var html = '';
+                for (var i = 0; i < materiales.length; i++) {
+                    var material = materiales[i];
+                    var precioFormateado = '$' + Number(material.precio).toLocaleString('es-CO');
+                    html += '<tr>';
+                    html += '<td><strong>' + material.id + '</strong></td>';
+                    html += '<td>' + material.nombre + '</td>';
+                    html += '<td>' + material.proveedor + '</td>';
+                    html += '<td>' + (material.unidad || '-') + '</td>';
+                    html += '<td>' + precioFormateado + '</td>';
+                    html += '<td>';
+                    html += '<button class="btn-edit" onclick="editarMaterial(' + material.id + ')">';
+                    html += '<i class="fas fa-edit"></i>';
+                    html += '</button>';
+                    html += '<button class="btn-delete" onclick="eliminarMaterial(' + material.id + ')">';
+                    html += '<i class="fas fa-trash"></i>';
+                    html += '</button>';
+                    html += '</td>';
+                    html += '</tr>';
+                }
+                tbody.innerHTML = html;
+            }
+
+            // ===== MODAL =====
+
+            function abrirModal(material) {
+                var modal = document.getElementById('modalMaterial');
+                var form = document.getElementById('formMaterial');
+                var titulo = document.getElementById('modalTitulo');
+
+                if (material) {
+                    titulo.textContent = 'Editar Material';
+                    document.getElementById('nombre').value = material.nombre;
+                    document.getElementById('proveedor').value = material.proveedor;
+                    document.getElementById('unidad').value = material.unidad || '';
+                    document.getElementById('precio').value = material.precio;
+                    editandoId = material.id;
+                } else {
+                    titulo.textContent = 'Nuevo Material';
+                    form.reset();
+                    editandoId = null;
+                }
+
+                modal.style.display = 'flex';
+            }
+
+            function cerrarModal() {
+                document.getElementById('modalMaterial').style.display = 'none';
+                document.getElementById('formMaterial').reset();
+                editandoId = null;
+            }
+
+            // ===== CRUD =====
+
+            document.getElementById('formMaterial').addEventListener('submit', function(e) {
+                e.preventDefault();
+
+                var nombre = document.getElementById('nombre').value.trim();
+                var proveedor = document.getElementById('proveedor').value.trim();
+                var unidad = document.getElementById('unidad').value.trim();
+                var precio = parseFloat(document.getElementById('precio').value.trim());
+
+                if (!nombre || !proveedor || !unidad || !precio) {
+                    alert('Por favor, completa todos los campos obligatorios (*)');
+                    return;
+                }
+
+                if (editandoId !== null) {
+                    var index = -1;
+                    for (var i = 0; i < materiales.length; i++) {
+                        if (materiales[i].id === editandoId) {
+                            index = i;
+                            break;
+                        }
+                    }
+                    if (index !== -1) {
+                        materiales[index] = { 
+                            id: editandoId, 
+                            nombre: nombre, 
+                            proveedor: proveedor,
+                            unidad: unidad,
+                            precio: precio
+                        };
+                    }
+                } else {
+                    var nuevoId = 1;
+                    if (materiales.length > 0) {
+                        var maxId = 0;
+                        for (var j = 0; j < materiales.length; j++) {
+                            if (materiales[j].id > maxId) {
+                                maxId = materiales[j].id;
+                            }
+                        }
+                        nuevoId = maxId + 1;
+                    }
+                    materiales.push({ 
+                        id: nuevoId, 
+                        nombre: nombre, 
+                        proveedor: proveedor,
+                        unidad: unidad,
+                        precio: precio
+                    });
+                }
+
+                guardarMateriales();
+                cerrarModal();
+                var mensaje = editandoId !== null ? 'Material actualizado' : 'Material creado';
+                mostrarNotificacion(mensaje);
+                editandoId = null;
+            });
+
+            function editarMaterial(id) {
+                var material = null;
+                for (var i = 0; i < materiales.length; i++) {
+                    if (materiales[i].id === id) {
+                        material = materiales[i];
+                        break;
+                    }
+                }
+                if (material) {
+                    abrirModal(material);
+                }
+            }
+
+            function eliminarMaterial(id) {
+                if (confirm('¿Estás seguro de eliminar este material?')) {
+                    var nuevosMateriales = [];
+                    for (var i = 0; i < materiales.length; i++) {
+                        if (materiales[i].id !== id) {
+                            nuevosMateriales.push(materiales[i]);
+                        }
+                    }
+                    materiales = nuevosMateriales;
+                    guardarMateriales();
+                    mostrarNotificacion('Material eliminado');
+                }
+            }
+
+            // ============================================================
+            // ===== IMPORTAR MATERIALES =====
+            // ============================================================
+
+            function abrirModalImportar() {
+                document.getElementById('modalImportar').style.display = 'flex';
+                document.getElementById('importarResultado').style.display = 'none';
+                document.getElementById('importarProgreso').style.display = 'none';
+                document.getElementById('fileInputImportar').value = '';
+            }
+
+            function cerrarModalImportar() {
+                document.getElementById('modalImportar').style.display = 'none';
+            }
+
+            function descargarFormato() {
+                var notificacion = document.createElement('div');
+                notificacion.className = 'notification';
+                notificacion.textContent = '⏳ Generando formato...';
+                document.body.appendChild(notificacion);
+                setTimeout(function() { notificacion.classList.add('show'); }, 100);
+                
+                fetch('/api/materiales/exportar-formato')
+                    .then(function(response) {
+                        if (!response.ok) {
+                            throw new Error('Error al descargar formato');
+                        }
+                        return response.blob();
+                    })
+                    .then(function(blob) {
+                        var url = window.URL.createObjectURL(blob);
+                        var a = document.createElement('a');
+                        a.href = url;
+                        a.download = 'formato_materiales.xlsx';
+                        document.body.appendChild(a);
+                        a.click();
+                        window.URL.revokeObjectURL(url);
+                        a.remove();
+                        notificacion.classList.remove('show');
+                        setTimeout(function() { notificacion.remove(); }, 300);
+                        mostrarNotificacion('✅ Formato descargado');
+                    })
+                    .catch(function(error) {
+                        notificacion.classList.remove('show');
+                        setTimeout(function() { notificacion.remove(); }, 300);
+                        mostrarNotificacion('❌ Error: ' + error.message);
+                    });
+            }
+
+            function procesarImportacion(event) {
+                var file = event.target.files[0];
+                if (!file) return;
+                
+                var progress = document.getElementById('importarProgreso');
+                var mensaje = document.getElementById('importarMensaje');
+                var resultado = document.getElementById('importarResultado');
+                
+                progress.style.display = 'block';
+                mensaje.textContent = '⏳ Leyendo archivo...';
+                resultado.style.display = 'none';
+                
+                var reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        var base64 = e.target.result.split(',')[1];
+                        mensaje.textContent = '⏳ Enviando al servidor...';
+                        
+                        fetch('/api/materiales/importar', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({ file: base64 })
+                        })
+                        .then(function(response) { return response.json(); })
+                        .then(function(data) {
+                            if (data.success) {
+                                var materialesExistentes = JSON.parse(localStorage.getItem('materiales') || '[]');
+                                
+                                var maxId = 0;
+                                for (var i = 0; i < materialesExistentes.length; i++) {
+                                    if (materialesExistentes[i].id > maxId) {
+                                        maxId = materialesExistentes[i].id;
+                                    }
+                                }
+                                
+                                var contador = 0;
+                                
+                                for (var j = 0; j < data.materiales.length; j++) {
+                                    var material = data.materiales[j];
+                                    var existe = false;
+                                    
+                                    if (material.id) {
+                                        for (var k = 0; k < materialesExistentes.length; k++) {
+                                            if (materialesExistentes[k].id === material.id) {
+                                                materialesExistentes[k].nombre = material.nombre;
+                                                materialesExistentes[k].proveedor = material.proveedor;
+                                                materialesExistentes[k].unidad = material.unidad;
+                                                materialesExistentes[k].precio = material.precio;
+                                                existe = true;
+                                                contador++;
+                                                break;
+                                            }
+                                        }
+                                    }
+                                    
+                                    if (!existe) {
+                                        maxId++;
+                                        material.id = maxId;
+                                        materialesExistentes.push(material);
+                                        contador++;
+                                    }
+                                }
+                                
+                                localStorage.setItem('materiales', JSON.stringify(materialesExistentes));
+                                cargarMateriales();
+                                renderizarTabla();
+                                
+                                resultado.style.display = 'block';
+                                resultado.style.background = '#d1fae5';
+                                resultado.style.color = '#065f46';
+                                resultado.innerHTML = '<strong>✅ Importación exitosa!</strong><br>' + 
+                                    'Se importaron/actualizaron ' + contador + ' materiales.';
+                                
+                                progress.style.display = 'none';
+                                mostrarNotificacion('✅ Materiales importados: ' + contador);
+                                
+                                setTimeout(function() {
+                                    cerrarModalImportar();
+                                }, 2000);
+                                
+                            } else if (data.error) {
+                                resultado.style.display = 'block';
+                                resultado.style.background = '#fee2e2';
+                                resultado.style.color = '#991b1b';
+                                
+                                var errorMsg = '<strong>❌ Error:</strong> ' + data.error;
+                                if (data.detalles && data.detalles.length > 0) {
+                                    errorMsg += '<br><ul style="margin-top:8px; padding-left:20px;">';
+                                    for (var l = 0; l < data.detalles.length; l++) {
+                                        errorMsg += '<li>' + data.detalles[l] + '</li>';
+                                    }
+                                    errorMsg += '</ul>';
+                                }
+                                resultado.innerHTML = errorMsg;
+                                progress.style.display = 'none';
+                            }
+                        })
+                        .catch(function(error) {
+                            resultado.style.display = 'block';
+                            resultado.style.background = '#fee2e2';
+                            resultado.style.color = '#991b1b';
+                            resultado.innerHTML = '<strong>❌ Error:</strong> ' + error.message;
+                            progress.style.display = 'none';
+                        });
+                        
+                    } catch (error) {
+                        resultado.style.display = 'block';
+                        resultado.style.background = '#fee2e2';
+                        resultado.style.color = '#991b1b';
+                        resultado.innerHTML = '<strong>❌ Error:</strong> ' + error.message;
+                        progress.style.display = 'none';
+                    }
+                };
+                
+                reader.readAsDataURL(file);
+            }
+
+            // ============================================================
+            // ===== BORRAR CACHÉ =====
+            // ============================================================
+
+            function borrarCache() {
+                if (confirm('⚠️ ¿Estás seguro de borrar TODOS los datos guardados? Esta acción no se puede deshacer.')) {
+                    localStorage.clear();
+                    materiales = [];
+                    guardarMateriales();
+                    mostrarNotificacion('🗑️ Caché borrada correctamente');
+                }
+            }
+
+            // ============================================================
+            // ===== NOTIFICACIONES =====
+            // ============================================================
+
+            function mostrarNotificacion(mensaje) {
+                var notificacion = document.createElement('div');
+                notificacion.className = 'notification';
+                notificacion.textContent = mensaje;
+                document.body.appendChild(notificacion);
+                setTimeout(function() {
+                    notificacion.classList.add('show');
+                }, 100);
+                setTimeout(function() {
+                    notificacion.classList.remove('show');
+                    setTimeout(function() {
+                        notificacion.remove();
+                    }, 300);
+                }, 3000);
+            }
+
+            // ============================================================
+            // ===== CERRAR MODAL AL HACER CLICK FUERA =====
+            // ============================================================
+
+            window.onclick = function(event) {
+                var modal = document.getElementById('modalMaterial');
+                if (event.target === modal) {
+                    cerrarModal();
+                }
+                var modalImportar = document.getElementById('modalImportar');
+                if (event.target === modalImportar) {
+                    cerrarModalImportar();
+                }
+            };
+        </script>
+    `
+}) %>
