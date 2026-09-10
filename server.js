@@ -357,7 +357,6 @@ app.get('/api/ping', (req, res) => {
 // ===== HERRAMIENTAS (MYSQL - POR USUARIO) =====
 // ============================================================
 
-// Listar todas las herramientas del usuario
 app.get('/api/herramientas', verificarAutenticacionApi, async (req, res) => {
     try {
         const usuarioId = req.session.usuario.id;
@@ -372,7 +371,6 @@ app.get('/api/herramientas', verificarAutenticacionApi, async (req, res) => {
     }
 });
 
-// Obtener una herramienta específica
 app.get('/api/herramientas/:id', verificarAutenticacionApi, async (req, res) => {
     try {
         const usuarioId = req.session.usuario.id;
@@ -389,7 +387,6 @@ app.get('/api/herramientas/:id', verificarAutenticacionApi, async (req, res) => 
     }
 });
 
-// Crear herramienta
 app.post('/api/herramientas', verificarAutenticacionApi, async (req, res) => {
     try {
         const usuarioId = req.session.usuario.id;
@@ -404,7 +401,6 @@ app.post('/api/herramientas', verificarAutenticacionApi, async (req, res) => {
             [usuarioId, codigo, nombre, marca, '']
         );
 
-        console.log(`✅ Herramienta creada ID ${result.insertId} para usuario ${usuarioId}`);
         res.json({ success: true, id: result.insertId });
     } catch (error) {
         console.error('❌ Error al crear herramienta:', error);
@@ -412,7 +408,6 @@ app.post('/api/herramientas', verificarAutenticacionApi, async (req, res) => {
     }
 });
 
-// Actualizar herramienta
 app.put('/api/herramientas/:id', verificarAutenticacionApi, async (req, res) => {
     try {
         const usuarioId = req.session.usuario.id;
@@ -433,7 +428,6 @@ app.put('/api/herramientas/:id', verificarAutenticacionApi, async (req, res) => 
     }
 });
 
-// Eliminar herramienta
 app.delete('/api/herramientas/:id', verificarAutenticacionApi, async (req, res) => {
     try {
         const usuarioId = req.session.usuario.id;
@@ -457,7 +451,6 @@ app.delete('/api/herramientas/:id', verificarAutenticacionApi, async (req, res) 
 // ===== EMPLEADOS (MYSQL - POR USUARIO) =====
 // ============================================================
 
-// Listar todos los empleados del usuario
 app.get('/api/empleados', verificarAutenticacionApi, async (req, res) => {
     try {
         const usuarioId = req.session.usuario.id;
@@ -472,7 +465,6 @@ app.get('/api/empleados', verificarAutenticacionApi, async (req, res) => {
     }
 });
 
-// Obtener un empleado específico
 app.get('/api/empleados/:id', verificarAutenticacionApi, async (req, res) => {
     try {
         const usuarioId = req.session.usuario.id;
@@ -489,7 +481,6 @@ app.get('/api/empleados/:id', verificarAutenticacionApi, async (req, res) => {
     }
 });
 
-// Crear empleado
 app.post('/api/empleados', verificarAutenticacionApi, async (req, res) => {
     try {
         const usuarioId = req.session.usuario.id;
@@ -508,7 +499,6 @@ app.post('/api/empleados', verificarAutenticacionApi, async (req, res) => {
             [usuarioId, nombre, cargo, costoDiaNum, costoMes, costoHora]
         );
 
-        console.log(`✅ Empleado creado ID ${result.insertId} para usuario ${usuarioId}`);
         res.json({ success: true, id: result.insertId });
     } catch (error) {
         console.error('❌ Error al crear empleado:', error);
@@ -516,7 +506,6 @@ app.post('/api/empleados', verificarAutenticacionApi, async (req, res) => {
     }
 });
 
-// Actualizar empleado
 app.put('/api/empleados/:id', verificarAutenticacionApi, async (req, res) => {
     try {
         const usuarioId = req.session.usuario.id;
@@ -541,7 +530,6 @@ app.put('/api/empleados/:id', verificarAutenticacionApi, async (req, res) => {
     }
 });
 
-// Eliminar empleado
 app.delete('/api/empleados/:id', verificarAutenticacionApi, async (req, res) => {
     try {
         const usuarioId = req.session.usuario.id;
@@ -558,6 +546,216 @@ app.delete('/api/empleados/:id', verificarAutenticacionApi, async (req, res) => 
     } catch (error) {
         console.error('❌ Error al eliminar empleado:', error);
         res.status(500).json({ error: 'Error al eliminar empleado' });
+    }
+});
+
+// ============================================================
+// ===== MATERIALES (MYSQL - POR USUARIO) =====
+// ============================================================
+
+app.get('/api/materiales', verificarAutenticacionApi, async (req, res) => {
+    try {
+        const usuarioId = req.session.usuario.id;
+        const [rows] = await pool.query(
+            'SELECT id, nombre, proveedor, unidad, precio FROM materiales WHERE usuario_id = ? ORDER BY id DESC',
+            [usuarioId]
+        );
+        res.json(rows);
+    } catch (error) {
+        console.error('❌ Error al listar materiales:', error);
+        res.status(500).json({ error: 'Error al listar materiales' });
+    }
+});
+
+app.get('/api/materiales/:id', verificarAutenticacionApi, async (req, res) => {
+    try {
+        const usuarioId = req.session.usuario.id;
+        const id = parseInt(req.params.id);
+        const [rows] = await pool.query(
+            'SELECT * FROM materiales WHERE id = ? AND usuario_id = ? LIMIT 1',
+            [id, usuarioId]
+        );
+        if (rows.length === 0) return res.status(404).json({ error: 'Material no encontrado' });
+        res.json(rows[0]);
+    } catch (error) {
+        console.error('❌ Error al obtener material:', error);
+        res.status(500).json({ error: 'Error al obtener material' });
+    }
+});
+
+app.post('/api/materiales', verificarAutenticacionApi, async (req, res) => {
+    try {
+        const usuarioId = req.session.usuario.id;
+        const { nombre, proveedor, unidad, precio } = req.body;
+
+        if (!nombre || !proveedor || !unidad || !precio) {
+            return res.status(400).json({ error: 'Todos los campos son obligatorios' });
+        }
+
+        const precioNum = parseFloat(precio);
+
+        const [result] = await pool.query(
+            'INSERT INTO materiales (usuario_id, nombre, proveedor, unidad, precio) VALUES (?, ?, ?, ?, ?)',
+            [usuarioId, nombre, proveedor, unidad, precioNum]
+        );
+
+        res.json({ success: true, id: result.insertId });
+    } catch (error) {
+        console.error('❌ Error al crear material:', error);
+        res.status(500).json({ error: 'Error al crear material' });
+    }
+});
+
+app.put('/api/materiales/:id', verificarAutenticacionApi, async (req, res) => {
+    try {
+        const usuarioId = req.session.usuario.id;
+        const id = parseInt(req.params.id);
+        const { nombre, proveedor, unidad, precio } = req.body;
+
+        const precioNum = parseFloat(precio);
+
+        const [result] = await pool.query(
+            'UPDATE materiales SET nombre = ?, proveedor = ?, unidad = ?, precio = ? WHERE id = ? AND usuario_id = ?',
+            [nombre, proveedor, unidad, precioNum, id, usuarioId]
+        );
+
+        if (result.affectedRows === 0) return res.status(404).json({ error: 'Material no encontrado' });
+
+        res.json({ success: true });
+    } catch (error) {
+        console.error('❌ Error al actualizar material:', error);
+        res.status(500).json({ error: 'Error al actualizar material' });
+    }
+});
+
+app.delete('/api/materiales/:id', verificarAutenticacionApi, async (req, res) => {
+    try {
+        const usuarioId = req.session.usuario.id;
+        const id = parseInt(req.params.id);
+
+        const [result] = await pool.query(
+            'DELETE FROM materiales WHERE id = ? AND usuario_id = ?',
+            [id, usuarioId]
+        );
+
+        if (result.affectedRows === 0) return res.status(404).json({ error: 'Material no encontrado' });
+
+        res.json({ success: true });
+    } catch (error) {
+        console.error('❌ Error al eliminar material:', error);
+        res.status(500).json({ error: 'Error al eliminar material' });
+    }
+});
+
+// ============================================================
+// ===== MATERIALES - EXPORTAR FORMATO =====
+// ============================================================
+
+app.get('/api/materiales/exportar-formato', verificarAutenticacionApi, (req, res) => {
+    try {
+        const XLSX = require('xlsx');
+        const wb = XLSX.utils.book_new();
+        const data = [
+            ['ID', 'Nombre', 'Proveedor', 'Unidad', 'Precio Unitario'],
+            ['1', 'Cemento Gris', 'Cementos Argos', 'Und', '25000'],
+            ['2', 'Arena Fina', 'Cantera La Nueva', 'm3', '12000'],
+            ['3', 'Bloque #4', 'Bloquera El Sol', 'Und', '3000']
+        ];
+        const ws = XLSX.utils.aoa_to_sheet(data);
+        XLSX.utils.book_append_sheet(wb, ws, 'Materiales');
+        const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', 'attachment; filename=formato_materiales.xlsx');
+        res.send(buffer);
+    } catch (error) {
+        res.status(500).json({ error: 'Error al exportar formato' });
+    }
+});
+
+// ============================================================
+// ===== MATERIALES - IMPORTAR DESDE EXCEL =====
+// ============================================================
+
+app.post('/api/materiales/importar', verificarAutenticacionApi, (req, res) => {
+    try {
+        const XLSX = require('xlsx');
+        const { file } = req.body;
+        if (!file) return res.status(400).json({ error: 'No se recibió el archivo' });
+
+        const buffer = Buffer.from(file, 'base64');
+        const workbook = XLSX.read(buffer, { type: 'buffer' });
+        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+        const data = XLSX.utils.sheet_to_json(worksheet);
+
+        if (data.length === 0) return res.status(400).json({ error: 'El archivo está vacío' });
+
+        const headers = Object.keys(data[0]);
+        const requiredHeaders = ['Nombre', 'Proveedor', 'Unidad', 'Precio Unitario'];
+        const missingHeaders = requiredHeaders.filter(h => !headers.includes(h));
+        if (missingHeaders.length > 0) {
+            return res.status(400).json({ error: `Faltan columnas: ${missingHeaders.join(', ')}` });
+        }
+
+        const materiales = [];
+        let errores = [];
+
+        for (let i = 0; i < data.length; i++) {
+            const row = data[i];
+            const nombre = String(row['Nombre'] || '').trim();
+            const proveedor = String(row['Proveedor'] || '').trim();
+            const unidad = String(row['Unidad'] || '').trim();
+            const precio = parseFloat(String(row['Precio Unitario'] || '0').replace(/[$,.]/g, '').trim());
+
+            if (!nombre || !proveedor || !unidad || isNaN(precio) || precio <= 0) {
+                errores.push(`Fila ${i + 2}: Datos inválidos`);
+                continue;
+            }
+            let id = parseInt(row['ID'] || '0');
+            if (isNaN(id) || id <= 0) id = null;
+            materiales.push({ id, nombre, proveedor, unidad, precio });
+        }
+
+        if (errores.length > 0) {
+            return res.status(400).json({ error: 'Errores en el archivo', detalles: errores, materiales });
+        }
+
+        res.json({ success: true, materiales, message: `Se validaron ${materiales.length} materiales` });
+    } catch (error) {
+        res.status(500).json({ error: 'Error al importar: ' + error.message });
+    }
+});
+
+// ============================================================
+// ===== MATERIALES - IMPORTAR LOTE (GUARDAR EN MYSQL) =====
+// ============================================================
+
+app.post('/api/materiales/importar-lote', verificarAutenticacionApi, async (req, res) => {
+    try {
+        const usuarioId = req.session.usuario.id;
+        const { materiales } = req.body;
+
+        if (!Array.isArray(materiales) || materiales.length === 0) {
+            return res.status(400).json({ error: 'No hay materiales para importar' });
+        }
+
+        const values = materiales.map(m => [
+            usuarioId,
+            m.nombre || '',
+            m.proveedor || '',
+            m.unidad || '',
+            parseFloat(m.precio) || 0
+        ]);
+
+        await pool.query(
+            'INSERT INTO materiales (usuario_id, nombre, proveedor, unidad, precio) VALUES ?',
+            [values]
+        );
+
+        console.log(`✅ ${materiales.length} materiales importados para usuario ${usuarioId}`);
+        res.json({ success: true, message: `${materiales.length} materiales importados` });
+    } catch (error) {
+        console.error('❌ Error al importar materiales en lote:', error);
+        res.status(500).json({ error: 'Error al importar materiales' });
     }
 });
 
@@ -1368,91 +1566,6 @@ app.post('/api/cotizacion-pdf', verificarAutenticacion, async (req, res) => {
         doc.end();
     } catch (error) {
         res.status(500).json({ error: 'Error al generar el PDF: ' + error.message });
-    }
-});
-
-// ============================================================
-// ===== MATERIALES =====
-// ============================================================
-
-app.get('/api/materiales/exportar-formato', verificarAutenticacion, (req, res) => {
-    try {
-        const XLSX = require('xlsx');
-        const wb = XLSX.utils.book_new();
-        const data = [
-            ['ID', 'Nombre', 'Proveedor', 'Unidad', 'Precio Unitario'],
-            ['1', 'Cemento Gris', 'Cementos Argos', 'Und', '25000'],
-            ['2', 'Arena Fina', 'Cantera La Nueva', 'm3', '12000'],
-            ['3', 'Bloque #4', 'Bloquera El Sol', 'Und', '3000']
-        ];
-        const ws = XLSX.utils.aoa_to_sheet(data);
-        XLSX.utils.book_append_sheet(wb, ws, 'Materiales');
-        const buffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
-        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-        res.setHeader('Content-Disposition', 'attachment; filename=formato_materiales.xlsx');
-        res.send(buffer);
-    } catch (error) {
-        res.status(500).json({ error: 'Error al exportar formato' });
-    }
-});
-
-app.post('/api/materiales/importar', verificarAutenticacion, (req, res) => {
-    try {
-        const XLSX = require('xlsx');
-        const { file } = req.body;
-        if (!file) return res.status(400).json({ error: 'No se recibió el archivo' });
-
-        const buffer = Buffer.from(file, 'base64');
-        const workbook = XLSX.read(buffer, { type: 'buffer' });
-        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-        const data = XLSX.utils.sheet_to_json(worksheet);
-
-        if (data.length === 0) return res.status(400).json({ error: 'El archivo está vacío' });
-
-        const headers = Object.keys(data[0]);
-        const requiredHeaders = ['Nombre', 'Proveedor', 'Unidad', 'Precio Unitario'];
-        const missingHeaders = requiredHeaders.filter(h => !headers.includes(h));
-        if (missingHeaders.length > 0) {
-            return res.status(400).json({ error: `Faltan columnas: ${missingHeaders.join(', ')}` });
-        }
-
-        const materiales = [];
-        let errores = [];
-
-        for (let i = 0; i < data.length; i++) {
-            const row = data[i];
-            const nombre = String(row['Nombre'] || '').trim();
-            const proveedor = String(row['Proveedor'] || '').trim();
-            const unidad = String(row['Unidad'] || '').trim();
-            const precio = parseFloat(String(row['Precio Unitario'] || '0').replace(/[$,.]/g, '').trim());
-
-            if (!nombre || !proveedor || !unidad || isNaN(precio) || precio <= 0) {
-                errores.push(`Fila ${i + 2}: Datos inválidos`);
-                continue;
-            }
-            let id = parseInt(row['ID'] || '0');
-            if (isNaN(id) || id <= 0) id = null;
-            materiales.push({ id, nombre, proveedor, unidad, precio });
-        }
-
-        if (errores.length > 0) {
-            return res.status(400).json({ error: 'Errores en el archivo', detalles: errores, materiales });
-        }
-
-        res.json({ success: true, materiales, message: `Se importaron ${materiales.length} materiales` });
-    } catch (error) {
-        res.status(500).json({ error: 'Error al importar: ' + error.message });
-    }
-});
-
-app.post('/api/materiales/guardar', verificarAutenticacion, (req, res) => {
-    try {
-        const dataPath = path.join(__dirname, 'data');
-        if (!fs.existsSync(dataPath)) fs.mkdirSync(dataPath, { recursive: true });
-        fs.writeFileSync(path.join(dataPath, 'materiales.json'), JSON.stringify(req.body, null, 2));
-        res.json({ success: true });
-    } catch (error) {
-        res.status(500).json({ error: 'Error al guardar materiales' });
     }
 });
 
