@@ -2,7 +2,7 @@ const express = require('express');
 const path = require('path');
 const session = require('express-session');
 const MySQLStore = require('express-mysql-session')(session);
-const mysql = require('mysql2');  // ← mysql2 SIN promise (para el store)
+const mysql = require('mysql2');
 const fs = require('fs');
 require('dotenv').config();
 
@@ -17,7 +17,6 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ===== POOL DEDICADO PARA SESIONES (con SSL) =====
-// express-mysql-session requiere mysql2 sin promise
 const sessionPool = mysql.createPool({
     host: process.env.DB_HOST,
     port: parseInt(process.env.DB_PORT) || 4000,
@@ -33,7 +32,7 @@ const sessionPool = mysql.createPool({
     }
 });
 
-// ===== SESIONES GUARDADAS EN MYSQL (PERSISTENTES) =====
+// ===== SESIONES EN MYSQL =====
 const sessionStore = new MySQLStore({
     createDatabaseTable: true,
     expiration: 86400000,
@@ -78,8 +77,6 @@ app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
 // ===== FUNCIONES AUXILIARES =====
-function guardarEmpresaInfo(usuario) {}
-
 function leerUnidadesGuardadas() {
     try {
         const unidadesPath = path.join(__dirname, 'data', 'unidades.json');
@@ -247,8 +244,10 @@ app.post('/registro', async (req, res) => {
         const nuevoId = result.insertId;
         console.log('✅ Usuario creado con ID:', nuevoId);
 
+        // Crear registro en empresa_info SOLO con los datos del usuario (el resto vacío)
         await pool.query(
-            'INSERT INTO empresa_info (usuario_id, nombre, nit, telefono, email) VALUES (?, ?, ?, ?, ?)',
+            `INSERT INTO empresa_info (usuario_id, nombre, nit, telefono, email, direccion, web, descripcion, logo)
+             VALUES (?, ?, ?, ?, ?, '', '', '', '')`,
             [nuevoId, nombreCompleto || username, nit, telefono, email]
         );
 
@@ -281,29 +280,64 @@ app.post('/registro', async (req, res) => {
 });
 
 // ============================================================
-// ===== EMPRESA INFO =====
+// ===== EMPRESA INFO (MIGRADO A MYSQL - FILTRADO POR USUARIO) =====
 // ============================================================
 
-app.get('/api/empresa-info', async (req, res) => {
+app.get('/api/empresa-info', verificarAutenticacion, async (req, res) => {
     try {
-        const empresaPath = path.join(__dirname, 'data', 'empresaInfo.json');
-        if (fs.existsSync(empresaPath)) {
-            res.json(JSON.parse(fs.readFileSync(empresaPath, 'utf8')));
-        } else {
-            res.json({});
+        const usuarioId = req.session.usuario.id;
+
+        const [rows] = await pool.query(
+            'SELECT nombre, nit, telefono, email, direccion, web, descripcion, logo FROM empresa_info WHERE usuario_id = ? LIMIT 1',
+            [usuarioId]
+        );
+
+        if (rows.length === 0) {
+            return res.json({});
         }
+
+        res.json(rows[0]);
     } catch (e) {
+        console.error('❌ Error al leer empresaInfo:', e);
         res.status(500).json({ error: 'Error al leer empresaInfo' });
     }
 });
 
-app.post('/api/guardar-empresa', async (req, res) => {
+app.post('/api/guardar-empresa', verificarAutenticacion, async (req, res) => {
     try {
-        const dataPath = path.join(__dirname, 'data');
-        if (!fs.existsSync(dataPath)) fs.mkdirSync(dataPath, { recursive: true });
-        fs.writeFileSync(path.join(dataPath, 'empresaInfo.json'), JSON.stringify(req.body, null, 2));
-        res.json({ success: true, message: 'Información guardada' });
+        const usuarioId = req.session.usuario.id;
+        const { nombre, nit, telefono, email, direccion, web, descripcion, logo } = req.body;
+
+        await pool.query(
+            `INSERT INTO empresa_info 
+                (usuario_id, nombre, nit, telefono, email, direccion, web, descripcion, logo)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+             ON DUPLICATE KEY UPDATE
+                nombre = VALUES(nombre),
+                nit = VALUES(nit),
+                telefono = VALUES(telefono),
+                email = VALUES(email),
+                direccion = VALUES(direccion),
+                web = VALUES(web),
+                descripcion = VALUES(descripcion),
+                logo = VALUES(logo)`,
+            [
+                usuarioId,
+                nombre || '',
+                nit || '',
+                telefono || '',
+                email || '',
+                direccion || '',
+                web || '',
+                descripcion || '',
+                logo || ''
+            ]
+        );
+
+        console.log(`✅ Empresa info guardada para usuario ID ${usuarioId}`);
+        res.json({ success: true, message: 'Información guardada correctamente' });
     } catch (error) {
+        console.error('❌ Error al guardar empresa info:', error);
         res.status(500).json({ error: 'Error al guardar información' });
     }
 });
@@ -317,7 +351,7 @@ app.get('/api/ping', (req, res) => {
 });
 
 // ============================================================
-// ===== APUS =====
+// ===== APUS (PENDIENTE MIGRAR - POR AHORA COMPARTIDO) =====
 // ============================================================
 
 app.get('/api/apus', verificarAutenticacion, (req, res) => {
@@ -445,8 +479,7 @@ app.post('/api/apus/importar', verificarAutenticacion, (req, res) => {
 
         const buffer = Buffer.from(file, 'base64');
         const workbook = XLSX.read(buffer, { type: 'buffer' });
-        let sheetName = 'APU';
-        let worksheet = workbook.Sheets[sheetName];
+        let worksheet = workbook.Sheets['APU'];
 
         if (!worksheet) {
             for (let i = 0; i < workbook.SheetNames.length; i++) {
@@ -454,7 +487,6 @@ app.post('/api/apus/importar', verificarAutenticacion, (req, res) => {
                 const testData = XLSX.utils.sheet_to_json(testSheet, { defval: '' });
                 if (testData.length > 0) {
                     worksheet = testSheet;
-                    sheetName = workbook.SheetNames[i];
                     break;
                 }
             }
@@ -543,8 +575,15 @@ app.get('/api/apu-pdf/:id', verificarAutenticacion, async (req, res) => {
             apuData = apus.find(a => a.id === apuId);
         }
         if (!apuData) return res.status(404).json({ error: 'APU no encontrado' });
-        if (fs.existsSync(empresaPath)) {
-            empresaData = JSON.parse(fs.readFileSync(empresaPath, 'utf8'));
+
+        // Buscar empresa_info del usuario actual en MySQL
+        const usuarioId = req.session.usuario.id;
+        const [empresas] = await pool.query(
+            'SELECT nombre, nit, telefono, email, direccion, web, descripcion, logo FROM empresa_info WHERE usuario_id = ? LIMIT 1',
+            [usuarioId]
+        );
+        if (empresas.length > 0) {
+            empresaData = empresas[0];
         }
 
         const doc = new PDFDocument({
@@ -1208,9 +1247,11 @@ app.post('/api/materiales/guardar', verificarAutenticacion, (req, res) => {
     }
 });
 
+// ===== BORRAR USUARIOS (SOLO PRUEBAS) =====
 app.post('/api/borrar-usuarios', async (req, res) => {
     try {
         await pool.query('DELETE FROM empresa_info');
+        await pool.query('DELETE FROM sessions');
         await pool.query('DELETE FROM usuarios');
         res.json({ success: true, message: 'Datos eliminados' });
     } catch (e) {
