@@ -72,7 +72,6 @@ function verificarAutenticacion(req, res, next) {
     }
 }
 
-// ===== MIDDLEWARE AUTH PARA APIs =====
 function verificarAutenticacionApi(req, res, next) {
     if (req.session && req.session.usuario) {
         next();
@@ -84,37 +83,6 @@ function verificarAutenticacionApi(req, res, next) {
 // Configurar EJS
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
-
-// ===== FUNCIONES AUXILIARES =====
-function leerUnidadesGuardadas() {
-    try {
-        const unidadesPath = path.join(__dirname, 'data', 'unidades.json');
-        if (fs.existsSync(unidadesPath)) {
-            return JSON.parse(fs.readFileSync(unidadesPath, 'utf8'));
-        }
-    } catch (e) {}
-    return ['und', 'm', 'm2', 'm3', 'kg', 'ml', 'hr', 'dia'];
-}
-
-function leerMaterialesGuardados() {
-    try {
-        const materialesPath = path.join(__dirname, 'data', 'materiales.json');
-        if (fs.existsSync(materialesPath)) {
-            return JSON.parse(fs.readFileSync(materialesPath, 'utf8'));
-        }
-    } catch (e) {}
-    return [];
-}
-
-function leerCategoriasGuardadas() {
-    try {
-        const categoriasPath = path.join(__dirname, 'data', 'categorias.json');
-        if (fs.existsSync(categoriasPath)) {
-            return JSON.parse(fs.readFileSync(categoriasPath, 'utf8'));
-        }
-    } catch (e) {}
-    return [];
-}
 
 // ===== RUTAS PÚBLICAS =====
 app.get('/', (req, res) => {
@@ -337,7 +305,6 @@ app.post('/api/guardar-empresa', verificarAutenticacion, async (req, res) => {
             ]
         );
 
-        console.log(`✅ Empresa info guardada para usuario ID ${usuarioId}`);
         res.json({ success: true, message: 'Información guardada correctamente' });
     } catch (error) {
         console.error('❌ Error al guardar empresa info:', error);
@@ -354,7 +321,7 @@ app.get('/api/ping', (req, res) => {
 });
 
 // ============================================================
-// ===== HERRAMIENTAS (MYSQL - POR USUARIO) =====
+// ===== HERRAMIENTAS (MYSQL) =====
 // ============================================================
 
 app.get('/api/herramientas', verificarAutenticacionApi, async (req, res) => {
@@ -366,24 +333,7 @@ app.get('/api/herramientas', verificarAutenticacionApi, async (req, res) => {
         );
         res.json(rows);
     } catch (error) {
-        console.error('❌ Error al listar herramientas:', error);
         res.status(500).json({ error: 'Error al listar herramientas' });
-    }
-});
-
-app.get('/api/herramientas/:id', verificarAutenticacionApi, async (req, res) => {
-    try {
-        const usuarioId = req.session.usuario.id;
-        const id = parseInt(req.params.id);
-        const [rows] = await pool.query(
-            'SELECT * FROM herramientas WHERE id = ? AND usuario_id = ? LIMIT 1',
-            [id, usuarioId]
-        );
-        if (rows.length === 0) return res.status(404).json({ error: 'Herramienta no encontrada' });
-        res.json(rows[0]);
-    } catch (error) {
-        console.error('❌ Error al obtener herramienta:', error);
-        res.status(500).json({ error: 'Error al obtener herramienta' });
     }
 });
 
@@ -391,19 +341,14 @@ app.post('/api/herramientas', verificarAutenticacionApi, async (req, res) => {
     try {
         const usuarioId = req.session.usuario.id;
         const { codigo, nombre, marca } = req.body;
-
-        if (!codigo || !nombre || !marca) {
-            return res.status(400).json({ error: 'Código, nombre y marca son obligatorios' });
-        }
+        if (!codigo || !nombre || !marca) return res.status(400).json({ error: 'Campos obligatorios' });
 
         const [result] = await pool.query(
             'INSERT INTO herramientas (usuario_id, codigo, nombre, marca, ubicacion) VALUES (?, ?, ?, ?, ?)',
             [usuarioId, codigo, nombre, marca, '']
         );
-
         res.json({ success: true, id: result.insertId });
     } catch (error) {
-        console.error('❌ Error al crear herramienta:', error);
         res.status(500).json({ error: 'Error al crear herramienta' });
     }
 });
@@ -413,18 +358,14 @@ app.put('/api/herramientas/:id', verificarAutenticacionApi, async (req, res) => 
         const usuarioId = req.session.usuario.id;
         const id = parseInt(req.params.id);
         const { codigo, nombre, marca } = req.body;
-
         const [result] = await pool.query(
             'UPDATE herramientas SET codigo = ?, nombre = ?, marca = ? WHERE id = ? AND usuario_id = ?',
             [codigo, nombre, marca, id, usuarioId]
         );
-
-        if (result.affectedRows === 0) return res.status(404).json({ error: 'Herramienta no encontrada' });
-
+        if (result.affectedRows === 0) return res.status(404).json({ error: 'No encontrada' });
         res.json({ success: true });
     } catch (error) {
-        console.error('❌ Error al actualizar herramienta:', error);
-        res.status(500).json({ error: 'Error al actualizar herramienta' });
+        res.status(500).json({ error: 'Error al actualizar' });
     }
 });
 
@@ -432,23 +373,19 @@ app.delete('/api/herramientas/:id', verificarAutenticacionApi, async (req, res) 
     try {
         const usuarioId = req.session.usuario.id;
         const id = parseInt(req.params.id);
-
         const [result] = await pool.query(
             'DELETE FROM herramientas WHERE id = ? AND usuario_id = ?',
             [id, usuarioId]
         );
-
-        if (result.affectedRows === 0) return res.status(404).json({ error: 'Herramienta no encontrada' });
-
+        if (result.affectedRows === 0) return res.status(404).json({ error: 'No encontrada' });
         res.json({ success: true });
     } catch (error) {
-        console.error('❌ Error al eliminar herramienta:', error);
-        res.status(500).json({ error: 'Error al eliminar herramienta' });
+        res.status(500).json({ error: 'Error al eliminar' });
     }
 });
 
 // ============================================================
-// ===== EMPLEADOS (MYSQL - POR USUARIO) =====
+// ===== EMPLEADOS (MYSQL) =====
 // ============================================================
 
 app.get('/api/empleados', verificarAutenticacionApi, async (req, res) => {
@@ -460,24 +397,7 @@ app.get('/api/empleados', verificarAutenticacionApi, async (req, res) => {
         );
         res.json(rows);
     } catch (error) {
-        console.error('❌ Error al listar empleados:', error);
         res.status(500).json({ error: 'Error al listar empleados' });
-    }
-});
-
-app.get('/api/empleados/:id', verificarAutenticacionApi, async (req, res) => {
-    try {
-        const usuarioId = req.session.usuario.id;
-        const id = parseInt(req.params.id);
-        const [rows] = await pool.query(
-            'SELECT * FROM empleados WHERE id = ? AND usuario_id = ? LIMIT 1',
-            [id, usuarioId]
-        );
-        if (rows.length === 0) return res.status(404).json({ error: 'Empleado no encontrado' });
-        res.json(rows[0]);
-    } catch (error) {
-        console.error('❌ Error al obtener empleado:', error);
-        res.status(500).json({ error: 'Error al obtener empleado' });
     }
 });
 
@@ -485,10 +405,7 @@ app.post('/api/empleados', verificarAutenticacionApi, async (req, res) => {
     try {
         const usuarioId = req.session.usuario.id;
         const { nombre, cargo, costoDia } = req.body;
-
-        if (!nombre || !cargo || !costoDia) {
-            return res.status(400).json({ error: 'Nombre, cargo y costo por día son obligatorios' });
-        }
+        if (!nombre || !cargo || !costoDia) return res.status(400).json({ error: 'Campos obligatorios' });
 
         const costoDiaNum = parseFloat(costoDia);
         const costoMes = costoDiaNum * 30;
@@ -498,10 +415,8 @@ app.post('/api/empleados', verificarAutenticacionApi, async (req, res) => {
             'INSERT INTO empleados (usuario_id, nombre, cargo, costoDia, costoMes, costoHora) VALUES (?, ?, ?, ?, ?, ?)',
             [usuarioId, nombre, cargo, costoDiaNum, costoMes, costoHora]
         );
-
         res.json({ success: true, id: result.insertId });
     } catch (error) {
-        console.error('❌ Error al crear empleado:', error);
         res.status(500).json({ error: 'Error al crear empleado' });
     }
 });
@@ -511,22 +426,17 @@ app.put('/api/empleados/:id', verificarAutenticacionApi, async (req, res) => {
         const usuarioId = req.session.usuario.id;
         const id = parseInt(req.params.id);
         const { nombre, cargo, costoDia } = req.body;
-
         const costoDiaNum = parseFloat(costoDia);
         const costoMes = costoDiaNum * 30;
         const costoHora = costoDiaNum / 8;
-
         const [result] = await pool.query(
             'UPDATE empleados SET nombre = ?, cargo = ?, costoDia = ?, costoMes = ?, costoHora = ? WHERE id = ? AND usuario_id = ?',
             [nombre, cargo, costoDiaNum, costoMes, costoHora, id, usuarioId]
         );
-
-        if (result.affectedRows === 0) return res.status(404).json({ error: 'Empleado no encontrado' });
-
+        if (result.affectedRows === 0) return res.status(404).json({ error: 'No encontrado' });
         res.json({ success: true });
     } catch (error) {
-        console.error('❌ Error al actualizar empleado:', error);
-        res.status(500).json({ error: 'Error al actualizar empleado' });
+        res.status(500).json({ error: 'Error al actualizar' });
     }
 });
 
@@ -534,23 +444,19 @@ app.delete('/api/empleados/:id', verificarAutenticacionApi, async (req, res) => 
     try {
         const usuarioId = req.session.usuario.id;
         const id = parseInt(req.params.id);
-
         const [result] = await pool.query(
             'DELETE FROM empleados WHERE id = ? AND usuario_id = ?',
             [id, usuarioId]
         );
-
-        if (result.affectedRows === 0) return res.status(404).json({ error: 'Empleado no encontrado' });
-
+        if (result.affectedRows === 0) return res.status(404).json({ error: 'No encontrado' });
         res.json({ success: true });
     } catch (error) {
-        console.error('❌ Error al eliminar empleado:', error);
-        res.status(500).json({ error: 'Error al eliminar empleado' });
+        res.status(500).json({ error: 'Error al eliminar' });
     }
 });
 
 // ============================================================
-// ===== MATERIALES (MYSQL - POR USUARIO) =====
+// ===== MATERIALES (MYSQL) =====
 // ============================================================
 
 app.get('/api/materiales', verificarAutenticacionApi, async (req, res) => {
@@ -562,24 +468,7 @@ app.get('/api/materiales', verificarAutenticacionApi, async (req, res) => {
         );
         res.json(rows);
     } catch (error) {
-        console.error('❌ Error al listar materiales:', error);
         res.status(500).json({ error: 'Error al listar materiales' });
-    }
-});
-
-app.get('/api/materiales/:id', verificarAutenticacionApi, async (req, res) => {
-    try {
-        const usuarioId = req.session.usuario.id;
-        const id = parseInt(req.params.id);
-        const [rows] = await pool.query(
-            'SELECT * FROM materiales WHERE id = ? AND usuario_id = ? LIMIT 1',
-            [id, usuarioId]
-        );
-        if (rows.length === 0) return res.status(404).json({ error: 'Material no encontrado' });
-        res.json(rows[0]);
-    } catch (error) {
-        console.error('❌ Error al obtener material:', error);
-        res.status(500).json({ error: 'Error al obtener material' });
     }
 });
 
@@ -587,21 +476,14 @@ app.post('/api/materiales', verificarAutenticacionApi, async (req, res) => {
     try {
         const usuarioId = req.session.usuario.id;
         const { nombre, proveedor, unidad, precio } = req.body;
-
-        if (!nombre || !proveedor || !unidad || !precio) {
-            return res.status(400).json({ error: 'Todos los campos son obligatorios' });
-        }
-
-        const precioNum = parseFloat(precio);
+        if (!nombre || !proveedor || !unidad || !precio) return res.status(400).json({ error: 'Campos obligatorios' });
 
         const [result] = await pool.query(
             'INSERT INTO materiales (usuario_id, nombre, proveedor, unidad, precio) VALUES (?, ?, ?, ?, ?)',
-            [usuarioId, nombre, proveedor, unidad, precioNum]
+            [usuarioId, nombre, proveedor, unidad, parseFloat(precio)]
         );
-
         res.json({ success: true, id: result.insertId });
     } catch (error) {
-        console.error('❌ Error al crear material:', error);
         res.status(500).json({ error: 'Error al crear material' });
     }
 });
@@ -611,20 +493,14 @@ app.put('/api/materiales/:id', verificarAutenticacionApi, async (req, res) => {
         const usuarioId = req.session.usuario.id;
         const id = parseInt(req.params.id);
         const { nombre, proveedor, unidad, precio } = req.body;
-
-        const precioNum = parseFloat(precio);
-
         const [result] = await pool.query(
             'UPDATE materiales SET nombre = ?, proveedor = ?, unidad = ?, precio = ? WHERE id = ? AND usuario_id = ?',
-            [nombre, proveedor, unidad, precioNum, id, usuarioId]
+            [nombre, proveedor, unidad, parseFloat(precio), id, usuarioId]
         );
-
-        if (result.affectedRows === 0) return res.status(404).json({ error: 'Material no encontrado' });
-
+        if (result.affectedRows === 0) return res.status(404).json({ error: 'No encontrado' });
         res.json({ success: true });
     } catch (error) {
-        console.error('❌ Error al actualizar material:', error);
-        res.status(500).json({ error: 'Error al actualizar material' });
+        res.status(500).json({ error: 'Error al actualizar' });
     }
 });
 
@@ -632,18 +508,14 @@ app.delete('/api/materiales/:id', verificarAutenticacionApi, async (req, res) =>
     try {
         const usuarioId = req.session.usuario.id;
         const id = parseInt(req.params.id);
-
         const [result] = await pool.query(
             'DELETE FROM materiales WHERE id = ? AND usuario_id = ?',
             [id, usuarioId]
         );
-
-        if (result.affectedRows === 0) return res.status(404).json({ error: 'Material no encontrado' });
-
+        if (result.affectedRows === 0) return res.status(404).json({ error: 'No encontrado' });
         res.json({ success: true });
     } catch (error) {
-        console.error('❌ Error al eliminar material:', error);
-        res.status(500).json({ error: 'Error al eliminar material' });
+        res.status(500).json({ error: 'Error al eliminar' });
     }
 });
 
@@ -671,10 +543,6 @@ app.get('/api/materiales/exportar-formato', verificarAutenticacionApi, (req, res
         res.status(500).json({ error: 'Error al exportar formato' });
     }
 });
-
-// ============================================================
-// ===== MATERIALES - IMPORTAR DESDE EXCEL =====
-// ============================================================
 
 app.post('/api/materiales/importar', verificarAutenticacionApi, (req, res) => {
     try {
@@ -710,13 +578,11 @@ app.post('/api/materiales/importar', verificarAutenticacionApi, (req, res) => {
                 errores.push(`Fila ${i + 2}: Datos inválidos`);
                 continue;
             }
-            let id = parseInt(row['ID'] || '0');
-            if (isNaN(id) || id <= 0) id = null;
-            materiales.push({ id, nombre, proveedor, unidad, precio });
+            materiales.push({ nombre, proveedor, unidad, precio });
         }
 
         if (errores.length > 0) {
-            return res.status(400).json({ error: 'Errores en el archivo', detalles: errores, materiales });
+            return res.status(400).json({ error: 'Errores en el archivo', detalles: errores });
         }
 
         res.json({ success: true, materiales, message: `Se validaron ${materiales.length} materiales` });
@@ -724,10 +590,6 @@ app.post('/api/materiales/importar', verificarAutenticacionApi, (req, res) => {
         res.status(500).json({ error: 'Error al importar: ' + error.message });
     }
 });
-
-// ============================================================
-// ===== MATERIALES - IMPORTAR LOTE (GUARDAR EN MYSQL) =====
-// ============================================================
 
 app.post('/api/materiales/importar-lote', verificarAutenticacionApi, async (req, res) => {
     try {
@@ -751,7 +613,6 @@ app.post('/api/materiales/importar-lote', verificarAutenticacionApi, async (req,
             [values]
         );
 
-        console.log(`✅ ${materiales.length} materiales importados para usuario ${usuarioId}`);
         res.json({ success: true, message: `${materiales.length} materiales importados` });
     } catch (error) {
         console.error('❌ Error al importar materiales en lote:', error);
@@ -760,30 +621,247 @@ app.post('/api/materiales/importar-lote', verificarAutenticacionApi, async (req,
 });
 
 // ============================================================
-// ===== APUS (PENDIENTE MIGRAR - POR AHORA COMPARTIDO) =====
+// ===== APUS (MYSQL - POR USUARIO) =====
 // ============================================================
 
-app.get('/api/apus', verificarAutenticacion, (req, res) => {
+// Listar todos los APUs del usuario
+app.get('/api/apus', verificarAutenticacionApi, async (req, res) => {
     try {
-        const apuPath = path.join(__dirname, 'data', 'apu.json');
-        if (fs.existsSync(apuPath)) {
-            res.json(JSON.parse(fs.readFileSync(apuPath, 'utf8')));
-        } else {
-            res.json([]);
-        }
+        const usuarioId = req.session.usuario.id;
+        const [rows] = await pool.query(
+            'SELECT id, codigo, nombre, categoria, unidad, valor, items, ignorarItems, valorManual FROM apus WHERE usuario_id = ? ORDER BY id DESC',
+            [usuarioId]
+        );
+
+        // Parsear items de JSON string a objeto
+        const apus = rows.map(r => ({
+            ...r,
+            items: r.items ? (typeof r.items === 'string' ? JSON.parse(r.items) : r.items) : { materiales: [], equipos: [], transporte: [], cargos: [] },
+            ignorarItems: r.ignorarItems === 1 || r.ignorarItems === true
+        }));
+
+        res.json(apus);
     } catch (error) {
-        res.status(500).json({ error: 'Error al leer APUs' });
+        console.error('❌ Error al listar APUs:', error);
+        res.status(500).json({ error: 'Error al listar APUs' });
     }
 });
 
-app.post('/api/guardar-apus', verificarAutenticacion, (req, res) => {
+// Obtener un APU específico
+app.get('/api/apus/:id', verificarAutenticacionApi, async (req, res) => {
     try {
-        const dataPath = path.join(__dirname, 'data');
-        if (!fs.existsSync(dataPath)) fs.mkdirSync(dataPath, { recursive: true });
-        fs.writeFileSync(path.join(dataPath, 'apu.json'), JSON.stringify(req.body, null, 2));
-        res.json({ success: true, message: 'APUs guardados' });
+        const usuarioId = req.session.usuario.id;
+        const id = parseInt(req.params.id);
+        const [rows] = await pool.query(
+            'SELECT * FROM apus WHERE id = ? AND usuario_id = ? LIMIT 1',
+            [id, usuarioId]
+        );
+        if (rows.length === 0) return res.status(404).json({ error: 'APU no encontrado' });
+
+        const apu = rows[0];
+        apu.items = apu.items ? (typeof apu.items === 'string' ? JSON.parse(apu.items) : apu.items) : { materiales: [], equipos: [], transporte: [], cargos: [] };
+        apu.ignorarItems = apu.ignorarItems === 1 || apu.ignorarItems === true;
+
+        res.json(apu);
     } catch (error) {
-        res.status(500).json({ error: 'Error al guardar APUs' });
+        console.error('❌ Error al obtener APU:', error);
+        res.status(500).json({ error: 'Error al obtener APU' });
+    }
+});
+
+// Crear APU
+app.post('/api/apus', verificarAutenticacionApi, async (req, res) => {
+    try {
+        const usuarioId = req.session.usuario.id;
+        const { codigo, nombre, categoria, unidad, valor, items, ignorarItems, valorManual } = req.body;
+
+        if (!codigo || !nombre || !categoria || !unidad) {
+            return res.status(400).json({ error: 'Código, nombre, categoría y unidad son obligatorios' });
+        }
+
+        const itemsJson = JSON.stringify(items || { materiales: [], equipos: [], transporte: [], cargos: [] });
+
+        const [result] = await pool.query(
+            `INSERT INTO apus (usuario_id, codigo, nombre, categoria, unidad, valor, items, ignorarItems, valorManual)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+                usuarioId,
+                codigo,
+                nombre,
+                categoria,
+                unidad,
+                parseFloat(valor) || 0,
+                itemsJson,
+                ignorarItems ? 1 : 0,
+                parseFloat(valorManual) || 0
+            ]
+        );
+
+        console.log(`✅ APU creado ID ${result.insertId} para usuario ${usuarioId}`);
+        res.json({ success: true, id: result.insertId });
+    } catch (error) {
+        console.error('❌ Error al crear APU:', error);
+        res.status(500).json({ error: 'Error al crear APU' });
+    }
+});
+
+// Actualizar APU
+app.put('/api/apus/:id', verificarAutenticacionApi, async (req, res) => {
+    try {
+        const usuarioId = req.session.usuario.id;
+        const id = parseInt(req.params.id);
+        const { codigo, nombre, categoria, unidad, valor, items, ignorarItems, valorManual } = req.body;
+
+        const itemsJson = JSON.stringify(items || { materiales: [], equipos: [], transporte: [], cargos: [] });
+
+        const [result] = await pool.query(
+            `UPDATE apus SET codigo = ?, nombre = ?, categoria = ?, unidad = ?, valor = ?, items = ?, ignorarItems = ?, valorManual = ?
+             WHERE id = ? AND usuario_id = ?`,
+            [
+                codigo,
+                nombre,
+                categoria,
+                unidad,
+                parseFloat(valor) || 0,
+                itemsJson,
+                ignorarItems ? 1 : 0,
+                parseFloat(valorManual) || 0,
+                id,
+                usuarioId
+            ]
+        );
+
+        if (result.affectedRows === 0) return res.status(404).json({ error: 'APU no encontrado' });
+
+        res.json({ success: true });
+    } catch (error) {
+        console.error('❌ Error al actualizar APU:', error);
+        res.status(500).json({ error: 'Error al actualizar APU' });
+    }
+});
+
+// Eliminar APU
+app.delete('/api/apus/:id', verificarAutenticacionApi, async (req, res) => {
+    try {
+        const usuarioId = req.session.usuario.id;
+        const id = parseInt(req.params.id);
+
+        const [result] = await pool.query(
+            'DELETE FROM apus WHERE id = ? AND usuario_id = ?',
+            [id, usuarioId]
+        );
+
+        if (result.affectedRows === 0) return res.status(404).json({ error: 'APU no encontrado' });
+
+        res.json({ success: true });
+    } catch (error) {
+        console.error('❌ Error al eliminar APU:', error);
+        res.status(500).json({ error: 'Error al eliminar APU' });
+    }
+});
+
+// ============================================================
+// ===== CATEGORÍAS Y UNIDADES DE APU (MYSQL - POR USUARIO) =====
+// ============================================================
+
+// Listar categorías
+app.get('/api/apus/categorias', verificarAutenticacionApi, async (req, res) => {
+    try {
+        const usuarioId = req.session.usuario.id;
+        const [rows] = await pool.query(
+            'SELECT id, nombre FROM categorias_apu WHERE usuario_id = ? ORDER BY nombre ASC',
+            [usuarioId]
+        );
+        res.json(rows);
+    } catch (error) {
+        console.error('❌ Error al listar categorías:', error);
+        res.status(500).json({ error: 'Error al listar categorías' });
+    }
+});
+
+// Crear categoría
+app.post('/api/apus/categorias', verificarAutenticacionApi, async (req, res) => {
+    try {
+        const usuarioId = req.session.usuario.id;
+        const { nombre } = req.body;
+        if (!nombre) return res.status(400).json({ error: 'Nombre obligatorio' });
+
+        await pool.query(
+            'INSERT IGNORE INTO categorias_apu (usuario_id, nombre) VALUES (?, ?)',
+            [usuarioId, nombre.trim()]
+        );
+        res.json({ success: true });
+    } catch (error) {
+        console.error('❌ Error al crear categoría:', error);
+        res.status(500).json({ error: 'Error al crear categoría' });
+    }
+});
+
+// Actualizar categoría
+app.put('/api/apus/categorias/:id', verificarAutenticacionApi, async (req, res) => {
+    try {
+        const usuarioId = req.session.usuario.id;
+        const id = parseInt(req.params.id);
+        const { nombre } = req.body;
+
+        await pool.query(
+            'UPDATE categorias_apu SET nombre = ? WHERE id = ? AND usuario_id = ?',
+            [nombre.trim(), id, usuarioId]
+        );
+        res.json({ success: true });
+    } catch (error) {
+        console.error('❌ Error al actualizar categoría:', error);
+        res.status(500).json({ error: 'Error al actualizar categoría' });
+    }
+});
+
+// Eliminar categoría
+app.delete('/api/apus/categorias/:id', verificarAutenticacionApi, async (req, res) => {
+    try {
+        const usuarioId = req.session.usuario.id;
+        const id = parseInt(req.params.id);
+
+        await pool.query(
+            'DELETE FROM categorias_apu WHERE id = ? AND usuario_id = ?',
+            [id, usuarioId]
+        );
+        res.json({ success: true });
+    } catch (error) {
+        console.error('❌ Error al eliminar categoría:', error);
+        res.status(500).json({ error: 'Error al eliminar categoría' });
+    }
+});
+
+// Listar unidades
+app.get('/api/apus/unidades', verificarAutenticacionApi, async (req, res) => {
+    try {
+        const usuarioId = req.session.usuario.id;
+        const [rows] = await pool.query(
+            'SELECT id, nombre FROM unidades_apu WHERE usuario_id = ? ORDER BY nombre ASC',
+            [usuarioId]
+        );
+        res.json(rows);
+    } catch (error) {
+        console.error('❌ Error al listar unidades:', error);
+        res.status(500).json({ error: 'Error al listar unidades' });
+    }
+});
+
+// Crear unidad
+app.post('/api/apus/unidades', verificarAutenticacionApi, async (req, res) => {
+    try {
+        const usuarioId = req.session.usuario.id;
+        const { nombre } = req.body;
+        if (!nombre) return res.status(400).json({ error: 'Nombre obligatorio' });
+
+        await pool.query(
+            'INSERT IGNORE INTO unidades_apu (usuario_id, nombre) VALUES (?, ?)',
+            [usuarioId, nombre.trim().toUpperCase()]
+        );
+        res.json({ success: true });
+    } catch (error) {
+        console.error('❌ Error al crear unidad:', error);
+        res.status(500).json({ error: 'Error al crear unidad' });
     }
 });
 
@@ -791,10 +869,22 @@ app.post('/api/guardar-apus', verificarAutenticacion, (req, res) => {
 // ===== EXPORTAR FORMATO APU =====
 // ============================================================
 
-app.get('/api/apus/exportar-formato', verificarAutenticacion, async (req, res) => {
+app.get('/api/apus/exportar-formato', verificarAutenticacionApi, async (req, res) => {
     try {
+        const usuarioId = req.session.usuario.id;
         const ExcelJS = require('exceljs');
-        let unidadesGuardadas = leerUnidadesGuardadas();
+
+        // Cargar unidades del usuario desde MySQL
+        const [unidadesRows] = await pool.query(
+            'SELECT nombre FROM unidades_apu WHERE usuario_id = ? ORDER BY nombre ASC',
+            [usuarioId]
+        );
+        let unidadesGuardadas = unidadesRows.map(r => r.nombre);
+
+        // Si no hay unidades, usar defaults
+        if (unidadesGuardadas.length === 0) {
+            unidadesGuardadas = ['und', 'm', 'm2', 'm3', 'kg', 'ml', 'hr', 'dia'];
+        }
 
         const workbook = new ExcelJS.Workbook();
         const listasSheet = workbook.addWorksheet('Listas');
@@ -880,9 +970,10 @@ app.get('/api/apus/exportar-formato', verificarAutenticacion, async (req, res) =
 // ===== IMPORTAR APUS =====
 // ============================================================
 
-app.post('/api/apus/importar', verificarAutenticacion, (req, res) => {
+app.post('/api/apus/importar', verificarAutenticacionApi, async (req, res) => {
     try {
         const XLSX = require('xlsx');
+        const usuarioId = req.session.usuario.id;
         const { file } = req.body;
         if (!file) return res.status(400).json({ error: 'No se recibió el archivo' });
 
@@ -918,18 +1009,33 @@ app.post('/api/apus/importar', verificarAutenticacion, (req, res) => {
             return res.status(400).json({ error: `Faltan columnas: ${missingHeaders.join(', ')}`, required: requiredHeaders });
         }
 
-        let errores = [];
-        let codigos = {};
-        let categoriasNuevas = [];
-        let categoriasExistentes = leerCategoriasGuardadas();
+        // Cargar categorías y unidades del usuario
+        const [categoriasRows] = await pool.query(
+            'SELECT nombre FROM categorias_apu WHERE usuario_id = ?',
+            [usuarioId]
+        );
+        let categoriasExistentes = categoriasRows.map(r => r.nombre);
 
         function obtenerString(valor) {
             return valor === undefined || valor === null ? '' : String(valor).trim();
         }
 
+        function obtenerNumero(valor) {
+            if (!valor) return 0;
+            if (typeof valor === 'number') return valor;
+            let limpio = String(valor).replace(/[€£¥$.,\s]/g, '');
+            return parseFloat(limpio) || 0;
+        }
+
+        // Agrupar por código
+        const apusMap = {};
+        let errores = [];
+        let categoriasNuevas = [];
+
         for (let i = 0; i < data.length; i++) {
             const row = data[i];
             const filaNum = i + 2;
+
             const codigo = obtenerString(row['Código']);
             const nombre = obtenerString(row['Nombre']);
             const categoria = obtenerString(row['Categoría']);
@@ -940,27 +1046,125 @@ app.post('/api/apus/importar', verificarAutenticacion, (req, res) => {
                 continue;
             }
 
-            if (categoria && !categoriasExistentes.some(c => c.toLowerCase() === categoria.toLowerCase())) {
+            // Detectar categorías nuevas
+            if (!categoriasExistentes.some(c => c.toLowerCase() === categoria.toLowerCase())) {
                 if (!categoriasNuevas.includes(categoria)) categoriasNuevas.push(categoria);
             }
 
-            if (!codigos[codigo]) codigos[codigo] = [];
-            codigos[codigo].push(filaNum);
+            if (!apusMap[codigo]) {
+                apusMap[codigo] = {
+                    codigo: codigo,
+                    nombre: nombre,
+                    categoria: categoria,
+                    unidad: unidad,
+                    items: { materiales: [], equipos: [], transporte: [], cargos: [] }
+                };
+            }
+
+            // Equipo
+            const nombreEquipo = obtenerString(row['Nombre del Equipo/Herramienta']);
+            if (nombreEquipo) {
+                const porcentaje = obtenerNumero(row['Porcentaje (%)']);
+                const valorBase = obtenerNumero(row['Valor Base Equipo']);
+                apusMap[codigo].items.equipos.push({
+                    nombre: nombreEquipo,
+                    unidad: '%',
+                    porcentaje: porcentaje,
+                    valorBase: valorBase,
+                    subtotal: (porcentaje / 100) * valorBase
+                });
+            }
+
+            // Transporte
+            const nombreTransporte = obtenerString(row['Nombre del Transporte']);
+            if (nombreTransporte) {
+                const porcentajeT = obtenerNumero(row['Porcentaje Transporte (%)']);
+                const valorBaseT = obtenerNumero(row['Valor Base Transporte']);
+                apusMap[codigo].items.transporte.push({
+                    nombre: nombreTransporte,
+                    unidad: '%',
+                    porcentaje: porcentajeT,
+                    valorBase: valorBaseT,
+                    subtotal: (porcentajeT / 100) * valorBaseT
+                });
+            }
+
+            // Mano de obra
+            const descripcionMano = obtenerString(row['Descripción Mano de Obra']);
+            if (descripcionMano) {
+                const unidadMano = obtenerString(row['Unidad Mano de Obra']) || 'und';
+                const cantidadMano = obtenerNumero(row['Cantidad Mano de Obra']);
+                const valorUnitarioMano = obtenerNumero(row['Valor Unitario Mano de Obra']);
+                apusMap[codigo].items.cargos.push({
+                    descripcion: descripcionMano,
+                    unidad: unidadMano,
+                    cantidad: cantidadMano,
+                    valorUnitario: valorUnitarioMano,
+                    subtotal: cantidadMano * valorUnitarioMano
+                });
+            }
         }
 
         if (errores.length > 0) {
             return res.status(400).json({ success: false, error: 'Errores en el archivo', detalles: errores });
         }
 
+        // Guardar en MySQL
+        let apusImportados = 0;
+        for (const codigo in apusMap) {
+            const apu = apusMap[codigo];
+
+            // Calcular valor total
+            let valorTotal = 0;
+            apu.items.equipos.forEach(e => { valorTotal += e.subtotal; });
+            apu.items.transporte.forEach(t => { valorTotal += t.subtotal; });
+            apu.items.cargos.forEach(c => { valorTotal += c.subtotal; });
+
+            await pool.query(
+                `INSERT INTO apus (usuario_id, codigo, nombre, categoria, unidad, valor, items, ignorarItems, valorManual)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, 0, 0)`,
+                [
+                    usuarioId,
+                    apu.codigo,
+                    apu.nombre,
+                    apu.categoria,
+                    apu.unidad,
+                    valorTotal,
+                    JSON.stringify(apu.items)
+                ]
+            );
+            apusImportados++;
+        }
+
+        // Guardar categorías nuevas
+        for (const cat of categoriasNuevas) {
+            await pool.query(
+                'INSERT IGNORE INTO categorias_apu (usuario_id, nombre) VALUES (?, ?)',
+                [usuarioId, cat]
+            );
+        }
+
+        // Guardar unidades nuevas
+        const unidadesSet = new Set();
+        for (const codigo in apusMap) {
+            unidadesSet.add(apusMap[codigo].unidad);
+        }
+        for (const uni of unidadesSet) {
+            await pool.query(
+                'INSERT IGNORE INTO unidades_apu (usuario_id, nombre) VALUES (?, ?)',
+                [usuarioId, uni]
+            );
+        }
+
         res.json({
             success: true,
-            message: '✅ Validación exitosa',
-            filasProcesadas: data.length,
-            codigosEncontrados: Object.keys(codigos).length,
+            message: `✅ ${apusImportados} APUs importados`,
+            apusImportados: apusImportados,
             categoriasNuevas: categoriasNuevas
         });
 
     } catch (error) {
+        console.error('❌ Error al importar APUs:', error);
         res.status(500).json({ error: 'Error al importar: ' + error.message });
     }
 });
@@ -973,25 +1177,23 @@ app.get('/api/apu-pdf/:id', verificarAutenticacion, async (req, res) => {
     try {
         const PDFDocument = require('pdfkit');
         const apuId = parseInt(req.params.id);
-        const apuPath = path.join(__dirname, 'data', 'apu.json');
-
-        let apuData = null;
-        let empresaData = {};
-
-        if (fs.existsSync(apuPath)) {
-            const apus = JSON.parse(fs.readFileSync(apuPath, 'utf8'));
-            apuData = apus.find(a => a.id === apuId);
-        }
-        if (!apuData) return res.status(404).json({ error: 'APU no encontrado' });
-
         const usuarioId = req.session.usuario.id;
+
+        const [apuRows] = await pool.query(
+            'SELECT * FROM apus WHERE id = ? AND usuario_id = ? LIMIT 1',
+            [apuId, usuarioId]
+        );
+        if (apuRows.length === 0) return res.status(404).json({ error: 'APU no encontrado' });
+
+        const apuData = apuRows[0];
+        apuData.items = apuData.items ? (typeof apuData.items === 'string' ? JSON.parse(apuData.items) : apuData.items) : { materiales: [], equipos: [], transporte: [], cargos: [] };
+
+        let empresaData = {};
         const [empresas] = await pool.query(
             'SELECT nombre, nit, telefono, email, direccion, web, descripcion, logo FROM empresa_info WHERE usuario_id = ? LIMIT 1',
             [usuarioId]
         );
-        if (empresas.length > 0) {
-            empresaData = empresas[0];
-        }
+        if (empresas.length > 0) empresaData = empresas[0];
 
         const doc = new PDFDocument({
             size: 'A4', margin: 40,
@@ -1104,6 +1306,7 @@ app.get('/api/apu-pdf/:id', verificarAutenticacion, async (req, res) => {
         doc.moveTo(50, currentY - 4).lineTo(doc.page.width - 40, currentY - 4).stroke();
         currentY += 10;
 
+        // Equipos
         const equipos = apuData.items?.equipos || [];
         if (equipos.length > 0) {
             const colX = [50, 180, 280, 380, 500];
@@ -1140,6 +1343,7 @@ app.get('/api/apu-pdf/:id', verificarAutenticacion, async (req, res) => {
             currentY = y + 20;
         }
 
+        // Transporte
         const transportes = apuData.items?.transporte || [];
         if (transportes.length > 0) {
             const colX = [50, 180, 280, 380, 500];
@@ -1176,6 +1380,7 @@ app.get('/api/apu-pdf/:id', verificarAutenticacion, async (req, res) => {
             currentY = y + 20;
         }
 
+        // Mano de Obra
         const cargos = apuData.items?.cargos || [];
         if (cargos.length > 0) {
             const colX = [50, 200, 320, 420, 500];
@@ -1226,6 +1431,7 @@ app.get('/api/apu-pdf/:id', verificarAutenticacion, async (req, res) => {
 
         doc.end();
     } catch (error) {
+        console.error('❌ Error al generar PDF APU:', error);
         res.status(500).json({ error: 'Error al generar el PDF: ' + error.message });
     }
 });
