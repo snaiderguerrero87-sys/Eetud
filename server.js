@@ -7,6 +7,7 @@ const fs = require('fs');
 require('dotenv').config();
 
 const { pool, testConnection } = require('./config/db');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -71,107 +72,69 @@ app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
 // ============================================================
-// ===== FUNCIÓN AUXILIAR: DIBUJAR LOGO EN PDF (SIN ARCHIVOS) =====
+// ===== FUNCIÓN AUXILIAR: DIBUJAR LOGO EN PDF =====
 // ============================================================
 function dibujarLogoEmpresa(doc, empresa, logoX, logoY, LOGO_WIDTH, LOGO_HEIGHT) {
-    console.log('🔍 === DIAGNÓSTICO DEL LOGO ===');
     let logoCargado = false;
 
     if (empresa.logo && typeof empresa.logo === 'string' && empresa.logo.length > 50) {
         try {
             let base64Data = null;
-
             if (empresa.logo.indexOf('data:image') === 0) {
                 const matches = empresa.logo.match(/^data:image\/(\w+);base64,(.+)$/);
                 if (matches) base64Data = matches[2];
             } else {
                 base64Data = empresa.logo;
             }
-
             if (base64Data) {
                 const imageBuffer = Buffer.from(base64Data, 'base64');
                 if (imageBuffer.length > 100) {
                     try {
                         doc.image(imageBuffer, logoX, logoY, {
-                            width: LOGO_WIDTH,
-                            height: LOGO_HEIGHT,
+                            width: LOGO_WIDTH, height: LOGO_HEIGHT,
                             fit: [LOGO_WIDTH, LOGO_HEIGHT],
-                            align: 'center',
-                            valign: 'center'
+                            align: 'center', valign: 'center'
                         });
                         logoCargado = true;
-                        console.log('   ✅ Logo insertado correctamente');
-                    } catch (imgError) {
-                        console.error('   ❌ Error PDFKit:', imgError.message);
-                    }
+                    } catch (imgError) {}
                 }
             }
-        } catch (e) {
-            console.error('   ❌ Error procesando logo:', e.message);
-        }
+        } catch (e) {}
     }
 
     if (!logoCargado) {
-        console.log('   📌 Placeholder "(logo vacío)"');
         doc.rect(logoX, logoY, LOGO_WIDTH, LOGO_HEIGHT).stroke('#cbd5e1');
         doc.fontSize(8).font('Helvetica').fillColor('#94a3b8');
-        doc.text('(logo vacío)', logoX, logoY + LOGO_HEIGHT / 2 - 5, {
-            width: LOGO_WIDTH,
-            align: 'center'
-        });
+        doc.text('(logo vacío)', logoX, logoY + LOGO_HEIGHT / 2 - 5, { width: LOGO_WIDTH, align: 'center' });
     }
-
     doc.fillColor('#0f172a').fontSize(9).font('Helvetica');
     return logoCargado;
 }
 
 // ============================================================
-// ===== FUNCIÓN AUXILIAR: DIBUJAR PIE DE PÁGINA (SIN CREAR PÁGINAS) =====
+// ===== FUNCIÓN AUXILIAR: PIE DE PÁGINA =====
 // ============================================================
 function dibujarPieDePagina(doc, MARGEN_IZQ, MARGEN_DER) {
-    // Obtener el rango REAL de páginas existentes (antes de doc.end())
     const range = doc.bufferedPageRange();
     const totalPages = range.count;
-
-    console.log(`📄 Dibujando pie en ${totalPages} página(s) (rango ${range.start} a ${range.start + totalPages - 1})`);
-
     for (let i = 0; i < totalPages; i++) {
         const pageIndex = range.start + i;
-        try {
-            doc.switchToPage(pageIndex);
-        } catch (e) {
-            console.error(`   ⚠️ No se pudo cambiar a la página ${pageIndex}:`, e.message);
-            continue;
-        }
-
+        try { doc.switchToPage(pageIndex); } catch (e) { continue; }
         const ph = doc.page.height;
         const pw = doc.page.width;
-
-        // Línea superior del pie
         doc.strokeColor('#e2e8f0').lineWidth(1);
         doc.moveTo(MARGEN_IZQ, ph - 45).lineTo(MARGEN_DER, ph - 45).stroke();
-
-        // Texto del pie
         doc.fontSize(9).font('Helvetica').fillColor('#94a3b8');
         doc.text(`Página ${i + 1} de ${totalPages}`, MARGEN_IZQ, ph - 35);
-
         const ct = `Creado con Eetud™ - ${new Date().getFullYear()}`;
         const cw = doc.widthOfString(ct);
         doc.text(ct, (pw - cw) / 2, ph - 35);
-
         const rt = 'Todos los derechos reservados.';
         doc.text(rt, MARGEN_DER - doc.widthOfString(rt), ph - 35);
-
-        // Línea inferior
         doc.strokeColor('#002735').lineWidth(1);
         doc.moveTo(MARGEN_IZQ, ph - 30).lineTo(MARGEN_DER, ph - 30).stroke();
     }
-
-    // Volver a la última página para evitar que PDFKit agregue una nueva
-    // (a veces el switchToPage deja la "página activa" apuntando a una nueva)
-    try {
-        doc.switchToPage(range.start + totalPages - 1);
-    } catch (e) {}
+    try { doc.switchToPage(range.start + totalPages - 1); } catch (e) {}
 }
 
 // ============================================================
@@ -299,6 +262,422 @@ app.post('/api/guardar-empresa', verificarAutenticacion, async (req, res) => {
 
 app.get('/api/ping', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString(), session: req.session?.usuario?.username || 'no autenticado' });
+});
+
+// ============================================================
+// ===== INFORMES (IA) =====
+// ============================================================
+
+// Inicializar Gemini (lazy, solo cuando se necesite)
+let genAI = null;
+function obtenerGenAI() {
+    if (!genAI) {
+        const apiKey = process.env.GEMINI_API_KEY;
+        if (!apiKey) throw new Error('GEMINI_API_KEY no configurada');
+        genAI = new GoogleGenerativeAI(apiKey);
+    }
+    return genAI;
+}
+
+// ---- LISTAR INFORMES GUARDADOS ----
+app.get('/api/informes', verificarAutenticacionApi, async (req, res) => {
+    try {
+        const [rows] = await pool.query(
+            `SELECT id, proyecto_id, proyecto_nombre, area_trabajo, tipo_informe, destinatario, extension, fecha_creacion
+             FROM informes WHERE usuario_id = ? ORDER BY id DESC`,
+            [req.session.usuario.id]
+        );
+        res.json(rows);
+    } catch (error) {
+        console.error('❌ Error al listar informes:', error);
+        res.status(500).json({ error: 'Error al listar informes' });
+    }
+});
+
+// ---- OBTENER UN INFORME POR ID ----
+app.get('/api/informes/:id', verificarAutenticacionApi, async (req, res) => {
+    try {
+        const [rows] = await pool.query(
+            'SELECT * FROM informes WHERE id = ? AND usuario_id = ? LIMIT 1',
+            [parseInt(req.params.id), req.session.usuario.id]
+        );
+        if (rows.length === 0) return res.status(404).json({ error: 'Informe no encontrado' });
+        res.json(rows[0]);
+    } catch (error) {
+        res.status(500).json({ error: 'Error' });
+    }
+});
+
+// ---- ELIMINAR INFORME ----
+app.delete('/api/informes/:id', verificarAutenticacionApi, async (req, res) => {
+    try {
+        const [result] = await pool.query(
+            'DELETE FROM informes WHERE id = ? AND usuario_id = ?',
+            [parseInt(req.params.id), req.session.usuario.id]
+        );
+        if (result.affectedRows === 0) return res.status(404).json({ error: 'No encontrado' });
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ error: 'Error' });
+    }
+});
+
+// ---- GUARDAR INFORME EDITADO ----
+app.put('/api/informes/:id', verificarAutenticacionApi, async (req, res) => {
+    try {
+        const { contenido } = req.body;
+        const [result] = await pool.query(
+            'UPDATE informes SET contenido = ? WHERE id = ? AND usuario_id = ?',
+            [contenido || '', parseInt(req.params.id), req.session.usuario.id]
+        );
+        if (result.affectedRows === 0) return res.status(404).json({ error: 'No encontrado' });
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ error: 'Error' });
+    }
+});
+
+// ---- GENERAR INFORME CON IA ----
+app.post('/api/informes/generar', verificarAutenticacionApi, async (req, res) => {
+    console.log('🤖 === GENERANDO INFORME CON IA ===');
+    try {
+        const usuarioId = req.session.usuario.id;
+        const { proyectoId, areaTrabajo, tipoInforme, destinatario, extension, instrucciones } = req.body;
+
+        if (!proyectoId || !areaTrabajo || !tipoInforme || !destinatario || !extension) {
+            return res.status(400).json({ error: 'Faltan campos obligatorios' });
+        }
+
+        // 1. Leer el proyecto de MySQL
+        const [proyectos] = await pool.query(
+            'SELECT * FROM proyectos WHERE id = ? AND usuario_id = ? LIMIT 1',
+            [proyectoId, usuarioId]
+        );
+        if (proyectos.length === 0) return res.status(404).json({ error: 'Proyecto no encontrado' });
+
+        const proyecto = proyectos[0];
+
+        // Parsear campos JSON
+        let items = proyecto.items;
+        let herramientasObra = proyecto.herramientasObra;
+        let empleadosObra = proyecto.empleadosObra;
+        let compras = proyecto.compras;
+        let ajustes = proyecto.ajustes;
+
+        if (typeof items === 'string') { try { items = JSON.parse(items); } catch (e) { items = []; } }
+        if (typeof herramientasObra === 'string') { try { herramientasObra = JSON.parse(herramientasObra); } catch (e) { herramientasObra = []; } }
+        if (typeof empleadosObra === 'string') { try { empleadosObra = JSON.parse(empleadosObra); } catch (e) { empleadosObra = []; } }
+        if (typeof compras === 'string') { try { compras = JSON.parse(compras); } catch (e) { compras = []; } }
+        if (typeof ajustes === 'string') { try { ajustes = JSON.parse(ajustes); } catch (e) { ajustes = {}; } }
+
+        // 2. Leer herramientas y empleados completos (para nombres)
+        const idsHerramientas = herramientasObra.map(h => h.herramientaId).filter(x => x);
+        const idsEmpleados = empleadosObra.map(e => e.empleadoId).filter(x => x);
+
+        let herramientasCompletas = [];
+        let empleadosCompletos = [];
+
+        if (idsHerramientas.length > 0) {
+            const [h] = await pool.query(
+                'SELECT id, nombre, codigo, marca FROM herramientas WHERE usuario_id = ? AND id IN (?)',
+                [usuarioId, idsHerramientas]
+            );
+            herramientasCompletas = h;
+        }
+        if (idsEmpleados.length > 0) {
+            const [e] = await pool.query(
+                'SELECT id, nombre, cargo, costoHora FROM empleados WHERE usuario_id = ? AND id IN (?)',
+                [usuarioId, idsEmpleados]
+            );
+            empleadosCompletos = e;
+        }
+
+        // 3. Armar resumen estructurado del proyecto
+        const resumenItems = [];
+        for (const item of items) {
+            if (item.tipo === 'titulo') {
+                resumenItems.push({ tipo: 'titulo', numero: item.numero || '', descripcion: item.descripcion || '' });
+            } else if (item.tipo === 'apu') {
+                const cantidad = item.cantidad || 0;
+                const realizada = item.cantidadRealizada || 0;
+                const vu = item.valorUnitario || 0;
+                resumenItems.push({
+                    tipo: 'apu',
+                    numero: item.numero || '',
+                    codigo: item.codigo || '',
+                    nombre: item.nombre || '',
+                    unidad: item.unidad || '',
+                    cantidad,
+                    cantidadRealizada: realizada,
+                    porcentajeAvance: cantidad > 0 ? ((realizada / cantidad) * 100).toFixed(1) : 0,
+                    valorUnitario: vu,
+                    valorTotal: cantidad * vu,
+                    valorEjecutado: realizada * vu,
+                    valorPendiente: (cantidad - realizada) * vu
+                });
+            } else if (item.tipo === 'subitem') {
+                resumenItems.push({ tipo: 'subitem', numero: item.numero || '', descripcion: item.descripcion || '' });
+            }
+        }
+
+        const datosProyecto = {
+            nombre: proyecto.nombre,
+            cliente: proyecto.cliente,
+            cotizacionNumero: proyecto.cotizacionNumero,
+            valorTotal: parseFloat(proyecto.valorTotal) || 0,
+            valorEjecutado: parseFloat(proyecto.valorEjecutado) || 0,
+            saldo: parseFloat(proyecto.saldo) || 0,
+            avanceTotal: parseFloat(proyecto.avanceTotal) || 0,
+            ajustes: ajustes,
+            actividades: resumenItems,
+            herramientasAsignadas: herramientasCompletas.map(h => ({ nombre: h.nombre, codigo: h.codigo, marca: h.marca })),
+            empleadosAsignados: empleadosCompletos.map(e => ({ nombre: e.nombre, cargo: e.cargo, costoHora: e.costoHora })),
+            compras: compras.map(c => ({ factura: c.factura, proveedor: c.proveedor, fecha: c.fecha, valor: c.valor }))
+        };
+
+        // 4. Armar el prompt
+        const systemPrompt = `Eres un redactor profesional de informes técnicos de proyectos de construcción, ingeniería y servicios. Tu trabajo es transformar datos crudos en informes claros, bien estructurados y profesionales.
+
+REGLAS ESTRICTAS:
+- Escribe SIEMPRE en español de Colombia
+- Usa formato Markdown (usa #, ##, ### para títulos; -, * para listas; **negrita** cuando aplique)
+- Sé objetivo: NO inventes datos, cifras, fechas ni nombres que no te hayan dado
+- Si falta información, indícalo explícitamente ("No se cuenta con información sobre...")
+- Formato de moneda: $X.XXX.XXX (pesos colombianos, con puntos como separador de miles)
+- Formato de porcentajes: con 1 decimal (ej: 75.3%)
+- NUNCA uses tablas HTML, usa tablas Markdown si necesitas
+- Estructura mínima del informe:
+    # [Título del informe]
+    ## 1. Resumen Ejecutivo
+    ## 2. Estado de Avance
+    ## 3. Recursos Asignados
+    ## 4. Observaciones y Recomendaciones
+- Adapta el vocabulario al área de trabajo indicada
+- Adapta el nivel de detalle y formalismo al destinatario
+- Respeta la extensión solicitada (no te pases más de un 20%)`;
+
+        const userPrompt = `Redacta un informe con los siguientes datos:
+
+=== DATOS DEL PROYECTO ===
+${JSON.stringify(datosProyecto, null, 2)}
+
+=== PREFERENCIAS DEL INFORME ===
+- Área de trabajo: ${areaTrabajo}
+- Tipo de informe: ${tipoInforme}
+- Destinatario: ${destinatario}
+- Extensión deseada: ${extension}
+${instrucciones ? '- Instrucciones adicionales: ' + instrucciones : ''}
+
+Redacta el informe ahora, siguiendo estrictamente las reglas del sistema.`;
+
+        console.log('📝 Enviando a Gemini...');
+        console.log('   Área:', areaTrabajo);
+        console.log('   Tipo:', tipoInforme);
+        console.log('   Extensión:', extension);
+
+        // 5. Llamar a Gemini
+        const ai = obtenerGenAI();
+        const model = ai.getGenerativeModel({ model: 'gemini-1.5-flash' });
+
+        const result = await model.generateContent({
+            contents: [
+                { role: 'user', parts: [{ text: systemPrompt + '\n\n' + userPrompt }] }
+            ],
+            generationConfig: {
+                temperature: 0.7,
+                maxOutputTokens: 4096
+            }
+        });
+
+        const response = result.response;
+        const texto = response.text();
+
+        if (!texto || texto.length < 20) {
+            return res.status(500).json({ error: 'La IA no devolvió contenido válido' });
+        }
+
+        console.log('✅ Informe generado:', texto.length, 'caracteres');
+
+        // 6. Guardar en MySQL
+        const [insertResult] = await pool.query(
+            `INSERT INTO informes (usuario_id, proyecto_id, proyecto_nombre, area_trabajo, tipo_informe, destinatario, extension, instrucciones, contenido)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [usuarioId, proyectoId, proyecto.nombre, areaTrabajo, tipoInforme, destinatario, extension, instrucciones || '', texto]
+        );
+
+        res.json({
+            success: true,
+            id: insertResult.insertId,
+            contenido: texto,
+            proyectoNombre: proyecto.nombre
+        });
+
+    } catch (error) {
+        console.error('❌ Error al generar informe:', error);
+        let mensaje = error.message || 'Error al generar el informe';
+        if (error.message && error.message.indexOf('API_KEY') !== -1) {
+            mensaje = 'API key de Gemini inválida o no configurada';
+        }
+        res.status(500).json({ error: mensaje });
+    }
+});
+
+// ---- GENERAR PDF DEL INFORME ----
+app.post('/api/informes/pdf', verificarAutenticacion, async (req, res) => {
+    try {
+        const PDFDocument = require('pdfkit');
+        const { contenido, proyectoNombre, areaTrabajo, tipoInforme } = req.body;
+        if (!contenido) return res.status(400).json({ error: 'Falta el contenido del informe' });
+
+        // Cargar datos de la empresa
+        let empresa = {};
+        const [empresas] = await pool.query(
+            'SELECT nombre, nit, telefono, email, direccion, web, descripcion, logo FROM empresa_info WHERE usuario_id = ? LIMIT 1',
+            [req.session.usuario.id]
+        );
+        if (empresas.length > 0) empresa = empresas[0];
+
+        const doc = new PDFDocument({
+            size: 'A4',
+            margin: 40,
+            bufferPages: true,
+            info: {
+                Title: `Informe - ${proyectoNombre || 'Proyecto'}`,
+                Author: empresa.nombre || 'Eetud',
+                Subject: 'Informe de proyecto'
+            }
+        });
+
+        const filename = `Informe_${(proyectoNombre || 'proyecto').replace(/\s+/g, '_')}_${new Date().toISOString().slice(0,10)}.pdf`;
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
+        doc.pipe(res);
+
+        const MARGEN_IZQ = 40;
+        const MARGEN_DER = doc.page.width - 40;
+        const pageWidth = MARGEN_DER - MARGEN_IZQ;
+        let currentY = 40;
+
+        // ===== HEADER =====
+        doc.strokeColor('#002735').lineWidth(2);
+        doc.rect(MARGEN_IZQ, currentY, pageWidth, 90).stroke();
+
+        const LOGO_WIDTH = 65;
+        const LOGO_HEIGHT = 65;
+        let logoX = MARGEN_IZQ + 15;
+        let logoY = currentY + 10;
+        dibujarLogoEmpresa(doc, empresa, logoX, logoY, LOGO_WIDTH, LOGO_HEIGHT);
+
+        let tx = logoX + LOGO_WIDTH + 15;
+        let ty = currentY + 12;
+        doc.fontSize(16).font('Helvetica-Bold').fillColor('#002735');
+        doc.text((empresa.nombre || 'MI EMPRESA').toUpperCase(), tx, ty);
+        ty += 20;
+        doc.fontSize(9).font('Helvetica').fillColor('#333333');
+        if (empresa.nit) { doc.text(`NIT: ${empresa.nit}`, tx, ty); ty += 14; }
+        if (empresa.telefono) { doc.text(`Teléfono: ${empresa.telefono}`, tx, ty); ty += 14; }
+        if (empresa.email) { doc.text(`Email: ${empresa.email}`, tx, ty); ty += 14; }
+
+        const fechaTexto = `Fecha: ${new Date().toLocaleDateString('es-CO')}`;
+        const fw = doc.widthOfString(fechaTexto);
+        doc.fontSize(9).font('Helvetica').fillColor('#333333');
+        doc.text(fechaTexto, MARGEN_DER - fw, currentY + 12);
+
+        currentY += 95;
+        doc.strokeColor('#002735').lineWidth(1.5);
+        doc.moveTo(MARGEN_IZQ, currentY).lineTo(MARGEN_DER, currentY).stroke();
+        currentY += 20;
+
+        // ===== TÍTULO =====
+        doc.fontSize(18).font('Helvetica-Bold').fillColor('#002735');
+        const titulo = `INFORME - ${proyectoNombre || 'PROYECTO'}`;
+        const tw = doc.widthOfString(titulo);
+        if (tw > pageWidth) {
+            doc.fontSize(14);
+        }
+        doc.text(titulo, MARGEN_IZQ, currentY, { width: pageWidth, align: 'center' });
+        currentY += 25;
+
+        doc.fontSize(10).font('Helvetica').fillColor('#64748b');
+        doc.text(`Área: ${areaTrabajo || '-'} | Tipo: ${tipoInforme || '-'}`, MARGEN_IZQ, currentY, { width: pageWidth, align: 'center' });
+        currentY += 25;
+
+        doc.strokeColor('#e2e8f0').lineWidth(1);
+        doc.moveTo(MARGEN_IZQ, currentY).lineTo(MARGEN_DER, currentY).stroke();
+        currentY += 15;
+
+        // ===== CONTENIDO MARKDOWN =====
+        // Parsear el markdown básico y dibujarlo
+        const lineas = contenido.split('\n');
+        const fontRegular = 'Helvetica';
+        const fontBold = 'Helvetica-Bold';
+
+        for (let i = 0; i < lineas.length; i++) {
+            let linea = lineas[i];
+            let textoLimpio = linea;
+
+            // Detectar tipo de línea
+            let esH1 = false, esH2 = false, esH3 = false, esLista = false, esBold = false, esVacio = false;
+
+            if (linea.indexOf('# ') === 0) { esH1 = true; textoLimpio = linea.substring(2); }
+            else if (linea.indexOf('## ') === 0) { esH2 = true; textoLimpio = linea.substring(3); }
+            else if (linea.indexOf('### ') === 0) { esH3 = true; textoLimpio = linea.substring(4); }
+            else if (linea.indexOf('- ') === 0) { esLista = true; textoLimpio = linea.substring(2); }
+            else if (linea.indexOf('* ') === 0) { esLista = true; textoLimpio = linea.substring(2); }
+            else if (linea.trim() === '') { esVacio = true; }
+
+            // Limpiar ** del markdown (bold inline lo hacemos todo en bold para simplificar)
+            textoLimpio = textoLimpio.replace(/\*\*(.+?)\*\*/g, '$1');
+            textoLimpio = textoLimpio.replace(/`(.+?)`/g, '$1');
+            textoLimpio = textoLimpio.replace(/\*(.+?)\*/g, '$1');
+
+            if (esVacio) {
+                currentY += 8;
+                continue;
+            }
+
+            // Verificar espacio antes de dibujar
+            let fontSize = 10;
+            let fontName = fontRegular;
+            let color = '#0f172a';
+            let alturaEstimada = 16;
+
+            if (esH1) { fontSize = 16; fontName = fontBold; color = '#002735'; alturaEstimada = 24; }
+            else if (esH2) { fontSize = 13; fontName = fontBold; color = '#002735'; alturaEstimada = 20; }
+            else if (esH3) { fontSize = 11; fontName = fontBold; color = '#0f172a'; alturaEstimada = 18; }
+
+            doc.fontSize(fontSize).font(fontName).fillColor(color);
+
+            const ancho = esLista ? pageWidth - 20 : pageWidth;
+            const altura = doc.heightOfString(textoLimpio, { width: ancho });
+
+            if (currentY + altura > doc.page.height - 60) {
+                doc.addPage();
+                currentY = 50;
+            }
+
+            if (esH1) currentY += 6;
+            if (esH2) currentY += 4;
+
+            if (esLista) {
+                // Viñeta
+                doc.text('•', MARGEN_IZQ + 5, currentY, { width: 15 });
+                doc.text(textoLimpio, MARGEN_IZQ + 20, currentY, { width: pageWidth - 20 });
+            } else {
+                doc.text(textoLimpio, MARGEN_IZQ, currentY, { width: pageWidth });
+            }
+
+            currentY += altura + 4;
+        }
+
+        // ===== PIE DE PÁGINA =====
+        dibujarPieDePagina(doc, MARGEN_IZQ, MARGEN_DER);
+
+        doc.end();
+    } catch (error) {
+        console.error('❌ Error PDF informe:', error);
+        res.status(500).json({ error: 'Error al generar PDF: ' + error.message });
+    }
 });
 
 // ============================================================
@@ -573,12 +952,10 @@ app.post('/api/materiales/importar', verificarAutenticacionApi, (req, res) => {
         const workbook = XLSX.read(buffer, { type: 'buffer' });
         const data = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
         if (data.length === 0) return res.status(400).json({ error: 'Archivo vacío' });
-
         const headers = Object.keys(data[0]);
         const req_headers = ['Nombre', 'Proveedor', 'Unidad', 'Precio Unitario'];
         const missing = req_headers.filter(h => !headers.includes(h));
         if (missing.length > 0) return res.status(400).json({ error: 'Faltan columnas: ' + missing.join(', ') });
-
         const materiales = [];
         const errores = [];
         for (let i = 0; i < data.length; i++) {
@@ -914,7 +1291,6 @@ app.put('/api/cotizaciones/:id', verificarAutenticacionApi, async (req, res) => 
         const usuarioId = req.session.usuario.id;
         const id = parseInt(req.params.id);
         const { numero, cliente, tipo, proyecto, objetivo, direccion, valorTotal, valorTotalFinal, items, ajustes } = req.body;
-
         const [result] = await pool.query(
             `UPDATE cotizaciones SET numero = ?, cliente = ?, tipo = ?, proyecto = ?, objetivo = ?, direccion = ?, valorTotal = ?, valorTotalFinal = ?, items = ?, ajustes = ?
              WHERE id = ? AND usuario_id = ?`,
@@ -963,7 +1339,6 @@ app.post('/api/proyectos', verificarAutenticacionApi, async (req, res) => {
     try {
         const usuarioId = req.session.usuario.id;
         const { nombre, cliente, cotizacionId, cotizacionNumero, items, ajustes, avanceTotal, valorTotal, valorEjecutado, saldo, herramientasObra, empleadosObra, compras } = req.body;
-
         if (!nombre || !cliente) return res.status(400).json({ error: 'Nombre y cliente obligatorios' });
 
         const [result] = await pool.query(
@@ -1050,13 +1425,7 @@ app.get('/api/apu-pdf/:id', verificarAutenticacion, async (req, res) => {
         );
         if (empresas.length > 0) empresaData = empresas[0];
 
-        // ✅ bufferPages: true es IMPORTANTE para poder cambiar de página al final
-        const doc = new PDFDocument({
-            size: 'A4',
-            margin: 40,
-            bufferPages: true,
-            info: { Title: `APU - ${apuData.codigo}`, Author: empresaData.nombre || 'Eetud', Subject: 'APU' }
-        });
+        const doc = new PDFDocument({ size: 'A4', margin: 40, bufferPages: true, info: { Title: `APU - ${apuData.codigo}`, Author: empresaData.nombre || 'Eetud', Subject: 'APU' } });
 
         const filename = `APU_${apuData.codigo}_${new Date().toISOString().slice(0,10)}.pdf`;
         res.setHeader('Content-Type', 'application/pdf');
@@ -1066,8 +1435,6 @@ app.get('/api/apu-pdf/:id', verificarAutenticacion, async (req, res) => {
         function fp(v) { return '$' + Number(v).toLocaleString('es-CO'); }
         function ff() { const a = new Date(); return a.toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }); }
 
-        const MARGEN_IZQ = 40;
-        const MARGEN_DER = doc.page.width - 40;
         const pageWidth = doc.page.width - 80;
         let currentY = 40;
 
@@ -1248,7 +1615,6 @@ app.get('/api/apu-pdf/:id', verificarAutenticacion, async (req, res) => {
         const tv = fp(apuData.valor || 0);
         doc.text(tv, doc.page.width - 50 - doc.widthOfString(tv) - 10, totalY + 10);
 
-        // ✅ Dibujar pie de página ANTES de doc.end() y SIN crear páginas nuevas
         dibujarPieDePagina(doc, 40, doc.page.width - 40);
 
         doc.end();
@@ -1268,15 +1634,7 @@ app.post('/api/cotizacion-pdf', verificarAutenticacion, async (req, res) => {
         const { cotizacion, empresa } = req.body;
         if (!cotizacion) return res.status(400).json({ error: 'Datos incompletos' });
 
-        console.log('📄 === GENERANDO PDF COTIZACIÓN ===');
-
-        // ✅ bufferPages: true es IMPORTANTE para poder cambiar de página al final
-        const doc = new PDFDocument({
-            size: 'A4',
-            margin: 40,
-            bufferPages: true,
-            info: { Title: `Cotización ${cotizacion.numero}`, Author: empresa.nombre || 'Eetud', Subject: 'Cotización' }
-        });
+        const doc = new PDFDocument({ size: 'A4', margin: 40, bufferPages: true, info: { Title: `Cotización ${cotizacion.numero}`, Author: empresa.nombre || 'Eetud', Subject: 'Cotización' } });
 
         const filename = `Cotizacion_${cotizacion.numero}_${new Date().toISOString().slice(0,10)}.pdf`;
         res.setHeader('Content-Type', 'application/pdf');
@@ -1534,7 +1892,6 @@ app.post('/api/cotizacion-pdf', verificarAutenticacion, async (req, res) => {
         const tv = fp(tFinal);
         doc.text(tv, MARGEN_DER - doc.widthOfString(tv) - 10, totalY + 12);
 
-        // ✅ Dibujar pie de página ANTES de doc.end() y SIN crear páginas nuevas
         dibujarPieDePagina(doc, MARGEN_IZQ, MARGEN_DER);
 
         doc.end();
@@ -1575,6 +1932,9 @@ app.get('/proyectos', verificarAutenticacion, (req, res) => {
 });
 app.get('/cuenta', verificarAutenticacion, (req, res) => {
     res.render('cuenta', { title: 'Mi Empresa - Eetud', usuario: req.session.usuario.nombreCompleto || req.session.usuario.username, usuarioData: req.session.usuario });
+});
+app.get('/informes', verificarAutenticacion, (req, res) => {
+    res.render('informes', { title: 'Informes - Eetud', usuario: req.session.usuario.nombreCompleto || req.session.usuario.username });
 });
 
 app.get('/api/verificar-sesion', (req, res) => {

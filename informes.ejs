@@ -1,0 +1,425 @@
+<%- include('layouts/main', { 
+    title: 'Informes con IA',
+    usuario: usuario,
+    body: `
+        <div class="page-header">
+            <h1><i class="fas fa-robot"></i> Informes con IA</h1>
+            <p style="color: var(--gray-600); margin-top: 4px;">Genera informes profesionales de tus proyectos con inteligencia artificial</p>
+        </div>
+
+        <section class="table-container" style="margin-bottom: 24px;">
+            <h3 style="margin-bottom: 16px; color: var(--gray-900);">
+                <i class="fas fa-cog" style="color: var(--primary);"></i> Configuración del Informe
+            </h3>
+
+            <div class="form-row">
+                <div class="form-group half">
+                    <label for="proyecto">Proyecto *</label>
+                    <select id="proyecto" class="form-select" required>
+                        <option value="">-- Cargando proyectos... --</option>
+                    </select>
+                </div>
+                <div class="form-group half">
+                    <label for="areaTrabajo">Área de trabajo *</label>
+                    <input type="text" id="areaTrabajo" placeholder="Ej: Ingeniería Eléctrica" required>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group half">
+                    <label for="tipoInforme">Tipo de informe *</label>
+                    <select id="tipoInforme" class="form-select" required>
+                        <option value="Ejecutivo">Ejecutivo (para gerencia)</option>
+                        <option value="Técnico">Técnico (con especificaciones)</option>
+                        <option value="Financiero">Financiero (costos y presupuesto)</option>
+                        <option value="Avance">Avance (estado actual)</option>
+                        <option value="Cierre">Cierre (informe final)</option>
+                    </select>
+                </div>
+                <div class="form-group half">
+                    <label for="destinatario">Destinatario *</label>
+                    <select id="destinatario" class="form-select" required>
+                        <option value="Cliente">Cliente</option>
+                        <option value="Gerencia">Gerencia</option>
+                        <option value="Interventoría">Interventoría</option>
+                        <option value="Equipo técnico">Equipo técnico</option>
+                        <option value="Ente regulatorio">Ente regulatorio</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group half">
+                    <label for="extension">Extensión *</label>
+                    <select id="extension" class="form-select" required>
+                        <option value="Corto (~300 palabras)">Corto (~300 palabras)</option>
+                        <option value="Medio (~600 palabras)" selected>Medio (~600 palabras)</option>
+                        <option value="Detallado (~1200 palabras)">Detallado (~1200 palabras)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="instrucciones">Instrucciones adicionales (opcional)</label>
+                <textarea id="instrucciones" rows="3" placeholder="Ej: Enfócate en los retrasos del último mes, menciona problemas con el proveedor de cemento..." style="width:100%; padding:10px 14px; border:1px solid var(--gray-200); border-radius:8px; font-size:14px; font-family:inherit; resize:vertical;"></textarea>
+            </div>
+
+            <div class="form-actions" style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px;">
+                <button type="button" class="btn-secondary" onclick="limpiarFormulario()">
+                    <i class="fas fa-eraser"></i> Limpiar
+                </button>
+                <button type="button" class="btn-primary" onclick="generarInforme()" id="btnGenerar">
+                    <i class="fas fa-magic"></i> Generar Informe con IA
+                </button>
+            </div>
+        </section>
+
+        <section class="table-container" id="seccionResultado" style="display:none;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:12px;">
+                <h3 style="color: var(--gray-900);">
+                    <i class="fas fa-file-alt" style="color: var(--success);"></i> Informe Generado
+                    <span id="infoProyecto" style="font-size: 14px; font-weight: 400; color: var(--gray-600); margin-left: 8px;"></span>
+                </h3>
+                <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                    <button type="button" class="btn-secondary" onclick="copiarInforme()">
+                        <i class="fas fa-copy"></i> Copiar
+                    </button>
+                    <button type="button" class="btn-secondary" onclick="guardarCambios()" id="btnGuardarCambios" style="display:none;">
+                        <i class="fas fa-save"></i> Guardar cambios
+                    </button>
+                    <button type="button" class="btn-primary" onclick="descargarPDF()">
+                        <i class="fas fa-file-pdf"></i> Descargar PDF
+                    </button>
+                </div>
+            </div>
+            <p style="font-size: 13px; color: var(--gray-600); margin-bottom: 12px;">
+                <i class="fas fa-info-circle"></i> Puedes editar el contenido antes de descargar el PDF.
+            </p>
+            <textarea id="contenidoInforme" rows="25" style="width:100%; padding:16px; border:1px solid var(--gray-200); border-radius:8px; font-size:14px; font-family:inherit; resize:vertical; line-height: 1.6;" oninput="marcarModificado()"></textarea>
+        </section>
+
+        <section class="table-container" id="seccionHistorial" style="display:none; margin-top: 24px;">
+            <h3 style="margin-bottom: 16px; color: var(--gray-900);">
+                <i class="fas fa-history" style="color: var(--primary);"></i> Informes anteriores
+            </h3>
+            <table class="data-table" id="tablaInformes">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Proyecto</th>
+                        <th>Área</th>
+                        <th>Tipo</th>
+                        <th>Destinatario</th>
+                        <th>Fecha</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody id="cuerpoTablaInformes"></tbody>
+            </table>
+        </section>
+
+        <div id="loadingOverlay" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background: rgba(0,0,0,0.7); z-index: 9999; align-items: center; justify-content: center; flex-direction: column; color: white; text-align: center;">
+            <i class="fas fa-robot" style="font-size: 64px; margin-bottom: 20px; animation: pulse 1.5s infinite;"></i>
+            <h2 style="color: white; margin-bottom: 8px;">Generando informe con IA...</h2>
+            <p style="color: rgba(255,255,255,0.8);">Esto puede tomar entre 5 y 15 segundos</p>
+        </div>
+
+        <style>
+            @keyframes pulse {
+                0%, 100% { transform: scale(1); opacity: 1; }
+                50% { transform: scale(1.1); opacity: 0.7; }
+            }
+            #btnGenerar:disabled {
+                opacity: 0.6;
+                cursor: not-allowed;
+            }
+        </style>
+
+        <script>
+            var informesCargados = [];
+            var informeActualId = null;
+            var proyectoActual = null;
+            var modificado = false;
+
+            function escapeHtml(text) {
+                if (text === undefined || text === null) return '';
+                return String(text)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#39;');
+            }
+
+            // ===== CARGAR PROYECTOS AL INICIO =====
+            async function cargarProyectos() {
+                try {
+                    const r = await fetch('/api/proyectos');
+                    if (!r.ok) throw new Error('Error al cargar proyectos');
+                    const proyectos = await r.json();
+                    var select = document.getElementById('proyecto');
+                    select.innerHTML = '<option value="">-- Seleccionar proyecto --</option>';
+                    if (proyectos.length === 0) {
+                        select.innerHTML = '<option value="">No hay proyectos disponibles</option>';
+                        return;
+                    }
+                    for (var i = 0; i < proyectos.length; i++) {
+                        var p = proyectos[i];
+                        var option = document.createElement('option');
+                        option.value = p.id;
+                        option.textContent = p.nombre + ' - ' + (p.cliente || 'Sin cliente');
+                        select.appendChild(option);
+                    }
+                } catch (e) {
+                    console.error('Error cargando proyectos:', e);
+                    mostrarNotificacion('Error al cargar proyectos');
+                }
+            }
+
+            // ===== GENERAR INFORME =====
+            async function generarInforme() {
+                var proyectoId = document.getElementById('proyecto').value;
+                var areaTrabajo = document.getElementById('areaTrabajo').value.trim();
+                var tipoInforme = document.getElementById('tipoInforme').value;
+                var destinatario = document.getElementById('destinatario').value;
+                var extension = document.getElementById('extension').value;
+                var instrucciones = document.getElementById('instrucciones').value.trim();
+
+                if (!proyectoId) { alert('Selecciona un proyecto'); return; }
+                if (!areaTrabajo) { alert('Ingresa el área de trabajo'); return; }
+
+                document.getElementById('loadingOverlay').style.display = 'flex';
+                document.getElementById('btnGenerar').disabled = true;
+
+                try {
+                    const r = await fetch('/api/informes/generar', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            proyectoId: parseInt(proyectoId),
+                            areaTrabajo: areaTrabajo,
+                            tipoInforme: tipoInforme,
+                            destinatario: destinatario,
+                            extension: extension,
+                            instrucciones: instrucciones
+                        })
+                    });
+
+                    const data = await r.json();
+
+                    if (!r.ok) {
+                        throw new Error(data.error || 'Error al generar informe');
+                    }
+
+                    informeActualId = data.id;
+                    proyectoActual = data.proyectoNombre;
+                    modificado = false;
+                    document.getElementById('btnGuardarCambios').style.display = 'none';
+
+                    document.getElementById('contenidoInforme').value = data.contenido;
+                    document.getElementById('infoProyecto').textContent = '— ' + data.proyectoNombre;
+                    document.getElementById('seccionResultado').style.display = 'block';
+                    document.getElementById('seccionResultado').scrollIntoView({ behavior: 'smooth' });
+                    mostrarNotificacion('✅ Informe generado correctamente');
+                    cargarHistorial();
+                } catch (e) {
+                    console.error('Error:', e);
+                    mostrarNotificacion('❌ Error: ' + e.message);
+                } finally {
+                    document.getElementById('loadingOverlay').style.display = 'none';
+                    document.getElementById('btnGenerar').disabled = false;
+                }
+            }
+
+            // ===== MARCAR MODIFICADO =====
+            function marcarModificado() {
+                if (!modificado) {
+                    modificado = true;
+                    document.getElementById('btnGuardarCambios').style.display = 'inline-flex';
+                }
+            }
+
+            // ===== GUARDAR CAMBIOS =====
+            async function guardarCambios() {
+                if (!informeActualId) return;
+                var contenido = document.getElementById('contenidoInforme').value;
+                try {
+                    const r = await fetch('/api/informes/' + informeActualId, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ contenido: contenido })
+                    });
+                    if (!r.ok) throw new Error('Error al guardar');
+                    modificado = false;
+                    document.getElementById('btnGuardarCambios').style.display = 'none';
+                    mostrarNotificacion('✅ Cambios guardados');
+                } catch (e) {
+                    mostrarNotificacion('❌ Error: ' + e.message);
+                }
+            }
+
+            // ===== COPIAR =====
+            function copiarInforme() {
+                var texto = document.getElementById('contenidoInforme').value;
+                navigator.clipboard.writeText(texto).then(function() {
+                    mostrarNotificacion('📋 Copiado al portapapeles');
+                }).catch(function() {
+                    mostrarNotificacion('Error al copiar');
+                });
+            }
+
+            // ===== DESCARGAR PDF =====
+            async function descargarPDF() {
+                var contenido = document.getElementById('contenidoInforme').value;
+                var areaTrabajo = document.getElementById('areaTrabajo').value.trim();
+                var tipoInforme = document.getElementById('tipoInforme').value;
+
+                mostrarNotificacion('⏳ Generando PDF...');
+                try {
+                    const r = await fetch('/api/informes/pdf', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            contenido: contenido,
+                            proyectoNombre: proyectoActual,
+                            areaTrabajo: areaTrabajo,
+                            tipoInforme: tipoInforme
+                        })
+                    });
+                    if (!r.ok) {
+                        const err = await r.json();
+                        throw new Error(err.error || 'Error');
+                    }
+                    const blob = await r.blob();
+                    var url = window.URL.createObjectURL(blob);
+                    var a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'Informe_' + (proyectoActual || 'proyecto').replace(/\s+/g, '_') + '_' + new Date().toISOString().slice(0,10) + '.pdf';
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    a.remove();
+                    mostrarNotificacion('✅ PDF descargado');
+                } catch (e) {
+                    mostrarNotificacion('❌ Error: ' + e.message);
+                }
+            }
+
+            // ===== LIMPIAR =====
+            function limpiarFormulario() {
+                document.getElementById('proyecto').value = '';
+                document.getElementById('areaTrabajo').value = '';
+                document.getElementById('tipoInforme').value = 'Ejecutivo';
+                document.getElementById('destinatario').value = 'Cliente';
+                document.getElementById('extension').value = 'Medio (~600 palabras)';
+                document.getElementById('instrucciones').value = '';
+                document.getElementById('seccionResultado').style.display = 'none';
+                informeActualId = null;
+                proyectoActual = null;
+                modificado = false;
+            }
+
+            // ===== HISTORIAL =====
+            async function cargarHistorial() {
+                try {
+                    const r = await fetch('/api/informes');
+                    if (!r.ok) throw new Error('Error');
+                    informesCargados = await r.json();
+                    renderizarHistorial();
+                } catch (e) {
+                    informesCargados = [];
+                }
+            }
+
+            function renderizarHistorial() {
+                var tbody = document.getElementById('cuerpoTablaInformes');
+                var seccion = document.getElementById('seccionHistorial');
+                if (!tbody) return;
+
+                if (informesCargados.length === 0) {
+                    seccion.style.display = 'none';
+                    return;
+                }
+
+                seccion.style.display = 'block';
+                var html = '';
+                for (var i = 0; i < informesCargados.length; i++) {
+                    var info = informesCargados[i];
+                    var fecha = new Date(info.fecha_creacion).toLocaleString('es-CO');
+                    html += '<tr>';
+                    html += '<td><strong>#' + info.id + '</strong></td>';
+                    html += '<td>' + escapeHtml(info.proyecto_nombre || '-') + '</td>';
+                    html += '<td>' + escapeHtml(info.area_trabajo || '-') + '</td>';
+                    html += '<td>' + escapeHtml(info.tipo_informe || '-') + '</td>';
+                    html += '<td>' + escapeHtml(info.destinatario || '-') + '</td>';
+                    html += '<td>' + fecha + '</td>';
+                    html += '<td>';
+                    html += '<button class="btn-edit" onclick="verInforme(' + info.id + ')" title="Ver"><i class="fas fa-eye"></i></button>';
+                    html += '<button class="btn-delete" onclick="eliminarInforme(' + info.id + ')" title="Eliminar"><i class="fas fa-trash"></i></button>';
+                    html += '</td>';
+                    html += '</tr>';
+                }
+                tbody.innerHTML = html;
+            }
+
+            async function verInforme(id) {
+                try {
+                    const r = await fetch('/api/informes/' + id);
+                    if (!r.ok) throw new Error('Error');
+                    const info = await r.json();
+                    informeActualId = info.id;
+                    proyectoActual = info.proyecto_nombre;
+
+                    document.getElementById('contenidoInforme').value = info.contenido;
+                    document.getElementById('infoProyecto').textContent = '— ' + info.proyecto_nombre;
+                    document.getElementById('areaTrabajo').value = info.area_trabajo || '';
+                    document.getElementById('tipoInforme').value = info.tipo_informe || 'Ejecutivo';
+                    document.getElementById('destinatario').value = info.destinatario || 'Cliente';
+                    document.getElementById('extension').value = info.extension || 'Medio (~600 palabras)';
+                    document.getElementById('instrucciones').value = info.instrucciones || '';
+                    document.getElementById('seccionResultado').style.display = 'block';
+                    document.getElementById('seccionResultado').scrollIntoView({ behavior: 'smooth' });
+                    modificado = false;
+                    document.getElementById('btnGuardarCambios').style.display = 'none';
+                } catch (e) {
+                    mostrarNotificacion('Error al cargar informe');
+                }
+            }
+
+            async function eliminarInforme(id) {
+                if (!confirm('¿Eliminar este informe?')) return;
+                try {
+                    const r = await fetch('/api/informes/' + id, { method: 'DELETE' });
+                    if (!r.ok) throw new Error('Error');
+                    mostrarNotificacion('Informe eliminado');
+                    cargarHistorial();
+                    if (informeActualId === id) {
+                        document.getElementById('seccionResultado').style.display = 'none';
+                        informeActualId = null;
+                    }
+                } catch (e) {
+                    mostrarNotificacion('Error al eliminar');
+                }
+            }
+
+            // ===== NOTIFICACIONES =====
+            function mostrarNotificacion(mensaje) {
+                var n = document.createElement('div');
+                n.className = 'notification';
+                n.textContent = mensaje;
+                document.body.appendChild(n);
+                setTimeout(function() { n.classList.add('show'); }, 100);
+                setTimeout(function() {
+                    n.classList.remove('show');
+                    setTimeout(function() { n.remove(); }, 300);
+                }, 3000);
+            }
+
+            // ===== INICIALIZAR =====
+            document.addEventListener('DOMContentLoaded', function() {
+                cargarProyectos();
+                cargarHistorial();
+            });
+        </script>
+    `
+}) %>
