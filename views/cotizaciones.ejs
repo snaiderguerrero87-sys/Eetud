@@ -1,6 +1,6 @@
 <%- include('layouts/main', { 
     title: 'Listado de Cotizaciones',
-    usuario: 'Administrador',
+    usuario: usuario,
     body: `
         <div class="page-header">
             <h1>Listado de Cotizaciones</h1>
@@ -11,7 +11,6 @@
             </div>
         </div>
 
-        <!-- Tabla de Cotizaciones -->
         <section class="table-container">
             <table class="data-table" id="tablaCotizaciones">
                 <thead>
@@ -25,9 +24,7 @@
                         <th>Acciones</th>
                     </tr>
                 </thead>
-                <tbody id="cuerpoTabla">
-                    <!-- Los datos se cargan con JavaScript -->
-                </tbody>
+                <tbody id="cuerpoTabla"></tbody>
             </table>
             <div id="sinDatos" class="empty-state">
                 <i class="fas fa-file-invoice"></i>
@@ -38,7 +35,6 @@
             </div>
         </section>
 
-        <!-- Modal para crear/editar cotización -->
         <div id="modalCotizacion" class="modal modal-cotizacion">
             <div class="modal-content modal-content-cotizacion">
                 <div class="modal-header">
@@ -86,7 +82,6 @@
 
                     <hr class="form-divider">
 
-                    <!-- SECCIÓN: ITEMS JERÁRQUICOS -->
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
                         <h3 class="section-title" style="margin: 0;"><i class="fas fa-list"></i> Items de Cotización</h3>
                         <button type="button" class="btn-undo" id="btnUndo" onclick="undoAction()" title="Deshacer última acción">
@@ -94,14 +89,12 @@
                         </button>
                     </div>
 
-                    <!-- Contenedor de items -->
                     <div id="listaItems" class="items-container">
                         <div class="empty-items">No hay items agregados. Comienza agregando un Título.</div>
                     </div>
 
                     <hr class="form-divider">
 
-                    <!-- SECCIÓN: SUBTOTALES Y AJUSTES -->
                     <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
                         <div>
                             <h3 class="section-title"><i class="fas fa-calculator"></i> Ajustes</h3>
@@ -165,7 +158,6 @@
                             </div>
                         </div>
 
-                        <!-- TOTAL -->
                         <div>
                             <h3 class="section-title"><i class="fas fa-file-invoice"></i> Resumen</h3>
                             <div class="total-container final-total" style="margin-top:10px;">
@@ -185,7 +177,6 @@
             </div>
         </div>
 
-        <!-- ===== MODAL SELECCIONAR APU (MÚLTIPLES) ===== -->
         <div id="modalSeleccionarAPU" class="modal modal-grande">
             <div class="modal-content" style="max-width:700px;">
                 <div class="modal-header">
@@ -222,13 +213,11 @@
             </div>
         </div>
 
-        <!-- Botón para borrar caché -->
         <button class="btn-danger btn-cache" onclick="borrarCache()">
-            <i class="fas fa-trash"></i> Borrar Caché
+            <i class="fas fa-trash"></i> Borrar Todas Mis Cotizaciones
         </button>
 
         <style>
-            /* ===== MODAL COTIZACIÓN ===== */
             .modal-cotizacion .modal-content-cotizacion {
                 max-width: 95vw !important;
                 width: 95vw !important;
@@ -245,7 +234,6 @@
                 flex: 1 !important;
             }
 
-            /* ===== SELECTOR APU ===== */
             .apu-item-selector {
                 display: flex;
                 align-items: center;
@@ -296,7 +284,6 @@
                 border-left: 3px solid var(--primary);
             }
 
-            /* ===== BOTÓN PDF ===== */
             .btn-pdf {
                 background: #dc2626;
                 color: white;
@@ -312,10 +299,6 @@
                 transform: scale(1.05);
             }
 
-            .btn-print { background: #10b981; color: white; border: none; padding: 6px 10px; border-radius: 6px; cursor: pointer; transition: all 0.2s; margin-left: 4px; }
-            .btn-print:hover { background: #059669; transform: scale(1.05); }
-
-            /* ===== RESPONSIVE ===== */
             @media (max-width: 768px) {
                 .modal-cotizacion .modal-content-cotizacion {
                     max-width: 98vw !important;
@@ -329,13 +312,6 @@
                 }
                 .modal-cotizacion .modal-content-cotizacion .form-row .form-group.half {
                     flex: none !important;
-                }
-                .modal-cotizacion .modal-content-cotizacion .item-row {
-                    flex-wrap: wrap !important;
-                }
-                .modal-cotizacion .modal-content-cotizacion .item-row .form-group {
-                    flex: 1 !important;
-                    min-width: 100px !important;
                 }
                 #modalSeleccionarAPU .modal-content {
                     max-width: 95vw !important;
@@ -371,6 +347,110 @@
                 background: var(--primary);
                 border-radius: 10px;
             }
+
+            /* Items jerárquicos */
+            .items-container {
+                background: var(--gray-50);
+                border-radius: 8px;
+                padding: 12px;
+                max-height: 400px;
+                overflow-y: auto;
+                border: 1px solid var(--gray-200);
+            }
+            .items-list { display: flex; flex-direction: column; gap: 4px; }
+            .item-row {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                padding: 8px 12px;
+                background: white;
+                border-radius: 6px;
+                border: 1px solid var(--gray-100);
+                transition: all 0.2s;
+                cursor: grab;
+            }
+            .item-row:hover { border-color: var(--primary-light); box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+            .item-row.item-titulo { background: #f0f4f8; border-left: 4px solid var(--primary); }
+            .item-row.item-apu { background: #f8fafc; border-left: 4px solid var(--success); }
+            .item-row.item-subitem { background: white; border-left: 4px solid var(--warning); margin-left: 20px; }
+            .item-drag-handle { color: var(--gray-400); font-size: 14px; cursor: grab; padding: 0 4px; user-select: none; }
+            .item-numero { font-weight: 700; color: var(--gray-600); font-size: 13px; min-width: 60px; font-family: monospace; }
+            .item-contenido { flex: 1; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+            .item-input-titulo { flex: 1; border: none; background: transparent; font-size: 14px; font-weight: 600; color: var(--gray-900); padding: 4px 0; font-family: inherit; min-width: 100px; }
+            .item-input-titulo:focus { outline: none; border-bottom: 2px solid var(--primary); }
+            .item-input-subitem { flex: 1; border: none; background: transparent; font-size: 14px; color: var(--gray-900); padding: 4px 0; font-family: inherit; min-width: 100px; }
+            .item-input-subitem:focus { outline: none; border-bottom: 2px solid var(--warning); }
+            .item-apu-info { flex: 1; font-size: 14px; color: var(--gray-900); }
+            .item-apu-info strong { color: var(--primary); }
+            .apu-detalle { color: var(--gray-600); font-size: 12px; }
+            .item-apu-params { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+            .item-apu-params label { display: flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 500; color: var(--gray-600); }
+            .apu-cantidad { width: 60px; padding: 2px 6px; border: 1px solid var(--gray-200); border-radius: 4px; font-size: 13px; text-align: center; }
+            .apu-subtotal { font-size: 13px; font-weight: 600; color: var(--success); }
+            .item-acciones { display: flex; gap: 4px; }
+            .btn-insertar { background: transparent; border: none; color: var(--gray-400); cursor: pointer; padding: 4px 6px; border-radius: 4px; font-size: 16px; transition: all 0.2s; }
+            .btn-insertar:hover { color: var(--primary); background: rgba(37, 99, 235, 0.1); }
+            .btn-eliminar-item { background: transparent; border: none; color: var(--gray-400); cursor: pointer; padding: 4px 6px; border-radius: 4px; font-size: 14px; transition: all 0.2s; }
+            .btn-eliminar-item:hover { color: var(--danger); background: rgba(239, 68, 68, 0.1); }
+
+            .insert-menu-overlay {
+                position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+                background: rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; z-index: 2000;
+            }
+            .insert-menu-box { background: white; border-radius: 12px; padding: 24px; min-width: 250px; box-shadow: var(--shadow-lg); }
+            .insert-menu-box h3 { margin-bottom: 12px; font-size: 16px; text-align: center; }
+            .btn-insert-option {
+                display: block; width: 100%; padding: 10px 16px; margin-bottom: 6px;
+                border: 1px solid var(--gray-200); border-radius: 8px; background: white;
+                cursor: pointer; font-size: 14px; font-weight: 500; transition: all 0.2s; text-align: left;
+            }
+            .btn-insert-option:hover { background: var(--primary); color: white; border-color: var(--primary); }
+            .insert-menu-box .btn-secondary { width: 100%; margin-top: 8px; justify-content: center; }
+
+            .subtotal-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: var(--gray-50); border-radius: 8px; margin-bottom: 12px; border: 1px solid var(--gray-200); }
+            .subtotal-label { font-size: 16px; font-weight: 700; color: var(--gray-900); }
+            .subtotal-value { font-size: 18px; font-weight: 700; color: var(--primary); }
+
+            .ajuste-row { display: flex; align-items: center; gap: 12px; padding: 8px 16px; margin-bottom: 6px; background: white; border-radius: 6px; border: 1px solid var(--gray-100); transition: all 0.2s; }
+            .ajuste-row:hover { border-color: var(--gray-200); }
+            .ajuste-row.iva-row { border-color: var(--gray-200); background: var(--gray-50); }
+            .ajuste-info { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 150px; }
+            .ajuste-nombre { font-size: 14px; font-weight: 500; color: var(--gray-900); }
+            .ajuste-porcentaje { font-size: 12px; color: var(--gray-600); }
+            .ajuste-nota { font-size: 11px; color: var(--gray-500); font-style: italic; }
+            .ajuste-input { width: 70px; padding: 4px 8px; border: 1px solid var(--gray-200); border-radius: 4px; font-size: 14px; text-align: center; font-weight: 600; }
+            .ajuste-valor { font-size: 14px; font-weight: 600; color: var(--gray-900); min-width: 100px; text-align: right; }
+
+            .toggle-label-mini { display: flex; align-items: center; cursor: pointer; margin: 0; }
+            .toggle-label-mini input { display: none; }
+            .toggle-slider-mini { position: relative; width: 32px; height: 18px; background: var(--gray-200); border-radius: 10px; transition: all 0.3s; flex-shrink: 0; }
+            .toggle-slider-mini::after { content: ''; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; background: white; border-radius: 50%; transition: all 0.3s; box-shadow: var(--shadow); }
+            .toggle-label-mini input:checked + .toggle-slider-mini { background: var(--primary); }
+            .toggle-label-mini input:checked + .toggle-slider-mini::after { transform: translateX(14px); }
+
+            .final-total { background: var(--primary); border-radius: 8px; padding: 16px 24px; }
+            .final-total .total-label { color: white; font-size: 20px; }
+            .final-total .total-value { color: white; font-size: 28px; font-weight: 700; }
+
+            @media (max-width: 768px) {
+                .ajuste-row { flex-wrap: wrap; gap: 6px; padding: 10px 12px; }
+                .ajuste-info { min-width: 100%; flex: 0 0 100%; }
+                .ajuste-input { flex: 1; width: 60px; }
+                .ajuste-valor { min-width: 80px; }
+                .subtotal-row { flex-direction: column; text-align: center; gap: 4px; }
+                .final-total { flex-direction: column; text-align: center; gap: 8px; }
+                .final-total .total-value { font-size: 22px; }
+                .item-row { flex-wrap: wrap; padding: 10px; }
+                .item-numero { min-width: 40px; font-size: 12px; }
+                .item-apu-params { width: 100%; justify-content: flex-start; }
+                .item-acciones { width: 100%; justify-content: flex-end; }
+                .item-drag-handle { display: none; }
+            }
+
+            .btn-undo { background: var(--gray-100); border: 1px solid var(--gray-200); color: var(--gray-900); padding: 6px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s; }
+            .btn-undo:hover { background: var(--primary); color: white; border-color: var(--primary); transform: translateY(-2px); box-shadow: var(--shadow); }
+            .btn-print { background: #10b981; color: white; border: none; padding: 6px 10px; border-radius: 6px; cursor: pointer; transition: all 0.2s; margin-left: 4px; }
+            .btn-print:hover { background: #059669; transform: scale(1.05); }
         </style>
 
         <script>
@@ -380,40 +460,29 @@
             var apusData = [];
             var items = [];
             var counterId = 0;
-
-            // ===== VARIABLES PARA UNDO =====
             var historial = [];
             var maxHistorial = 20;
-
-            // ===== VARIABLES PARA SELECTOR DE APU =====
             var apusFiltradosSelector = [];
             var apusSeleccionadosTemp = [];
             var posicionInsertarAPU = null;
+            var dragIndex = null;
 
-            // ===== FUNCIÓN PARA ESCAPAR HTML =====
             function escapeHTML(str) {
                 if (!str) return '';
                 return String(str).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
             }
 
-            // ===== FUNCIONES PARA UNDO =====
+            // ===== UNDO =====
             function guardarEstado() {
-                var copia = JSON.stringify(items);
-                historial.push(copia);
-                if (historial.length > maxHistorial) {
-                    historial.shift();
-                }
+                historial.push(JSON.stringify(items));
+                if (historial.length > maxHistorial) historial.shift();
                 actualizarBotonUndo();
             }
 
             function undoAction() {
-                if (historial.length <= 1) {
-                    alert('No hay acciones para deshacer');
-                    return;
-                }
+                if (historial.length <= 1) { alert('No hay acciones para deshacer'); return; }
                 historial.pop();
-                var estadoAnterior = historial[historial.length - 1];
-                items = JSON.parse(estadoAnterior);
+                items = JSON.parse(historial[historial.length - 1]);
                 renderizarItems();
                 actualizarBotonUndo();
                 mostrarNotificacion('↩️ Acción deshecha');
@@ -422,54 +491,21 @@
             function actualizarBotonUndo() {
                 var btn = document.getElementById('btnUndo');
                 if (btn) {
-                    if (historial.length > 1) {
-                        btn.style.opacity = '1';
-                        btn.style.pointerEvents = 'auto';
-                    } else {
-                        btn.style.opacity = '0.5';
-                        btn.style.pointerEvents = 'none';
-                    }
+                    btn.style.opacity = historial.length > 1 ? '1' : '0.5';
+                    btn.style.pointerEvents = historial.length > 1 ? 'auto' : 'none';
                 }
             }
 
-            // ===== FUNCIÓN PARA OBTENER VALOR DEL APU =====
-            function obtenerValorAPU(apu) {
-                if (!apu) return 0;
-                if (apu.valor !== undefined && apu.valor !== null) {
-                    return apu.valor;
-                }
-                if (apu.items) {
-                    var total = 0;
-                    if (apu.items.materiales) {
-                        for (var i = 0; i < apu.items.materiales.length; i++) {
-                            total += apu.items.materiales[i].subtotal || 0;
-                        }
-                    }
-                    if (apu.items.cargos) {
-                        for (var j = 0; j < apu.items.cargos.length; j++) {
-                            total += apu.items.cargos[j].subtotal || 0;
-                        }
-                    }
-                    return total;
-                }
-                return 0;
-            }
-
-            // ===== CARGAR DATOS DE REFERENCIA =====
-            function cargarAPUs() {
+            // ===== CARGAR APUS =====
+            async function cargarAPUs() {
                 try {
-                    var data = localStorage.getItem('apu');
-                    if (data) {
-                        apusData = JSON.parse(data);
-                    } else {
-                        apusData = [];
-                    }
-                } catch (e) {
-                    apusData = [];
-                }
+                    const r = await fetch('/api/apus');
+                    if (!r.ok) throw new Error('Error');
+                    apusData = await r.json();
+                } catch (e) { apusData = []; }
             }
 
-            // ===== GENERAR NUMERACIÓN =====
+            // ===== NUMERACIÓN JERÁRQUICA =====
             function generarNumeracion() {
                 var contadorTitulo = 0;
                 var contadorAPU = {};
@@ -480,70 +516,27 @@
                     if (item.tipo === 'titulo') {
                         contadorTitulo++;
                         contadorAPU[contadorTitulo] = 0;
-                        contadorSubitem[contadorTitulo + '.' + contadorAPU[contadorTitulo]] = 0;
                         item.numero = contadorTitulo + '.';
+                        item._idTitulo = contadorTitulo;
                     } else if (item.tipo === 'apu') {
-                        if (!item.padreTitulo) {
-                            item.padreTitulo = contadorTitulo;
-                        }
                         var padre = item.padreTitulo || contadorTitulo;
                         contadorAPU[padre] = (contadorAPU[padre] || 0) + 1;
-                        var claveAPU = padre + '.' + contadorAPU[padre];
-                        contadorSubitem[claveAPU] = 0;
                         item.numero = padre + '.' + contadorAPU[padre];
+                        contadorSubitem[padre + '.' + contadorAPU[padre]] = 0;
                     } else if (item.tipo === 'subitem') {
-                        var padreAPU = item.padreAPU || '';
-                        var partes = padreAPU.split('.');
-                        var padre = parseInt(partes[0]) || 1;
-                        var apuNum = parseInt(partes[1]) || 0;
-                        if (apuNum > 0) {
-                            var clave = padre + '.' + apuNum;
+                        var partes = (item.padreAPU || '').split('.');
+                        var p = parseInt(partes[0]) || 1;
+                        var a = parseInt(partes[1]) || 0;
+                        if (a > 0) {
+                            var clave = p + '.' + a;
                             contadorSubitem[clave] = (contadorSubitem[clave] || 0) + 1;
-                            item.numero = padre + '.' + apuNum + '.' + contadorSubitem[clave];
-                        } else {
-                            var ultimoAPU = null;
-                            for (var j = i - 1; j >= 0; j--) {
-                                if (items[j].tipo === 'apu') {
-                                    ultimoAPU = items[j];
-                                    break;
-                                }
-                            }
-                            if (ultimoAPU) {
-                                var partesUltimo = ultimoAPU.numero.split('.');
-                                var p = parseInt(partesUltimo[0]) || 1;
-                                var a = parseInt(partesUltimo[1]) || 0;
-                                var clave = p + '.' + a;
-                                contadorSubitem[clave] = (contadorSubitem[clave] || 0) + 1;
-                                item.numero = p + '.' + a + '.' + contadorSubitem[clave];
-                                item.padreAPU = ultimoAPU.numero;
-                            }
+                            item.numero = p + '.' + a + '.' + contadorSubitem[clave];
                         }
                     }
                 }
             }
 
-            // ===== FUNCIONES PARA ACTUALIZAR =====
-            function actualizarItemDesdeInput(index, campo, valor) {
-                if (index >= 0 && index < items.length) {
-                    items[index][campo] = valor;
-                    calcularTotales();
-                    guardarEstado();
-                }
-            }
-
-            function actualizarCantidadDesdeInput(index, valor) {
-                var cantidad = parseFloat(valor) || 1;
-                if (cantidad < 0.1) {
-                    cantidad = 0.1;
-                }
-                if (index >= 0 && index < items.length) {
-                    items[index].cantidad = cantidad;
-                    renderizarItems();
-                    guardarEstado();
-                }
-            }
-
-            // ===== CALCULAR SUBTOTAL =====
+            // ===== CALCULAR =====
             function calcularSubtotal() {
                 var total = 0;
                 for (var i = 0; i < items.length; i++) {
@@ -554,10 +547,8 @@
                 return total;
             }
 
-            // ===== CALCULAR TODOS LOS TOTALES =====
             function calcularTotales() {
                 var subtotal = calcularSubtotal();
-
                 document.getElementById('subtotalDisplay').textContent = '$' + Number(subtotal).toLocaleString('es-CO');
 
                 var adminPorc = parseFloat(document.getElementById('adminPorcentaje').value) || 0;
@@ -584,49 +575,27 @@
                 document.getElementById('valorTotalFinal').textContent = '$' + Number(totalFinal).toLocaleString('es-CO');
 
                 window._ajustes = {
-                    adminPorc: adminPorc,
-                    imprevistosPorc: imprevistosPorc,
-                    utilidadPorc: utilidadPorc,
-                    ivaPorc: ivaPorc,
-                    adminActivo: adminActivo,
-                    imprevistosActivo: imprevistosActivo,
-                    utilidadActivo: utilidadActivo,
-                    ivaActivo: ivaActivo,
-                    adminValor: adminValor,
-                    imprevistosValor: imprevistosValor,
-                    utilidadValor: utilidadValor,
-                    ivaValor: ivaValor,
-                    subtotal: subtotal,
-                    totalFinal: totalFinal
+                    adminPorc, imprevistosPorc, utilidadPorc, ivaPorc,
+                    adminActivo, imprevistosActivo, utilidadActivo, ivaActivo,
+                    adminValor, imprevistosValor, utilidadValor, ivaValor,
+                    subtotal, totalFinal
                 };
             }
 
-            // ===== FUNCIÓN PARA OBTENER ÚLTIMO NÚMERO =====
+            // ===== NÚMERO COTIZACIÓN =====
             function obtenerUltimoNumero() {
-                if (cotizaciones.length === 0) {
-                    return '-';
-                }
-                var numeros = [];
-                for (var i = 0; i < cotizaciones.length; i++) {
-                    if (cotizaciones[i].numero) {
-                        numeros.push(cotizaciones[i].numero);
-                    }
-                }
-                if (numeros.length === 0) return '-';
-                numeros.sort();
-                return numeros[numeros.length - 1];
+                if (cotizaciones.length === 0) return '-';
+                var nums = cotizaciones.map(c => c.numero).filter(n => n);
+                if (nums.length === 0) return '-';
+                nums.sort();
+                return nums[nums.length - 1];
             }
 
             // ===== DRAG & DROP =====
-            var dragIndex = null;
-
             function iniciarDrag(e, index) {
                 dragIndex = index;
                 var row = e.target.closest('.item-row');
-                if (row) {
-                    row.style.opacity = '0.5';
-                    row.style.border = '2px dashed var(--primary)';
-                }
+                if (row) { row.style.opacity = '0.5'; row.style.border = '2px dashed var(--primary)'; }
                 e.dataTransfer.effectAllowed = 'move';
                 e.dataTransfer.setData('text/plain', index);
             }
@@ -643,29 +612,18 @@
             function soltarItem(e, targetIndex) {
                 e.preventDefault();
                 var sourceIndex = parseInt(e.dataTransfer.getData('text/plain'));
-
-                if (isNaN(sourceIndex) || sourceIndex === targetIndex || sourceIndex < 0 || targetIndex < 0) {
-                    finalizarDrag(e);
-                    return;
-                }
-
-                if (sourceIndex >= items.length || targetIndex >= items.length) {
-                    finalizarDrag(e);
-                    return;
-                }
+                if (isNaN(sourceIndex) || sourceIndex === targetIndex || sourceIndex < 0 || targetIndex < 0) { finalizarDrag(e); return; }
+                if (sourceIndex >= items.length || targetIndex >= items.length) { finalizarDrag(e); return; }
 
                 var itemMover = items.splice(sourceIndex, 1)[0];
                 items.splice(targetIndex, 0, itemMover);
-
                 guardarEstado();
                 renderizarItems();
                 finalizarDrag(e);
                 mostrarNotificacion('📦 Item movido');
             }
 
-            function permitirSoltar(e) {
-                e.preventDefault();
-            }
+            function permitirSoltar(e) { e.preventDefault(); }
 
             // ===== RENDERIZAR ITEMS =====
             function renderizarItems() {
@@ -681,18 +639,12 @@
                 generarNumeracion();
 
                 var html = '<div class="items-list">';
-                var totalCotizacion = 0;
-
                 for (var i = 0; i < items.length; i++) {
                     var item = items[i];
                     var clase = 'item-' + item.tipo;
                     var numero = item.numero || '';
-
                     var subtotal = 0;
-                    if (item.tipo === 'apu') {
-                        subtotal = (item.valorUnitario || 0) * (item.cantidad || 1);
-                        totalCotizacion += subtotal;
-                    }
+                    if (item.tipo === 'apu') subtotal = (item.valorUnitario || 0) * (item.cantidad || 1);
 
                     html += '<div class="item-row ' + clase + '" data-index="' + i + '" draggable="true" ';
                     html += 'ondragstart="iniciarDrag(event, ' + i + ')" ';
@@ -704,128 +656,103 @@
                     html += '<div class="item-contenido">';
 
                     if (item.tipo === 'titulo') {
-                        var valorDesc = escapeHTML(item.descripcion || '');
-                        html += '<input type="text" class="item-input-titulo" value="' + valorDesc + '" placeholder="Escribe el título..." data-index="' + i + '" data-campo="descripcion">';
+                        html += '<input type="text" class="item-input-titulo" value="' + escapeHTML(item.descripcion || '') + '" placeholder="Escribe el título..." data-index="' + i + '" data-campo="descripcion">';
                     } else if (item.tipo === 'apu') {
-                        var codigoEscapado = escapeHTML(item.codigo || '');
-                        var nombreEscapado = escapeHTML(item.nombre || '');
-                        var unidadEscapado = escapeHTML(item.unidad || 'und');
                         html += '<span class="item-apu-info">';
-                        html += '<strong>' + codigoEscapado + '</strong> - ';
-                        html += '<span>' + nombreEscapado + '</span>';
-                        html += ' <span class="apu-detalle">(' + unidadEscapado + ')</span>';
+                        html += '<strong>' + escapeHTML(item.codigo || '') + '</strong> - ';
+                        html += '<span>' + escapeHTML(item.nombre || '') + '</span>';
+                        html += ' <span class="apu-detalle">(' + escapeHTML(item.unidad || 'und') + ')</span>';
                         html += '</span>';
                         html += '<div class="item-apu-params">';
                         html += '<label>Cantidad: <input type="number" class="apu-cantidad" value="' + (item.cantidad || 1) + '" min="0.1" step="0.1" data-index="' + i + '"></label>';
                         html += '<span class="apu-subtotal">Subtotal: $' + Number(subtotal).toLocaleString('es-CO') + '</span>';
                         html += '</div>';
                     } else if (item.tipo === 'subitem') {
-                        var valorSub = escapeHTML(item.descripcion || '');
-                        html += '<input type="text" class="item-input-subitem" value="' + valorSub + '" placeholder="Escribe el subitem..." data-index="' + i + '" data-campo="descripcion">';
+                        html += '<input type="text" class="item-input-subitem" value="' + escapeHTML(item.descripcion || '') + '" placeholder="Escribe el subitem..." data-index="' + i + '" data-campo="descripcion">';
                     }
 
                     html += '</div>';
                     html += '<div class="item-acciones">';
-                    html += '<button type="button" class="btn-insertar" data-index="' + i + '" title="Insertar después">';
-                    html += '<i class="fas fa-plus-circle"></i>';
-                    html += '</button>';
-                    html += '<button type="button" class="btn-eliminar-item" data-index="' + i + '" title="Eliminar">';
-                    html += '<i class="fas fa-trash"></i>';
-                    html += '</button>';
+                    html += '<button type="button" class="btn-insertar" data-index="' + i + '" title="Insertar después"><i class="fas fa-plus-circle"></i></button>';
+                    html += '<button type="button" class="btn-eliminar-item" data-index="' + i + '" title="Eliminar"><i class="fas fa-trash"></i></button>';
                     html += '</div>';
                     html += '</div>';
                 }
-
                 html += '</div>';
                 container.innerHTML = html;
 
-                // === EVENT LISTENERS ===
                 var textInputs = container.querySelectorAll('.item-input-titulo, .item-input-subitem');
                 for (var t = 0; t < textInputs.length; t++) {
                     (function(input) {
                         var index = parseInt(input.dataset.index);
-                        var campo = input.dataset.campo;
                         input.addEventListener('input', function() {
-                            actualizarItemDesdeInput(index, campo, this.value);
+                            if (index >= 0 && index < items.length) {
+                                items[index][input.dataset.campo] = this.value;
+                                calcularTotales();
+                            }
                         });
                     })(textInputs[t]);
                 }
 
-                var cantidadInputs = container.querySelectorAll('.apu-cantidad');
-                for (var c = 0; c < cantidadInputs.length; c++) {
+                var cantInputs = container.querySelectorAll('.apu-cantidad');
+                for (var c = 0; c < cantInputs.length; c++) {
                     (function(input) {
                         var index = parseInt(input.dataset.index);
                         input.addEventListener('change', function() {
-                            actualizarCantidadDesdeInput(index, this.value);
+                            var cantidad = parseFloat(this.value) || 1;
+                            if (cantidad < 0.1) cantidad = 0.1;
+                            if (index >= 0 && index < items.length) {
+                                items[index].cantidad = cantidad;
+                                guardarEstado();
+                                renderizarItems();
+                            }
                         });
-                    })(cantidadInputs[c]);
+                    })(cantInputs[c]);
                 }
 
-                var btnInsertar = container.querySelectorAll('.btn-insertar');
-                for (var b = 0; b < btnInsertar.length; b++) {
+                var btnIns = container.querySelectorAll('.btn-insertar');
+                for (var b = 0; b < btnIns.length; b++) {
                     (function(btn) {
                         var index = parseInt(btn.dataset.index);
-                        btn.addEventListener('click', function() {
-                            mostrarMenuInsertar(index);
-                        });
-                    })(btnInsertar[b]);
+                        btn.addEventListener('click', function() { mostrarMenuInsertar(index); });
+                    })(btnIns[b]);
                 }
 
-                var btnEliminar = container.querySelectorAll('.btn-eliminar-item');
-                for (var d = 0; d < btnEliminar.length; d++) {
+                var btnDel = container.querySelectorAll('.btn-eliminar-item');
+                for (var d = 0; d < btnDel.length; d++) {
                     (function(btn) {
                         var index = parseInt(btn.dataset.index);
-                        btn.addEventListener('click', function() {
-                            eliminarItem(index);
-                        });
-                    })(btnEliminar[d]);
+                        btn.addEventListener('click', function() { eliminarItem(index); });
+                    })(btnDel[d]);
                 }
 
                 calcularTotales();
                 actualizarBotonUndo();
             }
 
-            // ===== MENÚ INSERTAR CONTEXTUAL =====
+            // ===== MENÚ INSERTAR =====
             function mostrarMenuInsertar(index) {
                 if (index < 0 || index >= items.length) return;
-
-                var itemActual = items[index];
-                var tipoActual = itemActual.tipo;
-
+                var tipoActual = items[index].tipo;
                 var opciones = [];
 
                 if (tipoActual === 'titulo') {
                     opciones.push({ tipo: 'apu', label: 'Agregar APU' });
-                } else if (tipoActual === 'apu') {
-                    opciones.push({ tipo: 'titulo', label: 'Agregar Título' });
-                    opciones.push({ tipo: 'apu', label: 'Agregar APU' });
-                    opciones.push({ tipo: 'subitem', label: 'Agregar Subitem' });
-                } else if (tipoActual === 'subitem') {
+                } else if (tipoActual === 'apu' || tipoActual === 'subitem') {
                     opciones.push({ tipo: 'titulo', label: 'Agregar Título' });
                     opciones.push({ tipo: 'apu', label: 'Agregar APU' });
                     opciones.push({ tipo: 'subitem', label: 'Agregar Subitem' });
                 }
+                if (opciones.length === 0) return;
 
-                if (opciones.length === 0) {
-                    alert('No hay opciones disponibles para insertar después de este elemento');
-                    return;
-                }
-
-                var menuHTML = '<div class="insert-menu-overlay" id="insertMenu">';
-                menuHTML += '<div class="insert-menu-box">';
-                menuHTML += '<h3>Insertar después</h3>';
+                var menuHTML = '<div class="insert-menu-overlay" id="insertMenu"><div class="insert-menu-box"><h3>Insertar después</h3>';
                 for (var i = 0; i < opciones.length; i++) {
-                    menuHTML += '<button type="button" class="btn-insert-option" data-tipo="' + opciones[i].tipo + '">';
-                    menuHTML += opciones[i].label;
-                    menuHTML += '</button>';
+                    menuHTML += '<button type="button" class="btn-insert-option" data-tipo="' + opciones[i].tipo + '">' + opciones[i].label + '</button>';
                 }
-                menuHTML += '<button type="button" class="btn-secondary" id="btnCancelarInsert">Cancelar</button>';
-                menuHTML += '</div>';
-                menuHTML += '</div>';
+                menuHTML += '<button type="button" class="btn-secondary" id="btnCancelarInsert">Cancelar</button></div></div>';
 
                 var existing = document.getElementById('insertMenu');
                 if (existing) existing.remove();
-
                 document.body.insertAdjacentHTML('beforeend', menuHTML);
 
                 var options = document.querySelectorAll('#insertMenu .btn-insert-option');
@@ -843,10 +770,7 @@
                         });
                     })(options[j]);
                 }
-
-                document.getElementById('btnCancelarInsert').addEventListener('click', function() {
-                    cerrarInsertMenu();
-                });
+                document.getElementById('btnCancelarInsert').addEventListener('click', cerrarInsertMenu);
             }
 
             function cerrarInsertMenu() {
@@ -854,69 +778,40 @@
                 if (menu) menu.remove();
             }
 
-            // ===== INSERTAR ITEM POR TIPO =====
             function insertarItemTipo(index, tipo) {
                 cerrarInsertMenu();
 
                 if (tipo === 'titulo') {
-                    items.splice(index + 1, 0, {
-                        id: ++counterId,
-                        tipo: 'titulo',
-                        descripcion: '',
-                        numero: ''
-                    });
+                    items.splice(index + 1, 0, { id: ++counterId, tipo: 'titulo', descripcion: '', numero: '' });
                     guardarEstado();
                     renderizarItems();
                     setTimeout(function() {
                         var inputs = document.querySelectorAll('.item-input-titulo');
-                        if (inputs.length > 0) {
-                            inputs[inputs.length - 1].focus();
-                        }
+                        if (inputs.length > 0) inputs[inputs.length - 1].focus();
                     }, 200);
                 } else if (tipo === 'subitem') {
                     var padreAPU = null;
                     for (var k = index; k >= 0; k--) {
-                        if (items[k].tipo === 'apu') {
-                            padreAPU = items[k].numero || '';
-                            break;
-                        }
+                        if (items[k].tipo === 'apu') { padreAPU = items[k].numero || ''; break; }
                     }
                     if (!padreAPU) {
                         for (var l = items.length - 1; l >= 0; l--) {
-                            if (items[l].tipo === 'apu') {
-                                padreAPU = items[l].numero || '';
-                                break;
-                            }
+                            if (items[l].tipo === 'apu') { padreAPU = items[l].numero || ''; break; }
                         }
                     }
-                    if (!padreAPU) {
-                        alert('Debe haber un APU antes del Subitem');
-                        return;
-                    }
-                    items.splice(index + 1, 0, {
-                        id: ++counterId,
-                        tipo: 'subitem',
-                        descripcion: '',
-                        numero: '',
-                        padreAPU: padreAPU
-                    });
+                    if (!padreAPU) { alert('Debe haber un APU antes del Subitem'); return; }
+                    items.splice(index + 1, 0, { id: ++counterId, tipo: 'subitem', descripcion: '', numero: '', padreAPU: padreAPU });
                     guardarEstado();
                     renderizarItems();
                     setTimeout(function() {
                         var inputs = document.querySelectorAll('.item-input-subitem');
-                        if (inputs.length > 0) {
-                            inputs[inputs.length - 1].focus();
-                        }
+                        if (inputs.length > 0) inputs[inputs.length - 1].focus();
                     }, 200);
                 }
             }
 
-            // ============================================================
-            // ===== SELECTOR DE APU (MÚLTIPLES) =====
-            // ============================================================
-            
+            // ===== SELECTOR APU =====
             function abrirSelectorAPU() {
-                cargarAPUs();
                 apusSeleccionadosTemp = [];
                 apusFiltradosSelector = apusData.slice();
                 renderizarListaAPUSelector();
@@ -929,78 +824,46 @@
             }
 
             function filtrarAPUSelector() {
-                var busqueda = document.getElementById('buscarAPUSelector').value.toLowerCase().trim();
-                if (busqueda === '') {
-                    apusFiltradosSelector = apusData.slice();
-                } else {
-                    apusFiltradosSelector = apusData.filter(function(a) {
-                        return a.codigo.toLowerCase().includes(busqueda) || 
-                               a.nombre.toLowerCase().includes(busqueda) ||
-                               (a.categoria && a.categoria.toLowerCase().includes(busqueda));
-                    });
-                }
+                var b = document.getElementById('buscarAPUSelector').value.toLowerCase().trim();
+                apusFiltradosSelector = b === ''
+                    ? apusData.slice()
+                    : apusData.filter(a => a.codigo.toLowerCase().includes(b) || a.nombre.toLowerCase().includes(b) || (a.categoria && a.categoria.toLowerCase().includes(b)));
                 renderizarListaAPUSelector();
             }
 
             function renderizarListaAPUSelector() {
                 var container = document.getElementById('listaAPUSelector');
-                if (!container) return;
-
                 if (apusFiltradosSelector.length === 0) {
                     container.innerHTML = '<div class="selector-vacio">No hay APU disponibles</div>';
                 } else {
                     var html = '';
                     for (var i = 0; i < apusFiltradosSelector.length; i++) {
                         var a = apusFiltradosSelector[i];
-                        var seleccionado = apusSeleccionadosTemp.some(function(s) {
-                            return s.id === a.id;
-                        });
+                        var seleccionado = apusSeleccionadosTemp.some(s => s.id === a.id);
                         var valorFormateado = '$' + Number(a.valor || 0).toLocaleString('es-CO');
-                        var claseSeleccionado = seleccionado ? 'seleccionado' : '';
-                        
-                        html += '<div class="apu-item-selector ' + claseSeleccionado + '" data-id="' + a.id + '" onclick="toggleAPUSeleccionado(' + a.id + ')">';
+                        html += '<div class="apu-item-selector ' + (seleccionado ? 'seleccionado' : '') + '" data-id="' + a.id + '" onclick="toggleAPUSeleccionado(' + a.id + ')">';
                         html += '<input type="checkbox" ' + (seleccionado ? 'checked' : '') + ' onclick="event.stopPropagation(); toggleAPUSeleccionado(' + a.id + ')">';
                         html += '<div class="apu-info">';
-                        html += '<span class="apu-codigo">' + a.codigo + '</span>';
-                        html += '<span class="apu-nombre">' + a.nombre + '</span>';
-                        if (a.categoria) {
-                            html += '<span class="apu-categoria">' + a.categoria + '</span>';
-                        }
+                        html += '<span class="apu-codigo">' + escapeHTML(a.codigo) + '</span>';
+                        html += '<span class="apu-nombre">' + escapeHTML(a.nombre) + '</span>';
+                        if (a.categoria) html += '<span class="apu-categoria">' + escapeHTML(a.categoria) + '</span>';
                         html += '<span class="apu-valor">' + valorFormateado + '</span>';
-                        html += '</div>';
-                        html += '</div>';
+                        html += '</div></div>';
                     }
                     container.innerHTML = html;
                 }
-
                 document.getElementById('apuContadorSelector').textContent = apusFiltradosSelector.length + ' APU';
                 document.getElementById('apuSeleccionadosContador').textContent = apusSeleccionadosTemp.length + ' APU seleccionados';
             }
 
             function toggleAPUSeleccionado(id) {
-                var index = -1;
-                for (var i = 0; i < apusSeleccionadosTemp.length; i++) {
-                    if (apusSeleccionadosTemp[i].id === id) {
-                        index = i;
-                        break;
-                    }
-                }
+                var index = apusSeleccionadosTemp.findIndex(s => s.id === id);
                 if (index === -1) {
-                    var apu = null;
-                    for (var j = 0; j < apusData.length; j++) {
-                        if (apusData[j].id === id) {
-                            apu = apusData[j];
-                            break;
-                        }
-                    }
+                    var apu = apusData.find(a => a.id === id);
                     if (apu) {
                         apusSeleccionadosTemp.push({
-                            id: apu.id,
-                            codigo: apu.codigo || '',
-                            nombre: apu.nombre || '',
-                            unidad: apu.unidad || 'und',
-                            valorUnitario: apu.valor || 0,
-                            cantidad: 1
+                            id: apu.id, codigo: apu.codigo || '', nombre: apu.nombre || '',
+                            unidad: apu.unidad || 'und', valorUnitario: apu.valor || 0, cantidad: 1
                         });
                     }
                 } else {
@@ -1014,12 +877,8 @@
                 for (var i = 0; i < apusFiltradosSelector.length; i++) {
                     var a = apusFiltradosSelector[i];
                     apusSeleccionadosTemp.push({
-                        id: a.id,
-                        codigo: a.codigo || '',
-                        nombre: a.nombre || '',
-                        unidad: a.unidad || 'und',
-                        valorUnitario: a.valor || 0,
-                        cantidad: 1
+                        id: a.id, codigo: a.codigo || '', nombre: a.nombre || '',
+                        unidad: a.unidad || 'und', valorUnitario: a.valor || 0, cantidad: 1
                     });
                 }
                 renderizarListaAPUSelector();
@@ -1031,29 +890,17 @@
             }
 
             function agregarAPUSeleccionados() {
-                if (apusSeleccionadosTemp.length === 0) {
-                    alert('Selecciona al menos un APU');
-                    return;
-                }
-
+                if (apusSeleccionadosTemp.length === 0) { alert('Selecciona al menos un APU'); return; }
                 var posicion = posicionInsertarAPU !== null ? posicionInsertarAPU : items.length;
-                
+
                 for (var i = 0; i < apusSeleccionadosTemp.length; i++) {
                     var apu = apusSeleccionadosTemp[i];
                     items.splice(posicion + i, 0, {
-                        id: ++counterId,
-                        tipo: 'apu',
-                        apuId: apu.id,
-                        codigo: apu.codigo,
-                        nombre: apu.nombre,
-                        unidad: apu.unidad,
-                        valorUnitario: apu.valorUnitario,
-                        cantidad: apu.cantidad || 1,
-                        numero: '',
-                        padreTitulo: null
+                        id: ++counterId, tipo: 'apu', apuId: apu.id, codigo: apu.codigo,
+                        nombre: apu.nombre, unidad: apu.unidad, valorUnitario: apu.valorUnitario,
+                        cantidad: apu.cantidad || 1, numero: '', padreTitulo: null
                     });
                 }
-
                 guardarEstado();
                 renderizarItems();
                 cerrarSelectorAPU();
@@ -1061,7 +908,6 @@
                 mostrarNotificacion('✅ ' + apusSeleccionadosTemp.length + ' APU(s) agregados');
             }
 
-            // ===== ELIMINAR ITEM =====
             function eliminarItem(index) {
                 if (index >= 0 && index < items.length) {
                     if (confirm('¿Eliminar este item?')) {
@@ -1073,23 +919,16 @@
             }
 
             // ===== CARGAR COTIZACIONES =====
-            function cargarCotizaciones() {
+            async function cargarCotizaciones() {
                 try {
-                    var data = localStorage.getItem('cotizaciones');
-                    if (data) {
-                        cotizaciones = JSON.parse(data);
-                    } else {
-                        cotizaciones = [];
-                    }
+                    const r = await fetch('/api/cotizaciones');
+                    if (!r.ok) throw new Error('Error');
+                    cotizaciones = await r.json();
+                    renderizarTabla();
                 } catch (e) {
                     cotizaciones = [];
+                    renderizarTabla();
                 }
-                renderizarTabla();
-            }
-
-            function guardarCotizaciones() {
-                localStorage.setItem('cotizaciones', JSON.stringify(cotizaciones));
-                renderizarTabla();
             }
 
             function renderizarTabla() {
@@ -1099,9 +938,7 @@
 
                 if (!tbody) return;
 
-                if (!cotizaciones || !Array.isArray(cotizaciones)) {
-                    cotizaciones = [];
-                }
+                if (!cotizaciones || !Array.isArray(cotizaciones)) cotizaciones = [];
 
                 if (cotizaciones.length === 0) {
                     tbody.innerHTML = '';
@@ -1122,94 +959,46 @@
                     html += '<td>' + (c.cliente || '-') + '</td>';
                     html += '<td>' + (c.tipo || '-') + '</td>';
                     html += '<td>' + (c.proyecto || '-') + '</td>';
-                    var objetivo = c.objetivo || '';
-                    html += '<td>' + (objetivo.substring(0, 30) + (objetivo.length > 30 ? '...' : '')) + '</td>';
+                    var obj = c.objetivo || '';
+                    html += '<td>' + (obj.substring(0, 30) + (obj.length > 30 ? '...' : '')) + '</td>';
                     html += '<td>' + valorFormateado + '</td>';
                     html += '<td>';
-                    html += '<button class="btn-edit" onclick="editarCotizacion(' + c.id + ')">';
-                    html += '<i class="fas fa-edit"></i>';
-                    html += '</button>';
-                    html += '<button class="btn-delete" onclick="eliminarCotizacion(' + c.id + ')">';
-                    html += '<i class="fas fa-trash"></i>';
-                    html += '</button>';
-                    html += '<button class="btn-pdf" onclick="exportarPDF(' + c.id + ')">';
-                    html += '<i class="fas fa-file-pdf"></i>';
-                    html += '</button>';
+                    html += '<button class="btn-edit" onclick="editarCotizacion(' + c.id + ')"><i class="fas fa-edit"></i></button>';
+                    html += '<button class="btn-delete" onclick="eliminarCotizacion(' + c.id + ')"><i class="fas fa-trash"></i></button>';
+                    html += '<button class="btn-pdf" onclick="exportarPDF(' + c.id + ')"><i class="fas fa-file-pdf"></i></button>';
                     html += '</td>';
                     html += '</tr>';
                 }
                 tbody.innerHTML = html;
             }
 
-            // ============================================================
-            // ===== EXPORTAR COTIZACIÓN A PDF =====
-            // ============================================================
-            
-            function exportarPDF(id) {
-                var notificacion = document.createElement('div');
-                notificacion.className = 'notification';
-                notificacion.textContent = '⏳ Generando PDF...';
-                document.body.appendChild(notificacion);
-                setTimeout(function() { notificacion.classList.add('show'); }, 100);
+            // ===== EXPORTAR PDF =====
+            async function exportarPDF(id) {
+                mostrarNotificacion('⏳ Generando PDF...');
 
-                var cotizacion = null;
-                for (var i = 0; i < cotizaciones.length; i++) {
-                    if (cotizaciones[i].id === id) {
-                        cotizacion = cotizaciones[i];
-                        break;
-                    }
-                }
+                var cotizacion = cotizaciones.find(c => c.id === id);
+                if (!cotizacion) { mostrarNotificacion('❌ Cotización no encontrada'); return; }
 
-                if (!cotizacion) {
-                    notificacion.classList.remove('show');
-                    setTimeout(function() { notificacion.remove(); }, 300);
-                    mostrarNotificacion('❌ Cotización no encontrada');
-                    return;
-                }
-
-                // Obtener datos de la empresa
-                var empresaData = null;
+                let empresaData = null;
                 try {
-                    var data = localStorage.getItem('empresaInfo');
-                    if (data) {
-                        empresaData = JSON.parse(data);
-                    }
-                } catch (e) {
-                    empresaData = null;
+                    const r = await fetch('/api/empresa-info');
+                    if (r.ok) empresaData = await r.json();
+                } catch (e) {}
+
+                if (!empresaData || !empresaData.nombre) {
+                    empresaData = { nombre: 'Mi Empresa', nit: '', telefono: '', email: '', direccion: '', web: '', logo: '' };
                 }
 
-                // Construir datos para el PDF
-                var pdfData = {
-                    cotizacion: cotizacion,
-                    empresa: empresaData || {
-                        nombre: 'Mi Empresa',
-                        nit: '',
-                        telefono: '',
-                        email: '',
-                        direccion: '',
-                        web: '',
-                        logo: ''
-                    },
-                    fecha: new Date().toISOString()
-                };
-
-                // Enviar al servidor para generar el PDF
                 fetch('/api/cotizacion-pdf', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(pdfData)
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ cotizacion: cotizacion, empresa: empresaData, fecha: new Date().toISOString() })
                 })
-                .then(function(response) {
-                    if (!response.ok) {
-                        return response.json().then(function(err) {
-                            throw new Error(err.error || 'Error al generar PDF');
-                        });
-                    }
-                    return response.blob();
+                .then(r => {
+                    if (!r.ok) return r.json().then(err => { throw new Error(err.error || 'Error'); });
+                    return r.blob();
                 })
-                .then(function(blob) {
+                .then(blob => {
                     var url = window.URL.createObjectURL(blob);
                     var a = document.createElement('a');
                     a.href = url;
@@ -1218,23 +1007,16 @@
                     a.click();
                     window.URL.revokeObjectURL(url);
                     a.remove();
-                    notificacion.classList.remove('show');
-                    setTimeout(function() { notificacion.remove(); }, 300);
-                    mostrarNotificacion('✅ PDF generado correctamente');
+                    mostrarNotificacion('✅ PDF generado');
                 })
-                .catch(function(error) {
-                    notificacion.classList.remove('show');
-                    setTimeout(function() { notificacion.remove(); }, 300);
-                    mostrarNotificacion('❌ Error: ' + error.message);
-                });
+                .catch(err => mostrarNotificacion('❌ Error: ' + err.message));
             }
 
             // ===== MODAL =====
-            function abrirModal(cotizacion) {
+            async function abrirModal(cotizacion) {
                 var modal = document.getElementById('modalCotizacion');
                 var form = document.getElementById('formCotizacion');
                 var titulo = document.getElementById('modalTitulo');
-
                 if (!modal) return;
 
                 items = [];
@@ -1242,7 +1024,7 @@
                 historial = [];
                 renderizarItems();
 
-                cargarAPUs();
+                await cargarAPUs();
 
                 var ultimo = obtenerUltimoNumero();
                 document.getElementById('ultimoNumero').textContent = ultimo;
@@ -1251,25 +1033,15 @@
                 document.getElementById('imprevistosPorcentaje').value = 0;
                 document.getElementById('utilidadPorcentaje').value = 0;
                 document.getElementById('ivaPorcentaje').value = 0;
-
-                document.querySelectorAll('.toggle-ajuste').forEach(function(el) {
-                    el.checked = true;
-                });
+                document.querySelectorAll('.toggle-ajuste').forEach(el => { el.checked = true; });
 
                 if (!cotizacion) {
-                    items.push({
-                        id: ++counterId,
-                        tipo: 'titulo',
-                        descripcion: '',
-                        numero: ''
-                    });
+                    items.push({ id: ++counterId, tipo: 'titulo', descripcion: '', numero: '' });
                     guardarEstado();
                     renderizarItems();
                     setTimeout(function() {
                         var inputs = document.querySelectorAll('.item-input-titulo');
-                        if (inputs.length > 0) {
-                            inputs[0].focus();
-                        }
+                        if (inputs.length > 0) inputs[0].focus();
                     }, 200);
                 }
 
@@ -1289,29 +1061,17 @@
                         document.getElementById('imprevistosPorcentaje').value = a.imprevistosPorc || 0;
                         document.getElementById('utilidadPorcentaje').value = a.utilidadPorc || 0;
                         document.getElementById('ivaPorcentaje').value = a.ivaPorc || 0;
-                        if (a.adminActivo !== undefined) {
-                            document.querySelector('.toggle-ajuste[data-ajuste="admin"]').checked = a.adminActivo;
-                        }
-                        if (a.imprevistosActivo !== undefined) {
-                            document.querySelector('.toggle-ajuste[data-ajuste="imprevistos"]').checked = a.imprevistosActivo;
-                        }
-                        if (a.utilidadActivo !== undefined) {
-                            document.querySelector('.toggle-ajuste[data-ajuste="utilidad"]').checked = a.utilidadActivo;
-                        }
-                        if (a.ivaActivo !== undefined) {
-                            document.querySelector('.toggle-ajuste[data-ajuste="iva"]').checked = a.ivaActivo;
-                        }
+                        if (a.adminActivo !== undefined) document.querySelector('.toggle-ajuste[data-ajuste="admin"]').checked = a.adminActivo;
+                        if (a.imprevistosActivo !== undefined) document.querySelector('.toggle-ajuste[data-ajuste="imprevistos"]').checked = a.imprevistosActivo;
+                        if (a.utilidadActivo !== undefined) document.querySelector('.toggle-ajuste[data-ajuste="utilidad"]').checked = a.utilidadActivo;
+                        if (a.ivaActivo !== undefined) document.querySelector('.toggle-ajuste[data-ajuste="iva"]').checked = a.ivaActivo;
                     }
 
                     if (cotizacion.items && cotizacion.items.length > 0) {
                         items = cotizacion.items;
                         for (var i = 0; i < items.length; i++) {
-                            if (!items[i].id) {
-                                items[i].id = ++counterId;
-                            }
-                            if (counterId < items[i].id) {
-                                counterId = items[i].id;
-                            }
+                            if (!items[i].id) items[i].id = ++counterId;
+                            if (counterId < items[i].id) counterId = items[i].id;
                         }
                         guardarEstado();
                         renderizarItems();
@@ -1323,10 +1083,8 @@
                     editandoId = null;
                 }
 
-                document.querySelectorAll('.toggle-ajuste').forEach(function(el) {
-                    el.addEventListener('change', function() {
-                        calcularTotales();
-                    });
+                document.querySelectorAll('.toggle-ajuste').forEach(el => {
+                    el.addEventListener('change', function() { calcularTotales(); });
                 });
 
                 calcularTotales();
@@ -1349,13 +1107,13 @@
             }
 
             // ===== CRUD =====
-            document.addEventListener('DOMContentLoaded', function() {
-                cargarCotizaciones();
-                cargarAPUs();
+            document.addEventListener('DOMContentLoaded', async function() {
+                await cargarCotizaciones();
+                await cargarAPUs();
 
                 var form = document.getElementById('formCotizacion');
                 if (form) {
-                    form.addEventListener('submit', function(e) {
+                    form.addEventListener('submit', async function(e) {
                         e.preventDefault();
 
                         var numero = document.getElementById('numero').value.trim();
@@ -1366,30 +1124,16 @@
                         var direccion = document.getElementById('direccion').value.trim();
 
                         if (!cliente || !tipo || !proyecto) {
-                            alert('Por favor, completa todos los campos obligatorios (*)');
+                            alert('Completa todos los campos obligatorios (*)');
                             return;
                         }
-
-                        if (items.length === 0) {
-                            alert('Debes agregar al menos un Título');
-                            return;
-                        }
+                        if (items.length === 0) { alert('Debes agregar al menos un Título'); return; }
 
                         var ajustes = window._ajustes || {
-                            adminPorc: 0,
-                            imprevistosPorc: 0,
-                            utilidadPorc: 0,
-                            ivaPorc: 0,
-                            adminActivo: true,
-                            imprevistosActivo: true,
-                            utilidadActivo: true,
-                            ivaActivo: true,
-                            adminValor: 0,
-                            imprevistosValor: 0,
-                            utilidadValor: 0,
-                            ivaValor: 0,
-                            subtotal: 0,
-                            totalFinal: 0
+                            adminPorc: 0, imprevistosPorc: 0, utilidadPorc: 0, ivaPorc: 0,
+                            adminActivo: true, imprevistosActivo: true, utilidadActivo: true, ivaActivo: true,
+                            adminValor: 0, imprevistosValor: 0, utilidadValor: 0, ivaValor: 0,
+                            subtotal: 0, totalFinal: 0
                         };
 
                         var numeroFinal = numero;
@@ -1410,126 +1154,85 @@
                         }
 
                         var cotizacionData = {
-                            numero: numeroFinal,
-                            cliente: cliente,
-                            tipo: tipo,
-                            proyecto: proyecto,
-                            objetivo: objetivo,
-                            direccion: direccion,
+                            numero: numeroFinal, cliente, tipo, proyecto, objetivo, direccion,
                             valorTotal: ajustes.subtotal || 0,
                             valorTotalFinal: ajustes.totalFinal || 0,
                             items: items,
                             ajustes: ajustes
                         };
 
-                        if (editandoId !== null) {
-                            var index = -1;
-                            for (var k = 0; k < cotizaciones.length; k++) {
-                                if (cotizaciones[k].id === editandoId) {
-                                    index = k;
-                                    break;
-                                }
-                            }
-                            if (index !== -1) {
-                                cotizaciones[index] = { id: editandoId };
-                                for (var key in cotizacionData) {
-                                    cotizaciones[index][key] = cotizacionData[key];
-                                }
-                            }
-                        } else {
-                            var nuevoId = 1;
-                            if (cotizaciones.length > 0) {
-                                var maxId = 0;
-                                for (var m = 0; m < cotizaciones.length; m++) {
-                                    if (cotizaciones[m].id > maxId) {
-                                        maxId = cotizaciones[m].id;
-                                    }
-                                }
-                                nuevoId = maxId + 1;
-                            }
-                            cotizaciones.push({ id: nuevoId });
-                            var ultimoIndex = cotizaciones.length - 1;
-                            for (var key2 in cotizacionData) {
-                                cotizaciones[ultimoIndex][key2] = cotizacionData[key2];
-                            }
-                        }
+                        try {
+                            var url = editandoId !== null ? '/api/cotizaciones/' + editandoId : '/api/cotizaciones';
+                            var method = editandoId !== null ? 'PUT' : 'POST';
 
-                        guardarCotizaciones();
-                        cerrarModal();
-                        var mensaje = editandoId !== null ? 'Cotización actualizada' : 'Cotización creada';
-                        mostrarNotificacion(mensaje);
-                        editandoId = null;
+                            var response = await fetch(url, {
+                                method: method,
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(cotizacionData)
+                            });
+
+                            if (!response.ok) {
+                                var err = await response.json();
+                                throw new Error(err.error || 'Error al guardar');
+                            }
+
+                            await cargarCotizaciones();
+                            cerrarModal();
+                            mostrarNotificacion(editandoId !== null ? 'Cotización actualizada' : 'Cotización creada');
+                            editandoId = null;
+                        } catch (error) {
+                            console.error('Error:', error);
+                            mostrarNotificacion('Error: ' + error.message);
+                        }
                     });
                 }
             });
 
             function editarCotizacion(id) {
-                var cotizacion = null;
-                for (var i = 0; i < cotizaciones.length; i++) {
-                    if (cotizaciones[i].id === id) {
-                        cotizacion = cotizaciones[i];
-                        break;
-                    }
-                }
-                if (cotizacion) {
-                    abrirModal(cotizacion);
-                }
+                var c = cotizaciones.find(x => x.id === id);
+                if (c) abrirModal(c);
             }
 
-            function eliminarCotizacion(id) {
-                if (confirm('¿Estás seguro de eliminar esta cotización?')) {
-                    var nuevasCotizaciones = [];
-                    for (var i = 0; i < cotizaciones.length; i++) {
-                        if (cotizaciones[i].id !== id) {
-                            nuevasCotizaciones.push(cotizaciones[i]);
-                        }
-                    }
-                    cotizaciones = nuevasCotizaciones;
-                    guardarCotizaciones();
+            async function eliminarCotizacion(id) {
+                if (!confirm('¿Estás seguro de eliminar esta cotización?')) return;
+                try {
+                    const r = await fetch('/api/cotizaciones/' + id, { method: 'DELETE' });
+                    if (!r.ok) throw new Error('Error');
+                    await cargarCotizaciones();
                     mostrarNotificacion('Cotización eliminada');
+                } catch (e) {
+                    mostrarNotificacion('Error al eliminar');
                 }
             }
 
-            // ===== BORRAR CACHÉ =====
             function borrarCache() {
-                if (confirm('⚠️ ¿Estás seguro de borrar TODOS los datos guardados? Esta acción no se puede deshacer.')) {
-                    localStorage.clear();
-                    cotizaciones = [];
-                    guardarCotizaciones();
-                    mostrarNotificacion('🗑️ Caché borrada correctamente');
-                }
+                if (!cotizaciones || cotizaciones.length === 0) { alert('No hay cotizaciones para borrar'); return; }
+                if (!confirm('⚠️ ¿Borrar TODAS tus cotizaciones? Esta acción no se puede deshacer.')) return;
+
+                Promise.all(cotizaciones.map(c => fetch('/api/cotizaciones/' + c.id, { method: 'DELETE' })))
+                    .then(() => cargarCotizaciones())
+                    .then(() => mostrarNotificacion('Todas las cotizaciones fueron eliminadas'));
             }
 
-            // ===== NOTIFICACIONES =====
             function mostrarNotificacion(mensaje) {
-                var notificacion = document.createElement('div');
-                notificacion.className = 'notification';
-                notificacion.textContent = mensaje;
-                document.body.appendChild(notificacion);
-                setTimeout(function() {
-                    notificacion.classList.add('show');
-                }, 100);
-                setTimeout(function() {
-                    notificacion.classList.remove('show');
-                    setTimeout(function() {
-                        notificacion.remove();
-                    }, 300);
+                var n = document.createElement('div');
+                n.className = 'notification';
+                n.textContent = mensaje;
+                document.body.appendChild(n);
+                setTimeout(() => n.classList.add('show'), 100);
+                setTimeout(() => {
+                    n.classList.remove('show');
+                    setTimeout(() => n.remove(), 300);
                 }, 3000);
             }
 
             window.onclick = function(event) {
                 var modal = document.getElementById('modalCotizacion');
-                if (event.target === modal) {
-                    cerrarModal();
-                }
+                if (event.target === modal) cerrarModal();
                 var selector = document.getElementById('modalSeleccionarAPU');
-                if (event.target === selector) {
-                    cerrarSelectorAPU();
-                }
+                if (event.target === selector) cerrarSelectorAPU();
                 var menu = document.getElementById('insertMenu');
-                if (event.target === menu) {
-                    cerrarInsertMenu();
-                }
+                if (event.target === menu) cerrarInsertMenu();
             };
         </script>
     `

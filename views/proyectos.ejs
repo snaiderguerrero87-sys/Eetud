@@ -1,6 +1,6 @@
 <%- include('layouts/main', { 
     title: 'Listado de Proyectos',
-    usuario: 'Administrador',
+    usuario: usuario,
     body: `
         <div class="page-header">
             <h1>Listado de Proyectos</h1>
@@ -9,7 +9,6 @@
             </button>
         </div>
 
-        <!-- Tabla de Proyectos -->
         <section class="table-container">
             <table class="data-table" id="tablaProyectos">
                 <thead>
@@ -23,9 +22,7 @@
                         <th>Acciones</th>
                     </tr>
                 </thead>
-                <tbody id="cuerpoTabla">
-                    <!-- Los datos se cargan con JavaScript -->
-                </tbody>
+                <tbody id="cuerpoTabla"></tbody>
             </table>
             <div id="sinDatos" class="empty-state">
                 <i class="fas fa-project-diagram"></i>
@@ -36,7 +33,6 @@
             </div>
         </section>
 
-        <!-- Modal para crear proyecto -->
         <div id="modalProyecto" class="modal modal-grande">
             <div class="modal-content">
                 <div class="modal-header">
@@ -49,7 +45,6 @@
                     <div class="cotizaciones-disponibles">
                         <p class="subtitulo">Selecciona las cotizaciones que deseas convertir en proyecto:</p>
                         <div id="listaCotizacionesDisponibles">
-                            <!-- Se cargan con JavaScript -->
                         </div>
                         <button type="button" class="btn-primary" onclick="crearProyectoDesdeCotizaciones()" style="margin-top:16px;">
                             <i class="fas fa-check"></i> Crear Proyecto con las cotizaciones seleccionadas
@@ -59,7 +54,6 @@
             </div>
         </div>
 
-        <!-- Modal de Gestión de Proyecto -->
         <div id="modalGestion" class="modal modal-gestion">
             <div class="modal-content modal-content-gestion">
                 <div class="modal-header">
@@ -67,7 +61,6 @@
                     <span class="close" onclick="cerrarModalGestion()">&times;</span>
                 </div>
                 
-                <!-- PESTAÑAS -->
                 <div class="gestion-tabs">
                     <button class="tab-btn active" data-tab="actividades" onclick="cambiarPestana('actividades')">
                         <i class="fas fa-list"></i> Actividades
@@ -86,10 +79,7 @@
                     </button>
                 </div>
 
-                <!-- CONTENIDO DE PESTAÑAS -->
-                <div id="gestionContenido">
-                    <!-- Se carga con JavaScript -->
-                </div>
+                <div id="gestionContenido"></div>
 
                 <div class="gestion-actions">
                     <button type="button" class="btn-secondary" onclick="cerrarModalGestion()">
@@ -102,13 +92,11 @@
             </div>
         </div>
 
-        <!-- Botón para borrar caché -->
-        <button class="btn-danger btn-cache" onclick="borrarCache()">
-            <i class="fas fa-trash"></i> Borrar Caché
+        <button class="btn-danger btn-cache" onclick="borrarTodos()">
+            <i class="fas fa-trash"></i> Borrar Todos Mis Proyectos
         </button>
 
         <style>
-            /* ===== MODAL GESTIÓN ===== */
             .modal-gestion .modal-content-gestion {
                 max-width: 95vw !important;
                 width: 95vw !important;
@@ -116,473 +104,215 @@
                 padding: 24px 32px !important;
                 overflow-y: auto !important;
             }
+            .modal-gestion .modal-content-gestion::-webkit-scrollbar { width: 6px; }
+            .modal-gestion .modal-content-gestion::-webkit-scrollbar-track { background: var(--gray-100); border-radius: 10px; }
+            .modal-gestion .modal-content-gestion::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 10px; }
 
-            .modal-gestion .modal-content-gestion::-webkit-scrollbar {
-                width: 6px;
-            }
-            .modal-gestion .modal-content-gestion::-webkit-scrollbar-track {
-                background: var(--gray-100);
-                border-radius: 10px;
-            }
-            .modal-gestion .modal-content-gestion::-webkit-scrollbar-thumb {
-                background: var(--primary);
-                border-radius: 10px;
-            }
-
-            /* ===== PESTAÑAS ===== */
             .gestion-tabs {
-                display: flex;
-                gap: 4px;
-                margin-bottom: 20px;
-                border-bottom: 2px solid var(--gray-200);
-                padding-bottom: 0;
-                flex-wrap: wrap;
-                background: var(--gray-50);
-                border-radius: 8px 8px 0 0;
-                padding: 8px 8px 0 8px;
+                display: flex; gap: 4px; margin-bottom: 20px;
+                border-bottom: 2px solid var(--gray-200); padding-bottom: 0;
+                flex-wrap: wrap; background: var(--gray-50);
+                border-radius: 8px 8px 0 0; padding: 8px 8px 0 8px;
             }
             .tab-btn {
-                padding: 10px 20px;
-                border: none;
-                background: transparent;
-                cursor: pointer;
-                font-size: 14px;
-                font-weight: 600;
-                color: var(--gray-600);
-                border-radius: 8px 8px 0 0;
-                transition: all 0.3s;
-                display: flex;
-                align-items: center;
-                gap: 8px;
-                font-family: inherit;
+                padding: 10px 20px; border: none; background: transparent;
+                cursor: pointer; font-size: 14px; font-weight: 600;
+                color: var(--gray-600); border-radius: 8px 8px 0 0;
+                transition: all 0.3s; display: flex; align-items: center;
+                gap: 8px; font-family: inherit;
             }
-            .tab-btn:hover {
-                background: var(--gray-100);
-                color: var(--gray-900);
-            }
+            .tab-btn:hover { background: var(--gray-100); color: var(--gray-900); }
             .tab-btn.active {
-                background: white;
-                color: var(--primary);
+                background: white; color: var(--primary);
                 border-bottom: 3px solid var(--primary);
                 box-shadow: 0 -2px 8px rgba(0,0,0,0.05);
             }
-            .tab-btn i {
-                font-size: 16px;
-            }
+            .tab-btn i { font-size: 16px; }
 
-            /* ===== CONTENIDO DE PESTAÑAS ===== */
-            .tab-content {
-                display: none;
-                padding: 16px 0;
-                animation: fadeIn 0.3s ease;
-            }
-            .tab-content.active {
-                display: block;
-            }
+            .tab-content { display: none; padding: 16px 0; animation: fadeIn 0.3s ease; }
+            .tab-content.active { display: block; }
+            @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-            @keyframes fadeIn {
-                from { opacity: 0; transform: translateY(10px); }
-                to { opacity: 1; transform: translateY(0); }
-            }
-
-            /* ===== ACTIVIDADES - ESTILO MEJORADO ===== */
             .actividad-titulo {
-                background: var(--primary);
-                color: white;
-                padding: 10px 16px;
-                border-radius: 6px;
-                margin-top: 12px;
-                margin-bottom: 6px;
-                font-weight: 700;
-                font-size: 15px;
-                display: flex;
-                align-items: center;
-                gap: 12px;
+                background: var(--primary); color: white; padding: 10px 16px;
+                border-radius: 6px; margin-top: 12px; margin-bottom: 6px;
+                font-weight: 700; font-size: 15px; display: flex;
+                align-items: center; gap: 12px;
             }
             .actividad-titulo .num {
-                background: rgba(255,255,255,0.2);
-                padding: 2px 12px;
-                border-radius: 4px;
-                font-size: 13px;
+                background: rgba(255,255,255,0.2); padding: 2px 12px;
+                border-radius: 4px; font-size: 13px;
             }
 
             .actividad-apu {
-                background: white;
-                border: 1px solid var(--gray-200);
-                border-radius: 8px;
-                padding: 12px 16px;
-                margin-bottom: 8px;
-                transition: all 0.2s;
-                box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+                background: white; border: 1px solid var(--gray-200);
+                border-radius: 8px; padding: 12px 16px; margin-bottom: 8px;
+                transition: all 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.04);
             }
-            .actividad-apu:hover {
-                border-color: var(--primary-light);
-                box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-            }
+            .actividad-apu:hover { border-color: var(--primary-light); box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
 
             .actividad-apu .apu-header {
-                display: flex;
-                align-items: center;
-                gap: 12px;
-                flex-wrap: wrap;
-                margin-bottom: 8px;
+                display: flex; align-items: center; gap: 12px;
+                flex-wrap: wrap; margin-bottom: 8px;
             }
             .actividad-apu .apu-header .num {
-                font-weight: 700;
-                color: var(--primary);
-                background: var(--gray-100);
-                padding: 2px 12px;
-                border-radius: 4px;
-                font-size: 13px;
-                min-width: 50px;
-                text-align: center;
+                font-weight: 700; color: var(--primary);
+                background: var(--gray-100); padding: 2px 12px;
+                border-radius: 4px; font-size: 13px;
+                min-width: 50px; text-align: center;
             }
             .actividad-apu .apu-header .nombre {
-                font-weight: 600;
-                color: var(--gray-900);
-                flex: 1;
-                min-width: 120px;
+                font-weight: 600; color: var(--gray-900);
+                flex: 1; min-width: 120px;
             }
             .actividad-apu .apu-header .valor-unitario {
-                font-size: 13px;
-                color: var(--gray-600);
-                background: var(--gray-100);
-                padding: 2px 10px;
-                border-radius: 4px;
+                font-size: 13px; color: var(--gray-600);
+                background: var(--gray-100); padding: 2px 10px; border-radius: 4px;
             }
 
             .actividad-apu .apu-body {
-                display: grid;
-                grid-template-columns: 1fr 1fr 1fr 1fr;
-                gap: 8px;
-                background: var(--gray-50);
-                border-radius: 6px;
-                padding: 10px 12px;
-                margin-top: 4px;
+                display: grid; grid-template-columns: 1fr 1fr 1fr 1fr;
+                gap: 8px; background: var(--gray-50);
+                border-radius: 6px; padding: 10px 12px; margin-top: 4px;
             }
-            .actividad-apu .apu-body .campo {
-                display: flex;
-                flex-direction: column;
-                gap: 2px;
-            }
+            .actividad-apu .apu-body .campo { display: flex; flex-direction: column; gap: 2px; }
             .actividad-apu .apu-body .campo label {
-                font-size: 11px;
-                font-weight: 600;
-                color: var(--gray-500);
-                text-transform: uppercase;
-                letter-spacing: 0.5px;
+                font-size: 11px; font-weight: 600; color: var(--gray-500);
+                text-transform: uppercase; letter-spacing: 0.5px;
             }
-            .actividad-apu .apu-body .campo .valor {
-                font-size: 15px;
-                font-weight: 700;
-                color: var(--gray-900);
-            }
-            .actividad-apu .apu-body .campo .valor.realizada {
-                color: var(--success);
-            }
-            .actividad-apu .apu-body .campo .valor.pendiente {
-                color: var(--warning);
-            }
-            .actividad-apu .apu-body .campo .valor.precio {
-                color: var(--primary);
-            }
-            .actividad-apu .apu-body .campo .valor.precio-realizada {
-                color: #059669;
-            }
-            .actividad-apu .apu-body .campo .valor.precio-pendiente {
-                color: #d97706;
-            }
+            .actividad-apu .apu-body .campo .valor { font-size: 15px; font-weight: 700; color: var(--gray-900); }
+            .actividad-apu .apu-body .campo .valor.realizada { color: var(--success); }
+            .actividad-apu .apu-body .campo .valor.pendiente { color: var(--warning); }
+            .actividad-apu .apu-body .campo .valor.precio { color: var(--primary); }
+            .actividad-apu .apu-body .campo .valor.precio-realizada { color: #059669; }
+            .actividad-apu .apu-body .campo .valor.precio-pendiente { color: #d97706; }
 
             .actividad-apu .apu-body .campo .cantidad-input {
-                width: 65px;
-                padding: 4px 6px;
-                border: 1px solid var(--gray-200);
-                border-radius: 4px;
-                font-size: 14px;
-                text-align: center;
-                font-weight: 600;
-                background: white;
+                width: 65px; padding: 4px 6px; border: 1px solid var(--gray-200);
+                border-radius: 4px; font-size: 14px; text-align: center;
+                font-weight: 600; background: white;
             }
             .actividad-apu .apu-body .campo .cantidad-input:focus {
-                outline: none;
-                border-color: var(--primary);
+                outline: none; border-color: var(--primary);
                 box-shadow: 0 0 0 3px rgba(0, 39, 53, 0.15);
             }
 
-            .actividad-apu .apu-progress {
-                margin-top: 10px;
-                display: flex;
-                align-items: center;
-                gap: 12px;
-            }
+            .actividad-apu .apu-progress { margin-top: 10px; display: flex; align-items: center; gap: 12px; }
             .actividad-apu .apu-progress .progress-bar {
-                flex: 1;
-                height: 8px;
-                background: var(--gray-200);
-                border-radius: 10px;
-                overflow: hidden;
+                flex: 1; height: 8px; background: var(--gray-200);
+                border-radius: 10px; overflow: hidden;
             }
             .actividad-apu .apu-progress .progress-bar .progress-fill {
-                height: 100%;
-                background: linear-gradient(90deg, var(--primary), var(--success));
-                border-radius: 10px;
-                transition: width 0.5s ease;
+                height: 100%; background: linear-gradient(90deg, var(--primary), var(--success));
+                border-radius: 10px; transition: width 0.5s ease;
             }
             .actividad-apu .apu-progress .progress-text {
-                font-size: 13px;
-                font-weight: 600;
-                color: var(--gray-600);
-                min-width: 45px;
-                text-align: right;
+                font-size: 13px; font-weight: 600; color: var(--gray-600);
+                min-width: 45px; text-align: right;
             }
 
             .actividad-subitem {
-                padding: 6px 16px 6px 40px;
-                color: var(--gray-600);
-                font-size: 13px;
-                border-left: 3px solid var(--warning);
-                margin-left: 16px;
-                margin-bottom: 4px;
-                background: var(--gray-50);
-                border-radius: 0 4px 4px 0;
+                padding: 6px 16px 6px 40px; color: var(--gray-600);
+                font-size: 13px; border-left: 3px solid var(--warning);
+                margin-left: 16px; margin-bottom: 4px;
+                background: var(--gray-50); border-radius: 0 4px 4px 0;
             }
-            .actividad-subitem .num {
-                font-weight: 600;
-                color: var(--gray-500);
-                margin-right: 8px;
-            }
+            .actividad-subitem .num { font-weight: 600; color: var(--gray-500); margin-right: 8px; }
 
-            /* ===== FILAS DE FORMULARIO ===== */
             .fila-form {
-                display: flex;
-                gap: 12px;
-                align-items: flex-end;
-                margin-bottom: 12px;
-                flex-wrap: wrap;
-                background: var(--gray-50);
-                padding: 12px 16px;
-                border-radius: 8px;
-                border: 1px solid var(--gray-200);
+                display: flex; gap: 12px; align-items: flex-end;
+                margin-bottom: 12px; flex-wrap: wrap;
+                background: var(--gray-50); padding: 12px 16px;
+                border-radius: 8px; border: 1px solid var(--gray-200);
             }
-            .fila-form .form-group {
-                margin-bottom: 0;
-                flex: 1;
-                min-width: 120px;
+            .fila-form .form-group { margin-bottom: 0; flex: 1; min-width: 120px; }
+            .fila-form .form-group.half { flex: 2; min-width: 180px; }
+            .fila-form .form-group.small { flex: 0 0 auto; min-width: 100px; }
+            .fila-form .form-group.check { flex: 0 0 auto; min-width: 80px; display: flex; align-items: center; }
+            .fila-form .form-group.check label { display: flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer; }
+            .fila-form .form-group.check input[type="checkbox"] { width: 16px; height: 16px; cursor: pointer; accent-color: var(--primary); }
+            .fila-form label { display: block; font-size: 12px; font-weight: 600; color: var(--gray-600); margin-bottom: 2px; }
+            .fila-form .form-control, .fila-form .form-select {
+                width: 100%; padding: 6px 10px; border: 1px solid var(--gray-200);
+                border-radius: 4px; font-size: 13px; font-family: inherit; background: white;
             }
-            .fila-form .form-group.half {
-                flex: 2;
-                min-width: 180px;
-            }
-            .fila-form .form-group.small {
-                flex: 0 0 auto;
-                min-width: 100px;
-            }
-            .fila-form .form-group.check {
-                flex: 0 0 auto;
-                min-width: 80px;
-                display: flex;
-                align-items: center;
-            }
-            .fila-form .form-group.check label {
-                display: flex;
-                align-items: center;
-                gap: 6px;
-                font-size: 13px;
-                cursor: pointer;
-            }
-            .fila-form .form-group.check input[type="checkbox"] {
-                width: 16px;
-                height: 16px;
-                cursor: pointer;
-                accent-color: var(--primary);
-            }
-            .fila-form label {
-                display: block;
-                font-size: 12px;
-                font-weight: 600;
-                color: var(--gray-600);
-                margin-bottom: 2px;
-            }
-            .fila-form .form-control,
-            .fila-form .form-select {
-                width: 100%;
-                padding: 6px 10px;
-                border: 1px solid var(--gray-200);
-                border-radius: 4px;
-                font-size: 13px;
-                font-family: inherit;
-                background: white;
-            }
-            .fila-form .form-control:focus,
-            .fila-form .form-select:focus {
-                outline: none;
-                border-color: var(--primary);
+            .fila-form .form-control:focus, .fila-form .form-select:focus {
+                outline: none; border-color: var(--primary);
                 box-shadow: 0 0 0 3px rgba(0, 39, 53, 0.15);
             }
             .fila-form .btn-add {
-                background: var(--primary);
-                color: white;
-                border: none;
-                padding: 6px 16px;
-                border-radius: 4px;
-                font-size: 13px;
-                font-weight: 600;
-                cursor: pointer;
-                display: inline-flex;
-                align-items: center;
-                gap: 6px;
-                transition: all 0.2s;
-                height: 34px;
+                background: var(--primary); color: white; border: none;
+                padding: 6px 16px; border-radius: 4px; font-size: 13px;
+                font-weight: 600; cursor: pointer; display: inline-flex;
+                align-items: center; gap: 6px; transition: all 0.2s; height: 34px;
             }
-            .fila-form .btn-add:hover {
-                background: var(--primary-dark);
-                transform: scale(1.02);
-            }
+            .fila-form .btn-add:hover { background: var(--primary-dark); transform: scale(1.02); }
 
-            /* ===== LISTAS ===== */
             .list-container {
-                max-height: 350px;
-                overflow-y: auto;
-                border: 1px solid var(--gray-200);
-                border-radius: 8px;
-                padding: 4px;
-                margin-top: 8px;
+                max-height: 350px; overflow-y: auto;
+                border: 1px solid var(--gray-200); border-radius: 8px;
+                padding: 4px; margin-top: 8px;
             }
-            .list-container::-webkit-scrollbar {
-                width: 6px;
-            }
-            .list-container::-webkit-scrollbar-track {
-                background: var(--gray-100);
-                border-radius: 10px;
-            }
-            .list-container::-webkit-scrollbar-thumb {
-                background: var(--primary);
-                border-radius: 10px;
-            }
+            .list-container::-webkit-scrollbar { width: 6px; }
+            .list-container::-webkit-scrollbar-track { background: var(--gray-100); border-radius: 10px; }
+            .list-container::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 10px; }
 
             .list-item {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                padding: 8px 12px;
+                display: flex; justify-content: space-between;
+                align-items: center; padding: 8px 12px;
                 border-bottom: 1px solid var(--gray-100);
-                font-size: 14px;
-                gap: 8px;
-                flex-wrap: wrap;
+                font-size: 14px; gap: 8px; flex-wrap: wrap;
             }
-            .list-item:last-child {
-                border-bottom: none;
-            }
-            .list-item .info {
-                flex: 1;
-                min-width: 150px;
-            }
-            .list-item .info strong {
-                color: var(--gray-900);
-            }
+            .list-item:last-child { border-bottom: none; }
+            .list-item .info { flex: 1; min-width: 150px; }
+            .list-item .info strong { color: var(--gray-900); }
             .list-item .info .detalle {
-                font-size: 12px;
-                color: var(--gray-600);
-                display: block;
-                margin-top: 2px;
+                font-size: 12px; color: var(--gray-600);
+                display: block; margin-top: 2px;
             }
             .badge-status {
-                font-size: 12px;
-                padding: 2px 12px;
-                border-radius: 12px;
-                font-weight: 600;
-                white-space: nowrap;
+                font-size: 12px; padding: 2px 12px;
+                border-radius: 12px; font-weight: 600; white-space: nowrap;
             }
-            .badge-status.activo {
-                background: #d1fae5;
-                color: #065f46;
-            }
-            .badge-status.inactivo {
-                background: #fee2e2;
-                color: #991b1b;
-            }
-            .badge-status.pendiente {
-                background: #fef3c7;
-                color: #92400e;
-            }
+            .badge-status.activo { background: #d1fae5; color: #065f46; }
+            .badge-status.inactivo { background: #fee2e2; color: #991b1b; }
+            .badge-status.pendiente { background: #fef3c7; color: #92400e; }
             .list-item .btn-remove {
-                background: var(--danger);
-                color: white;
-                border: none;
-                padding: 4px 10px;
-                border-radius: 4px;
-                cursor: pointer;
-                font-size: 12px;
-                transition: all 0.2s;
+                background: var(--danger); color: white; border: none;
+                padding: 4px 10px; border-radius: 4px; cursor: pointer;
+                font-size: 12px; transition: all 0.2s;
             }
-            .list-item .btn-remove:hover {
-                background: #dc2626;
-            }
+            .list-item .btn-remove:hover { background: #dc2626; }
             .list-item .btn-salida {
-                background: var(--warning);
-                color: white;
-                border: none;
-                padding: 4px 10px;
-                border-radius: 4px;
-                cursor: pointer;
-                font-size: 12px;
-                transition: all 0.2s;
+                background: var(--warning); color: white; border: none;
+                padding: 4px 10px; border-radius: 4px; cursor: pointer;
+                font-size: 12px; transition: all 0.2s;
             }
-            .list-item .btn-salida:hover {
-                background: #d97706;
-            }
+            .list-item .btn-salida:hover { background: #d97706; }
             .empty-items {
-                color: var(--gray-600);
-                font-size: 14px;
-                text-align: center;
-                padding: 20px;
-                font-style: italic;
+                color: var(--gray-600); font-size: 14px;
+                text-align: center; padding: 20px; font-style: italic;
             }
 
-            /* ===== TOTALES ===== */
             .totales-grid {
-                display: grid;
-                grid-template-columns: repeat(4, 1fr);
-                gap: 16px;
-                margin-bottom: 20px;
+                display: grid; grid-template-columns: repeat(4, 1fr);
+                gap: 16px; margin-bottom: 20px;
             }
             .total-card {
-                background: white;
-                border: 1px solid var(--gray-200);
-                border-radius: 8px;
-                padding: 20px 16px;
-                text-align: center;
-                box-shadow: var(--shadow);
+                background: white; border: 1px solid var(--gray-200);
+                border-radius: 8px; padding: 20px 16px;
+                text-align: center; box-shadow: var(--shadow);
                 transition: all 0.3s;
             }
-            .total-card:hover {
-                transform: translateY(-2px);
-                box-shadow: var(--shadow-lg);
-            }
-            .total-card .icon {
-                font-size: 28px;
-                margin-bottom: 8px;
-            }
-            .total-card .numero {
-                font-size: 32px;
-                font-weight: 700;
-            }
-            .total-card .label {
-                font-size: 14px;
-                color: var(--gray-600);
-                margin-top: 2px;
-            }
+            .total-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+            .total-card .icon { font-size: 28px; margin-bottom: 8px; }
+            .total-card .numero { font-size: 32px; font-weight: 700; }
+            .total-card .label { font-size: 14px; color: var(--gray-600); margin-top: 2px; }
             .total-card .sub-info {
-                font-size: 13px;
-                color: var(--gray-500);
-                margin-top: 6px;
-                padding-top: 6px;
-                border-top: 1px solid var(--gray-100);
+                font-size: 13px; color: var(--gray-500); margin-top: 6px;
+                padding-top: 6px; border-top: 1px solid var(--gray-100);
             }
-            .total-card .sub-info .destacado {
-                font-weight: 600;
-                color: var(--primary);
-            }
+            .total-card .sub-info .destacado { font-weight: 600; color: var(--primary); }
 
             .total-card.blue .numero { color: #3b82f6; }
             .total-card.blue .icon { color: #3b82f6; }
@@ -593,188 +323,60 @@
             .total-card.purple .numero { color: #8b5cf6; }
             .total-card.purple .icon { color: #8b5cf6; }
 
-            .totales-detalle {
-                display: grid;
-                grid-template-columns: 1fr;
-                gap: 16px;
-            }
+            .totales-detalle { display: grid; grid-template-columns: 1fr; gap: 16px; }
             .totales-detalle .columna {
-                background: var(--gray-50);
-                border-radius: 8px;
-                padding: 20px;
-                border: 1px solid var(--gray-200);
+                background: var(--gray-50); border-radius: 8px;
+                padding: 20px; border: 1px solid var(--gray-200);
             }
             .totales-detalle .columna h5 {
-                margin-bottom: 16px;
-                color: var(--gray-900);
-                font-size: 16px;
-                border-bottom: 2px solid var(--primary);
-                padding-bottom: 10px;
-                display: flex;
-                align-items: center;
-                gap: 10px;
+                margin-bottom: 16px; color: var(--gray-900); font-size: 16px;
+                border-bottom: 2px solid var(--primary); padding-bottom: 10px;
+                display: flex; align-items: center; gap: 10px;
             }
-            .totales-detalle .columna h5 i {
-                color: var(--primary);
-            }
+            .totales-detalle .columna h5 i { color: var(--primary); }
             .total-item-detalle {
-                display: flex;
-                justify-content: space-between;
-                padding: 6px 0;
-                font-size: 14px;
+                display: flex; justify-content: space-between;
+                padding: 6px 0; font-size: 14px;
                 border-bottom: 1px solid var(--gray-100);
             }
-            .total-item-detalle:last-child {
-                border-bottom: none;
-            }
-            .total-item-detalle .label {
-                color: var(--gray-600);
-            }
-            .total-item-detalle .valor {
-                font-weight: 600;
-                color: var(--gray-900);
-            }
-            .total-item-detalle .valor.success {
-                color: var(--success);
-            }
-            .total-item-detalle .valor.warning {
-                color: var(--warning);
-            }
-            .total-item-detalle .valor.primary {
-                color: var(--primary);
-            }
+            .total-item-detalle:last-child { border-bottom: none; }
+            .total-item-detalle .label { color: var(--gray-600); }
+            .total-item-detalle .valor { font-weight: 600; color: var(--gray-900); }
+            .total-item-detalle .valor.success { color: var(--success); }
+            .total-item-detalle .valor.warning { color: var(--warning); }
+            .total-item-detalle .valor.primary { color: var(--primary); }
             .total-item-detalle.total-row {
                 border-top: 2px solid var(--gray-300);
-                padding-top: 10px;
-                margin-top: 4px;
-                font-weight: 700;
+                padding-top: 10px; margin-top: 4px; font-weight: 700;
             }
-            .total-item-detalle.total-row .valor {
-                font-size: 18px;
-                color: var(--gray-900);
-            }
+            .total-item-detalle.total-row .valor { font-size: 18px; color: var(--gray-900); }
 
-            /* ===== RESPONSIVE ===== */
-            @media (max-width: 1200px) {
-                .actividad-apu .apu-body {
-                    grid-template-columns: 1fr 1fr;
-                }
-            }
-
+            @media (max-width: 1200px) { .actividad-apu .apu-body { grid-template-columns: 1fr 1fr; } }
             @media (max-width: 992px) {
-                .actividad-apu .apu-body {
-                    grid-template-columns: 1fr 1fr;
-                }
-                .actividad-apu .apu-header {
-                    flex-wrap: wrap;
-                }
+                .actividad-apu .apu-body { grid-template-columns: 1fr 1fr; }
+                .actividad-apu .apu-header { flex-wrap: wrap; }
             }
-
             @media (max-width: 768px) {
-                .modal-gestion .modal-content-gestion {
-                    max-width: 98vw !important;
-                    width: 98vw !important;
-                    padding: 12px !important;
-                    max-height: 95vh !important;
-                }
-                .gestion-tabs {
-                    flex-wrap: wrap;
-                    gap: 2px;
-                    padding: 4px 4px 0 4px;
-                }
-                .tab-btn {
-                    padding: 8px 12px;
-                    font-size: 12px;
-                    flex: 1;
-                    justify-content: center;
-                    min-width: 60px;
-                }
-                .tab-btn i {
-                    font-size: 14px;
-                }
-                .actividad-apu .apu-body {
-                    grid-template-columns: 1fr 1fr;
-                    gap: 6px;
-                    padding: 8px;
-                }
-                .actividad-apu .apu-body .campo .valor {
-                    font-size: 14px;
-                }
-                .actividad-apu .apu-progress {
-                    flex-wrap: wrap;
-                }
-                .fila-form {
-                    flex-direction: column;
-                    align-items: stretch;
-                    padding: 12px;
-                }
-                .fila-form .form-group {
-                    flex: none;
-                    min-width: auto;
-                }
-                .fila-form .form-group.half {
-                    flex: none;
-                    min-width: auto;
-                }
-                .fila-form .form-group.small {
-                    flex: none;
-                    min-width: auto;
-                }
-                .totales-grid {
-                    grid-template-columns: repeat(2, 1fr);
-                }
-                .gestion-actions {
-                    flex-direction: column;
-                }
-                .gestion-actions button {
-                    width: 100%;
-                    justify-content: center;
-                }
-                .list-item {
-                    flex-direction: column;
-                    align-items: flex-start;
-                }
-                .list-item .info {
-                    min-width: 100%;
-                }
-                .actividad-subitem {
-                    padding-left: 20px;
-                    margin-left: 8px;
-                }
+                .modal-gestion .modal-content-gestion { max-width: 98vw !important; width: 98vw !important; padding: 12px !important; max-height: 95vh !important; }
+                .gestion-tabs { flex-wrap: wrap; gap: 2px; padding: 4px 4px 0 4px; }
+                .tab-btn { padding: 8px 12px; font-size: 12px; flex: 1; justify-content: center; min-width: 60px; }
+                .tab-btn i { font-size: 14px; }
+                .actividad-apu .apu-body { grid-template-columns: 1fr 1fr; gap: 6px; padding: 8px; }
+                .actividad-apu .apu-body .campo .valor { font-size: 14px; }
+                .actividad-apu .apu-progress { flex-wrap: wrap; }
+                .fila-form { flex-direction: column; align-items: stretch; padding: 12px; }
+                .fila-form .form-group { flex: none; min-width: auto; }
+                .totales-grid { grid-template-columns: repeat(2, 1fr); }
+                .gestion-actions { flex-direction: column; }
+                .gestion-actions button { width: 100%; justify-content: center; }
+                .list-item { flex-direction: column; align-items: flex-start; }
             }
-
             @media (max-width: 480px) {
-                .totales-grid {
-                    grid-template-columns: 1fr 1fr;
-                }
-                .tab-btn {
-                    font-size: 11px;
-                    padding: 6px 8px;
-                }
-                .tab-btn i {
-                    font-size: 12px;
-                }
-                .actividad-apu .apu-body {
-                    grid-template-columns: 1fr;
-                }
-                .actividad-apu .apu-header {
-                    flex-direction: column;
-                    align-items: flex-start;
-                    gap: 4px;
-                }
-                .actividad-apu .apu-header .nombre {
-                    min-width: auto;
-                }
-                .fila-form {
-                    padding: 8px 12px;
-                }
-                .fila-form .form-group {
-                    min-width: auto;
-                }
+                .totales-grid { grid-template-columns: 1fr 1fr; }
+                .tab-btn { font-size: 11px; padding: 6px 8px; }
+                .actividad-apu .apu-body { grid-template-columns: 1fr; }
+                .actividad-apu .apu-header { flex-direction: column; align-items: flex-start; gap: 4px; }
             }
-
-            .btn-print { background: #10b981; color: white; border: none; padding: 6px 10px; border-radius: 6px; cursor: pointer; transition: all 0.2s; margin-left: 4px; }
-            .btn-print:hover { background: #059669; transform: scale(1.05); }
         </style>
 
         <script>
@@ -787,71 +389,67 @@
             var proyectoIdEnGestion = null;
             var pestanaActual = 'actividades';
 
-            // ===== CARGAR DATOS =====
-            function cargarProyectos() {
-                try {
-                    var data = localStorage.getItem('proyectos');
-                    if (data) {
-                        proyectos = JSON.parse(data);
-                    } else {
-                        proyectos = [];
-                    }
-                } catch (e) {
-                    proyectos = [];
-                }
-                renderizarTablaProyectos();
+            function escapeHTML(str) {
+                if (!str) return '';
+                return String(str).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
             }
 
-            function cargarCotizaciones() {
+            // ============================================================
+            // ===== CARGAR DATOS =====
+            // ============================================================
+
+            async function cargarProyectos() {
                 try {
-                    var data = localStorage.getItem('cotizaciones');
-                    if (data) {
-                        cotizaciones = JSON.parse(data);
-                    } else {
-                        cotizaciones = [];
-                    }
+                    const r = await fetch('/api/proyectos');
+                    if (!r.ok) throw new Error('Error');
+                    proyectos = await r.json();
+                    renderizarTablaProyectos();
+                } catch (e) {
+                    console.error('Error proyectos:', e);
+                    proyectos = [];
+                    renderizarTablaProyectos();
+                }
+            }
+
+            async function cargarCotizaciones() {
+                try {
+                    const r = await fetch('/api/cotizaciones');
+                    if (!r.ok) throw new Error('Error');
+                    cotizaciones = await r.json();
+                    renderizarCotizacionesDisponibles();
                 } catch (e) {
                     cotizaciones = [];
+                    renderizarCotizacionesDisponibles();
                 }
-                renderizarCotizacionesDisponibles();
             }
 
-            function cargarHerramientas() {
+            async function cargarHerramientas() {
                 try {
-                    var data = localStorage.getItem('herramientas');
-                    if (data) {
-                        herramientasData = JSON.parse(data);
-                    } else {
-                        herramientasData = [];
-                    }
-                } catch (e) {
-                    herramientasData = [];
-                }
+                    const r = await fetch('/api/herramientas');
+                    if (!r.ok) throw new Error('Error');
+                    herramientasData = await r.json();
+                } catch (e) { herramientasData = []; }
             }
 
-            function cargarEmpleados() {
+            async function cargarEmpleados() {
                 try {
-                    var data = localStorage.getItem('empleados');
-                    if (data) {
-                        empleadosData = JSON.parse(data);
-                    } else {
-                        empleadosData = [];
-                    }
-                } catch (e) {
-                    empleadosData = [];
-                }
+                    const r = await fetch('/api/empleados');
+                    if (!r.ok) throw new Error('Error');
+                    empleadosData = await r.json();
+                } catch (e) { empleadosData = []; }
             }
 
+            // ============================================================
             // ===== RENDERIZAR COTIZACIONES DISPONIBLES =====
+            // ============================================================
+            
             function renderizarCotizacionesDisponibles() {
                 var container = document.getElementById('listaCotizacionesDisponibles');
                 if (!container) return;
 
                 var idsEnProyectos = [];
                 for (var i = 0; i < proyectos.length; i++) {
-                    if (proyectos[i].cotizacionId) {
-                        idsEnProyectos.push(proyectos[i].cotizacionId);
-                    }
+                    if (proyectos[i].cotizacionId) idsEnProyectos.push(proyectos[i].cotizacionId);
                 }
 
                 var disponibles = [];
@@ -874,8 +472,8 @@
                     html += '<input type="checkbox" class="cotizacion-checkbox" value="' + c.id + '">';
                     html += '<span class="checkmark"></span>';
                     html += '<span class="cotizacion-info">';
-                    html += '<strong>' + (c.numero || 'COT-XXX') + '</strong> - ';
-                    html += c.cliente || 'Sin cliente';
+                    html += '<strong>' + escapeHTML(c.numero || 'COT-XXX') + '</strong> - ';
+                    html += escapeHTML(c.cliente || 'Sin cliente');
                     html += ' ($' + Number(c.valorTotalFinal || c.valorTotal || 0).toLocaleString('es-CO') + ')';
                     html += '</span>';
                     html += '</label>';
@@ -884,55 +482,34 @@
                 container.innerHTML = html;
             }
 
+            // ============================================================
             // ===== CREAR PROYECTO DESDE COTIZACIONES =====
-            function crearProyectoDesdeCotizaciones() {
+            // ============================================================
+            
+            async function crearProyectoDesdeCotizaciones() {
                 var checkboxes = document.querySelectorAll('.cotizacion-checkbox:checked');
-                if (checkboxes.length === 0) {
-                    alert('Selecciona al menos una cotización');
-                    return;
-                }
+                if (checkboxes.length === 0) { alert('Selecciona al menos una cotización'); return; }
 
                 var ids = [];
-                for (var i = 0; i < checkboxes.length; i++) {
-                    ids.push(parseInt(checkboxes[i].value));
-                }
+                for (var i = 0; i < checkboxes.length; i++) ids.push(parseInt(checkboxes[i].value));
 
                 var cotizacionesSeleccionadas = [];
                 for (var j = 0; j < cotizaciones.length; j++) {
-                    if (ids.indexOf(cotizaciones[j].id) !== -1) {
-                        cotizacionesSeleccionadas.push(cotizaciones[j]);
-                    }
-                }
-
-                var nuevoId = 1;
-                if (proyectos.length > 0) {
-                    var maxId = 0;
-                    for (var m = 0; m < proyectos.length; m++) {
-                        if (proyectos[m].id > maxId) {
-                            maxId = proyectos[m].id;
-                        }
-                    }
-                    nuevoId = maxId + 1;
+                    if (ids.indexOf(cotizaciones[j].id) !== -1) cotizacionesSeleccionadas.push(cotizaciones[j]);
                 }
 
                 var cotizacion = cotizacionesSeleccionadas[0];
-                var proyecto = {
-                    id: nuevoId,
-                    nombre: 'Proyecto #' + nuevoId,
+                var nombreProyecto = 'Proyecto ' + (cotizacion.numero || 'COT-XXX');
+
+                var proyectoData = {
+                    nombre: nombreProyecto,
                     cliente: cotizacion.cliente || 'Sin cliente',
-                    tipo: cotizacion.tipo || '',
-                    proyectoNombre: cotizacion.proyecto || '',
-                    objetivo: cotizacion.objetivo || '',
-                    direccion: cotizacion.direccion || '',
                     cotizacionId: cotizacion.id,
                     cotizacionNumero: cotizacion.numero || 'COT-XXX',
-                    cotizacionData: cotizacion,
-                    fechaCreacion: new Date().toISOString(),
                     items: JSON.parse(JSON.stringify(cotizacion.items || [])),
                     ajustes: cotizacion.ajustes || {},
-                    valorTotal: 0,
-                    avanceItems: [],
                     avanceTotal: 0,
+                    valorTotal: 0,
                     valorEjecutado: 0,
                     saldo: 0,
                     herramientasObra: [],
@@ -940,29 +517,48 @@
                     compras: []
                 };
 
-                if (proyecto.items) {
-                    for (var k = 0; k < proyecto.items.length; k++) {
-                        if (proyecto.items[k].tipo === 'apu') {
-                            var valorUnitario = proyecto.items[k].valorUnitario || 0;
-                            var cantidad = proyecto.items[k].cantidad || 0;
-                            proyecto.items[k].cantidadRealizada = 0;
-                            proyecto.items[k].cantidadPendiente = cantidad;
-                            proyecto.items[k].porcentajeAvance = 0;
-                            proyecto.items[k].valorEjecutado = 0;
-                            proyecto.items[k].valorTotalItem = valorUnitario * cantidad;
-                            proyecto.items[k].valorPendiente = proyecto.items[k].valorTotalItem;
+                // Inicializar cantidades realizadas
+                if (proyectoData.items) {
+                    for (var k = 0; k < proyectoData.items.length; k++) {
+                        if (proyectoData.items[k].tipo === 'apu') {
+                            var vu = proyectoData.items[k].valorUnitario || 0;
+                            var cant = proyectoData.items[k].cantidad || 0;
+                            proyectoData.items[k].cantidadRealizada = 0;
+                            proyectoData.items[k].cantidadPendiente = cant;
+                            proyectoData.items[k].porcentajeAvance = 0;
+                            proyectoData.items[k].valorEjecutado = 0;
+                            proyectoData.items[k].valorTotalItem = vu * cant;
+                            proyectoData.items[k].valorPendiente = proyectoData.items[k].valorTotalItem;
                         }
                     }
                 }
 
-                calcularValoresProyecto(proyecto);
-                proyectos.push(proyecto);
-                guardarProyectos();
-                cerrarModalProyecto();
-                mostrarNotificacion('✅ Proyecto creado exitosamente');
+                // Calcular valores
+                calcularValoresProyecto(proyectoData);
+
+                try {
+                    const r = await fetch('/api/proyectos', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(proyectoData)
+                    });
+                    if (!r.ok) {
+                        var err = await r.json();
+                        throw new Error(err.error || 'Error al crear');
+                    }
+                    await cargarProyectos();
+                    cerrarModalProyecto();
+                    mostrarNotificacion('✅ Proyecto creado exitosamente');
+                } catch (e) {
+                    console.error('Error:', e);
+                    mostrarNotificacion('Error: ' + e.message);
+                }
             }
 
+            // ============================================================
             // ===== CALCULAR VALORES DEL PROYECTO =====
+            // ============================================================
+            
             function calcularValoresProyecto(proyecto) {
                 var totalAPUs = 0;
                 var totalAvance = 0;
@@ -977,12 +573,12 @@
                         var cantidadTotal = proyecto.items[i].cantidad || 0;
                         var cantidadRealizada = proyecto.items[i].cantidadRealizada || 0;
                         var valorUnitario = proyecto.items[i].valorUnitario || 0;
-                        
+
                         proyecto.items[i].valorTotalItem = valorUnitario * cantidadTotal;
                         proyecto.items[i].valorEjecutado = valorUnitario * cantidadRealizada;
                         proyecto.items[i].valorPendiente = proyecto.items[i].valorTotalItem - proyecto.items[i].valorEjecutado;
                         proyecto.items[i].porcentajeAvance = cantidadTotal > 0 ? (cantidadRealizada / cantidadTotal * 100) : 0;
-                        
+
                         totalAvance += proyecto.items[i].porcentajeAvance;
                         valorEjecutado += proyecto.items[i].valorEjecutado;
                         valorTotal += proyecto.items[i].valorTotalItem;
@@ -995,12 +591,14 @@
                 proyecto.saldo = valorTotal - valorEjecutado;
             }
 
+            // ============================================================
             // ===== RENDERIZAR TABLA DE PROYECTOS =====
+            // ============================================================
+            
             function renderizarTablaProyectos() {
                 var tbody = document.getElementById('cuerpoTabla');
                 var sinDatos = document.getElementById('sinDatos');
                 var tabla = document.getElementById('tablaProyectos');
-
                 if (!tbody) return;
 
                 if (!proyectos || proyectos.length === 0) {
@@ -1018,122 +616,107 @@
                     var p = proyectos[i];
                     var avance = p.avanceTotal || 0;
                     var valorFormateado = '$' + Number(p.valorTotal || 0).toLocaleString('es-CO');
-                    
                     html += '<tr>';
                     html += '<td><strong>' + p.id + '</strong></td>';
-                    html += '<td>' + (p.nombre || 'Proyecto #' + p.id) + '</td>';
-                    html += '<td>' + (p.cliente || '-') + '</td>';
-                    html += '<td>' + (p.cotizacionNumero || '-') + '</td>';
-                    html += '<td>';
-                    html += '<div class="progress-bar-mini">';
-                    html += '<div class="progress-fill-mini" style="width:' + avance + '%;"></div>';
-                    html += '<span class="progress-text-mini">' + Math.round(avance) + '%</span>';
-                    html += '</div>';
-                    html += '</td>';
+                    html += '<td>' + escapeHTML(p.nombre || 'Proyecto #' + p.id) + '</td>';
+                    html += '<td>' + escapeHTML(p.cliente || '-') + '</td>';
+                    html += '<td>' + escapeHTML(p.cotizacionNumero || '-') + '</td>';
+                    html += '<td><div class="progress-bar-mini"><div class="progress-fill-mini" style="width:' + avance + '%;"></div><span class="progress-text-mini">' + Math.round(avance) + '%</span></div></td>';
                     html += '<td>' + valorFormateado + '</td>';
                     html += '<td>';
-                    html += '<button class="btn-edit" onclick="abrirGestionProyecto(' + p.id + ')">';
-                    html += '<i class="fas fa-tasks"></i> Gestión</button>';
-                    html += '<button class="btn-delete" onclick="eliminarProyecto(' + p.id + ')">';
-                    html += '<i class="fas fa-trash"></i>';
-                    html += '</button>';
+                    html += '<button class="btn-edit" onclick="abrirGestionProyecto(' + p.id + ')"><i class="fas fa-tasks"></i> Gestión</button>';
+                    html += '<button class="btn-delete" onclick="eliminarProyecto(' + p.id + ')"><i class="fas fa-trash"></i></button>';
                     html += '</td>';
                     html += '</tr>';
                 }
                 tbody.innerHTML = html;
             }
 
-            // ===== GUARDAR PROYECTOS =====
-            function guardarProyectos() {
-                localStorage.setItem('proyectos', JSON.stringify(proyectos));
-                renderizarTablaProyectos();
-                if (window.actualizarUbicacionesHerramientas) {
-                    window.actualizarUbicacionesHerramientas();
-                }
-            }
-
+            // ============================================================
             // ===== ELIMINAR PROYECTO =====
-            function eliminarProyecto(id) {
-                if (confirm('¿Estás seguro de eliminar este proyecto?')) {
-                    var nuevosProyectos = [];
-                    for (var i = 0; i < proyectos.length; i++) {
-                        if (proyectos[i].id !== id) {
-                            nuevosProyectos.push(proyectos[i]);
-                        }
-                    }
-                    proyectos = nuevosProyectos;
-                    guardarProyectos();
+            // ============================================================
+            
+            async function eliminarProyecto(id) {
+                if (!confirm('¿Estás seguro de eliminar este proyecto?')) return;
+                try {
+                    const r = await fetch('/api/proyectos/' + id, { method: 'DELETE' });
+                    if (!r.ok) throw new Error('Error');
+                    await cargarProyectos();
                     mostrarNotificacion('Proyecto eliminado');
+                } catch (e) {
+                    mostrarNotificacion('Error al eliminar');
                 }
             }
 
+            // ============================================================
             // ===== GUARDAR GESTIÓN =====
-            function guardarGestionProyecto() {
-                if (proyectoEnGestion) {
-                    calcularValoresProyecto(proyectoEnGestion);
-                    guardarProyectos();
+            // ============================================================
+            
+            async function guardarGestionProyecto() {
+                if (!proyectoEnGestion) return;
+
+                calcularValoresProyecto(proyectoEnGestion);
+
+                try {
+                    const r = await fetch('/api/proyectos/' + proyectoEnGestion.id, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(proyectoEnGestion)
+                    });
+                    if (!r.ok) throw new Error('Error al guardar');
+                    await cargarProyectos();
                     mostrarNotificacion('✅ Cambios guardados exitosamente');
+                } catch (e) {
+                    mostrarNotificacion('Error: ' + e.message);
                 }
             }
 
+            // ============================================================
             // ===== CAMBIAR PESTAÑA =====
+            // ============================================================
+            
             function cambiarPestana(tab) {
                 pestanaActual = tab;
-                
                 var btns = document.querySelectorAll('.tab-btn');
-                btns.forEach(function(btn) {
-                    btn.classList.remove('active');
-                    if (btn.dataset.tab === tab) {
-                        btn.classList.add('active');
-                    }
-                });
-                
+                for (var i = 0; i < btns.length; i++) {
+                    btns[i].classList.remove('active');
+                    if (btns[i].dataset.tab === tab) btns[i].classList.add('active');
+                }
                 cargarContenidoPestana(tab);
             }
 
-            // ===== CARGAR CONTENIDO DE PESTAÑA =====
             function cargarContenidoPestana(tab) {
                 if (!proyectoEnGestion) return;
-                
                 var contenido = document.getElementById('gestionContenido');
-                
                 switch(tab) {
-                    case 'actividades':
-                        contenido.innerHTML = renderActividades();
-                        break;
-                    case 'herramientas':
-                        contenido.innerHTML = renderHerramientas();
-                        break;
-                    case 'empleados':
-                        contenido.innerHTML = renderEmpleados();
-                        break;
-                    case 'compras':
-                        contenido.innerHTML = renderCompras();
-                        break;
-                    case 'totales':
-                        contenido.innerHTML = renderTotales();
-                        break;
+                    case 'actividades': contenido.innerHTML = renderActividades(); break;
+                    case 'herramientas': contenido.innerHTML = renderHerramientas(); break;
+                    case 'empleados': contenido.innerHTML = renderEmpleados(); break;
+                    case 'compras': contenido.innerHTML = renderCompras(); break;
+                    case 'totales': contenido.innerHTML = renderTotales(); break;
                 }
             }
 
+            // ============================================================
             // ===== RENDER ACTIVIDADES =====
+            // ============================================================
+            
             function renderActividades() {
                 var proyecto = proyectoEnGestion;
                 var html = '<div class="tab-content active">';
                 html += '<h4 style="margin-bottom:16px;"><i class="fas fa-list"></i> Actividades del Proyecto</h4>';
                 html += '<div class="actividades-list">';
-                
+
                 if (!proyecto.items || proyecto.items.length === 0) {
                     html += '<p class="empty-items">No hay actividades registradas</p>';
                 } else {
                     for (var i = 0; i < proyecto.items.length; i++) {
                         var item = proyecto.items[i];
-                        
                         if (item.tipo === 'titulo') {
                             var numTitulo = item.numero || (i + 1);
                             html += '<div class="actividad-titulo">';
                             html += '<span class="num">' + numTitulo + '</span>';
-                            html += '<span>' + (item.descripcion || 'Título') + '</span>';
+                            html += '<span>' + escapeHTML(item.descripcion || 'Título') + '</span>';
                             html += '</div>';
                         } else if (item.tipo === 'apu') {
                             var cantidadTotal = item.cantidad || 0;
@@ -1145,119 +728,67 @@
                             var valorPendiente = valorTotal - valorRealizado;
                             var porcentaje = cantidadTotal > 0 ? (cantidadRealizada / cantidadTotal * 100) : 0;
                             var numApu = item.numero || (i + 1);
-                            
+
                             html += '<div class="actividad-apu">';
                             html += '<div class="apu-header">';
                             html += '<span class="num">' + numApu + '</span>';
-                            html += '<span class="nombre">' + (item.nombre || 'APU') + '</span>';
+                            html += '<span class="nombre">' + escapeHTML(item.nombre || 'APU') + '</span>';
                             html += '<span class="valor-unitario">$' + Number(valorUnitario).toLocaleString('es-CO') + '/und</span>';
                             html += '</div>';
-                            
                             html += '<div class="apu-body">';
-                            html += '<div class="campo">';
-                            html += '<label>Total</label>';
-                            html += '<span class="valor">' + cantidadTotal + '</span>';
+                            html += '<div class="campo"><label>Total</label><span class="valor">' + cantidadTotal + '</span></div>';
+                            html += '<div class="campo"><label>Realizada</label><div style="display:flex; align-items:center; gap:6px;">';
+                            html += '<input type="number" class="cantidad-input" value="' + cantidadRealizada + '" min="0" max="' + cantidadTotal + '" step="1" onchange="actualizarCantidadRealizada(' + i + ', this.value)">';
+                            html += '</div></div>';
+                            html += '<div class="campo"><label>Pendiente</label><span class="valor pendiente">' + Math.max(0, cantidadPendiente) + '</span></div>';
+                            html += '<div class="campo"><label>Valor Total</label><span class="valor precio">$' + Number(valorTotal).toLocaleString('es-CO') + '</span></div>';
+                            html += '<div class="campo"><label>Valor Realizado</label><span class="valor precio-realizada">$' + Number(valorRealizado).toLocaleString('es-CO') + '</span></div>';
+                            html += '<div class="campo"><label>Valor Pendiente</label><span class="valor precio-pendiente">$' + Number(valorPendiente).toLocaleString('es-CO') + '</span></div>';
                             html += '</div>';
-                            html += '<div class="campo">';
-                            html += '<label>Realizada</label>';
-                            html += '<div style="display:flex; align-items:center; gap:6px;">';
-                            html += '<input type="number" class="cantidad-input" value="' + cantidadRealizada + '" min="0" max="' + cantidadTotal + '" step="1" onchange="actualizarCantidadRealizada(' + proyecto.id + ', ' + i + ', this.value)">';
-                            html += '</div>';
-                            html += '</div>';
-                            html += '<div class="campo">';
-                            html += '<label>Pendiente</label>';
-                            html += '<span class="valor pendiente">' + Math.max(0, cantidadPendiente) + '</span>';
-                            html += '</div>';
-                            html += '<div class="campo">';
-                            html += '<label>Valor Total</label>';
-                            html += '<span class="valor precio">$' + Number(valorTotal).toLocaleString('es-CO') + '</span>';
-                            html += '</div>';
-                            html += '<div class="campo">';
-                            html += '<label>Valor Realizado</label>';
-                            html += '<span class="valor precio-realizada">$' + Number(valorRealizado).toLocaleString('es-CO') + '</span>';
-                            html += '</div>';
-                            html += '<div class="campo">';
-                            html += '<label>Valor Pendiente</label>';
-                            html += '<span class="valor precio-pendiente">$' + Number(valorPendiente).toLocaleString('es-CO') + '</span>';
-                            html += '</div>';
-                            html += '</div>';
-                            
                             html += '<div class="apu-progress">';
-                            html += '<div class="progress-bar">';
-                            html += '<div class="progress-fill" style="width:' + porcentaje + '%;"></div>';
-                            html += '</div>';
+                            html += '<div class="progress-bar"><div class="progress-fill" style="width:' + porcentaje + '%;"></div></div>';
                             html += '<span class="progress-text">' + Math.round(porcentaje) + '%</span>';
                             html += '</div>';
-                            
                             html += '</div>';
                         } else if (item.tipo === 'subitem') {
-                            var numSub = item.numero || '';
                             html += '<div class="actividad-subitem">';
-                            html += '<span class="num">' + numSub + '</span>';
-                            html += '<span>' + (item.descripcion || 'Subitem') + '</span>';
+                            html += '<span class="num">' + (item.numero || '') + '</span>';
+                            html += '<span>' + escapeHTML(item.descripcion || 'Subitem') + '</span>';
                             html += '</div>';
                         }
                     }
                 }
-                
-                html += '</div>';
-                html += '</div>';
+                html += '</div></div>';
                 return html;
             }
 
+            // ============================================================
             // ===== RENDER HERRAMIENTAS =====
+            // ============================================================
+            
             function renderHerramientas() {
                 var proyecto = proyectoEnGestion;
                 var html = '<div class="tab-content active">';
                 html += '<h4><i class="fas fa-tools"></i> Herramientas en Obra</h4>';
-                
                 html += '<div class="fila-form">';
-                html += '<div class="form-group half">';
-                html += '<label>Seleccionar Herramienta:</label>';
-                html += '<select id="selectHerramientaObra" class="form-select">';
-                html += '<option value="">-- Seleccionar --</option>';
+                html += '<div class="form-group half"><label>Seleccionar Herramienta:</label><select id="selectHerramientaObra" class="form-select"><option value="">-- Seleccionar --</option>';
                 for (var i = 0; i < herramientasData.length; i++) {
-                    var yaAsignada = proyecto.herramientasObra && proyecto.herramientasObra.some(function(h) {
-                        return h.herramientaId === herramientasData[i].id && !h.fechaSalida;
-                    });
-                    var disabled = yaAsignada ? 'disabled' : '';
-                    html += '<option value="' + herramientasData[i].id + '" ' + disabled + '>' + 
-                            herramientasData[i].nombre + ' (' + (herramientasData[i].marca || 'Sin marca') + ')' + 
-                            (yaAsignada ? ' (En obra)' : '') + '</option>';
+                    var yaAsignada = proyecto.herramientasObra && proyecto.herramientasObra.some(function(h) { return h.herramientaId === herramientasData[i].id && !h.fechaSalida; });
+                    html += '<option value="' + herramientasData[i].id + '" ' + (yaAsignada ? 'disabled' : '') + '>' + escapeHTML(herramientasData[i].nombre) + ' (' + escapeHTML(herramientasData[i].marca || 'Sin marca') + ')' + (yaAsignada ? ' (En obra)' : '') + '</option>';
                 }
-                html += '</select>';
-                html += '</div>';
-                html += '<div class="form-group half">';
-                html += '<label>Responsable:</label>';
-                html += '<select id="selectResponsableObra" class="form-select">';
-                html += '<option value="">-- Seleccionar --</option>';
+                html += '</select></div>';
+                html += '<div class="form-group half"><label>Responsable:</label><select id="selectResponsableObra" class="form-select"><option value="">-- Seleccionar --</option>';
                 for (var j = 0; j < empleadosData.length; j++) {
-                    html += '<option value="' + empleadosData[j].id + '">' + empleadosData[j].nombre + ' (' + (empleadosData[j].cargo || 'Sin cargo') + ')</option>';
+                    html += '<option value="' + empleadosData[j].id + '">' + escapeHTML(empleadosData[j].nombre) + ' (' + escapeHTML(empleadosData[j].cargo || 'Sin cargo') + ')</option>';
                 }
-                html += '</select>';
+                html += '</select></div>';
+                html += '<div class="form-group small"><label>Fecha Entrada:</label><input type="date" id="fechaEntradaHerramienta" class="form-control" value="' + new Date().toISOString().split('T')[0] + '"></div>';
+                html += '<div class="form-group small"><label>Hora Entrada:</label><input type="time" id="horaEntradaHerramienta" class="form-control" value="08:00"></div>';
+                html += '<div class="form-group small"><label>Fecha Salida:</label><input type="date" id="fechaSalidaHerramienta" class="form-control"></div>';
+                html += '<div class="form-group small"><label>Hora Salida:</label><input type="time" id="horaSalidaHerramienta" class="form-control"></div>';
+                html += '<div class="form-group small" style="display:flex; align-items:flex-end;"><button type="button" class="btn-add" onclick="agregarHerramientaObra()"><i class="fas fa-plus"></i> Agregar</button></div>';
                 html += '</div>';
-                html += '<div class="form-group small">';
-                html += '<label>Fecha Entrada:</label>';
-                html += '<input type="date" id="fechaEntradaHerramienta" class="form-control" value="' + new Date().toISOString().split('T')[0] + '">';
-                html += '</div>';
-                html += '<div class="form-group small">';
-                html += '<label>Hora Entrada:</label>';
-                html += '<input type="time" id="horaEntradaHerramienta" class="form-control" value="08:00">';
-                html += '</div>';
-                html += '<div class="form-group small">';
-                html += '<label>Fecha Salida:</label>';
-                html += '<input type="date" id="fechaSalidaHerramienta" class="form-control">';
-                html += '</div>';
-                html += '<div class="form-group small">';
-                html += '<label>Hora Salida:</label>';
-                html += '<input type="time" id="horaSalidaHerramienta" class="form-control">';
-                html += '</div>';
-                html += '<div class="form-group small" style="display:flex; align-items:flex-end;">';
-                html += '<button type="button" class="btn-add" onclick="agregarHerramientaObra()">';
-                html += '<i class="fas fa-plus"></i> Agregar</button>';
-                html += '</div>';
-                html += '</div>';
-                
+
                 html += '<div class="list-container">';
                 var herramientasEnObra = 0;
                 if (proyecto.herramientasObra && proyecto.herramientasObra.length > 0) {
@@ -1267,16 +798,10 @@
                         var nombreHerramienta = '';
                         var nombreResponsable = '';
                         for (var mm = 0; mm < herramientasData.length; mm++) {
-                            if (herramientasData[mm].id === herr.herramientaId) {
-                                nombreHerramienta = herramientasData[mm].nombre;
-                                break;
-                            }
+                            if (herramientasData[mm].id === herr.herramientaId) { nombreHerramienta = herramientasData[mm].nombre; break; }
                         }
                         for (var ee = 0; ee < empleadosData.length; ee++) {
-                            if (empleadosData[ee].id === herr.responsableId) {
-                                nombreResponsable = empleadosData[ee].nombre;
-                                break;
-                            }
+                            if (empleadosData[ee].id === herr.responsableId) { nombreResponsable = empleadosData[ee].nombre; break; }
                         }
                         var fechaEntrada = herr.fechaEntrada ? new Date(herr.fechaEntrada).toLocaleDateString('es-CO') : '-';
                         var horaEntrada = herr.horaEntrada || '-';
@@ -1285,12 +810,10 @@
                         var statusClass = herr.fechaSalida ? 'inactivo' : 'activo';
                         var statusText = herr.fechaSalida ? 'Devuelta' : 'En obra';
                         var btnSalida = herr.fechaSalida ? '' : '<button class="btn-salida" onclick="registrarSalidaHerramienta(' + h + ')"><i class="fas fa-sign-out-alt"></i> Salida</button>';
-                        
+
                         html += '<div class="list-item">';
-                        html += '<div class="info">';
-                        html += '<strong>' + (nombreHerramienta || 'Herramienta #' + herr.herramientaId) + '</strong>';
-                        html += '<span class="detalle">Responsable: ' + (nombreResponsable || 'Sin responsable') + ' | Entrada: ' + fechaEntrada + ' ' + horaEntrada + ' | Salida: ' + fechaSalida + ' ' + horaSalida + '</span>';
-                        html += '</div>';
+                        html += '<div class="info"><strong>' + escapeHTML(nombreHerramienta || 'Herramienta #' + herr.herramientaId) + '</strong>';
+                        html += '<span class="detalle">Responsable: ' + escapeHTML(nombreResponsable || 'Sin responsable') + ' | Entrada: ' + fechaEntrada + ' ' + horaEntrada + ' | Salida: ' + fechaSalida + ' ' + horaSalida + '</span></div>';
                         html += '<span class="badge-status ' + statusClass + '">' + statusText + '</span>';
                         html += btnSalida;
                         html += '<button type="button" class="btn-remove" onclick="eliminarHerramientaObra(' + h + ')"><i class="fas fa-times"></i></button>';
@@ -1300,51 +823,32 @@
                     html += '<p class="empty-items">No hay herramientas asignadas a esta obra</p>';
                 }
                 html += '</div>';
-                html += '<div style="margin-top:8px; text-align:right; font-weight:600; color:var(--primary);">';
-                html += 'Herramientas en obra: ' + herramientasEnObra;
-                html += '</div>';
-                
+                html += '<div style="margin-top:8px; text-align:right; font-weight:600; color:var(--primary);">Herramientas en obra: ' + herramientasEnObra + '</div>';
                 html += '</div>';
                 return html;
             }
 
+            // ============================================================
             // ===== RENDER EMPLEADOS =====
+            // ============================================================
+            
             function renderEmpleados() {
                 var proyecto = proyectoEnGestion;
                 var html = '<div class="tab-content active">';
                 html += '<h4><i class="fas fa-users"></i> Empleados en Obra</h4>';
-                
                 html += '<div class="fila-form">';
-                html += '<div class="form-group half">';
-                html += '<label>Seleccionar Empleado:</label>';
-                html += '<select id="selectEmpleadoObra" class="form-select">';
-                html += '<option value="">-- Seleccionar --</option>';
+                html += '<div class="form-group half"><label>Seleccionar Empleado:</label><select id="selectEmpleadoObra" class="form-select"><option value="">-- Seleccionar --</option>';
                 for (var i = 0; i < empleadosData.length; i++) {
-                    html += '<option value="' + empleadosData[i].id + '">' + empleadosData[i].nombre + ' (' + (empleadosData[i].cargo || 'Sin cargo') + ') - $' + Number(empleadosData[i].costoHora || 0).toLocaleString('es-CO') + '/hora</option>';
+                    html += '<option value="' + empleadosData[i].id + '">' + escapeHTML(empleadosData[i].nombre) + ' (' + escapeHTML(empleadosData[i].cargo || 'Sin cargo') + ') - $' + Number(empleadosData[i].costoHora || 0).toLocaleString('es-CO') + '/hora</option>';
                 }
-                html += '</select>';
+                html += '</select></div>';
+                html += '<div class="form-group small"><label>Fecha:</label><input type="date" id="fechaEmpleado" class="form-control" value="' + new Date().toISOString().split('T')[0] + '"></div>';
+                html += '<div class="form-group small"><label>Hora Entrada:</label><input type="time" id="horaEntradaEmpleado" class="form-control" value="08:00"></div>';
+                html += '<div class="form-group small"><label>Hora Salida:</label><input type="time" id="horaSalidaEmpleado" class="form-control" value="17:00"></div>';
+                html += '<div class="form-group check"><label><input type="checkbox" id="almuerzoEmpleado"> Almuerzo (1h)</label></div>';
+                html += '<div class="form-group small" style="display:flex; align-items:flex-end;"><button type="button" class="btn-add" onclick="agregarEmpleadoObra()"><i class="fas fa-plus"></i> Agregar</button></div>';
                 html += '</div>';
-                html += '<div class="form-group small">';
-                html += '<label>Fecha:</label>';
-                html += '<input type="date" id="fechaEmpleado" class="form-control" value="' + new Date().toISOString().split('T')[0] + '">';
-                html += '</div>';
-                html += '<div class="form-group small">';
-                html += '<label>Hora Entrada:</label>';
-                html += '<input type="time" id="horaEntradaEmpleado" class="form-control" value="08:00">';
-                html += '</div>';
-                html += '<div class="form-group small">';
-                html += '<label>Hora Salida:</label>';
-                html += '<input type="time" id="horaSalidaEmpleado" class="form-control" value="17:00">';
-                html += '</div>';
-                html += '<div class="form-group check">';
-                html += '<label><input type="checkbox" id="almuerzoEmpleado"> Almuerzo (1h)</label>';
-                html += '</div>';
-                html += '<div class="form-group small" style="display:flex; align-items:flex-end;">';
-                html += '<button type="button" class="btn-add" onclick="agregarEmpleadoObra()">';
-                html += '<i class="fas fa-plus"></i> Agregar</button>';
-                html += '</div>';
-                html += '</div>';
-                
+
                 html += '<div class="list-container">';
                 if (proyecto.empleadosObra && proyecto.empleadosObra.length > 0) {
                     var totalHoras = 0;
@@ -1367,27 +871,20 @@
                         var costo = horasTrabajadas * costoHora;
                         totalHoras += horasTrabajadas;
                         totalCosto += costo;
-                        
                         var almuerzoText = emp.almuerzo ? '✅ Con almuerzo' : '❌ Sin almuerzo';
-                        
+
                         html += '<div class="list-item">';
-                        html += '<div class="info">';
-                        html += '<strong>' + (nombreEmpleado || 'Empleado #' + emp.empleadoId) + '</strong>';
-                        html += '<span class="detalle">' + fecha + ' | Entrada: ' + horaEntrada + ' | Salida: ' + horaSalida + ' | ' + almuerzoText + ' | Horas: ' + horasTrabajadas.toFixed(1) + 'h | Costo: $' + Number(costo).toLocaleString('es-CO') + '</span>';
-                        html += '</div>';
+                        html += '<div class="info"><strong>' + escapeHTML(nombreEmpleado || 'Empleado #' + emp.empleadoId) + '</strong>';
+                        html += '<span class="detalle">' + fecha + ' | Entrada: ' + horaEntrada + ' | Salida: ' + horaSalida + ' | ' + almuerzoText + ' | Horas: ' + horasTrabajadas.toFixed(1) + 'h | Costo: $' + Number(costo).toLocaleString('es-CO') + '</span></div>';
                         html += '<span class="badge-status activo">En obra</span>';
                         html += '<button type="button" class="btn-remove" onclick="eliminarEmpleadoObra(' + e + ')"><i class="fas fa-times"></i></button>';
                         html += '</div>';
                     }
-                    html += '<div class="list-item" style="background:var(--gray-100); font-weight:700;">';
-                    html += '<span>Total Horas: ' + totalHoras.toFixed(1) + 'h | Costo Total: $' + Number(totalCosto).toLocaleString('es-CO') + '</span>';
-                    html += '</div>';
+                    html += '<div class="list-item" style="background:var(--gray-100); font-weight:700;"><span>Total Horas: ' + totalHoras.toFixed(1) + 'h | Costo Total: $' + Number(totalCosto).toLocaleString('es-CO') + '</span></div>';
                 } else {
                     html += '<p class="empty-items">No hay empleados asignados a esta obra</p>';
                 }
-                html += '</div>';
-                
-                html += '</div>';
+                html += '</div></div>';
                 return html;
             }
 
@@ -1399,44 +896,27 @@
                 return Math.max(0, horas);
             }
 
+            // ============================================================
             // ===== RENDER COMPRAS =====
+            // ============================================================
+            
             function renderCompras() {
                 var proyecto = proyectoEnGestion;
                 var html = '<div class="tab-content active">';
                 html += '<h4><i class="fas fa-shopping-cart"></i> Compras del Proyecto</h4>';
-                
                 html += '<div class="fila-form">';
-                html += '<div class="form-group half">';
-                html += '<label>N° Factura:</label>';
-                html += '<input type="text" id="facturaCompra" class="form-control" placeholder="Ej: FAC-001">';
-                html += '</div>';
-                html += '<div class="form-group half">';
-                html += '<label>Proveedor:</label>';
-                html += '<input type="text" id="proveedorCompra" class="form-control" placeholder="Ej: Proveedor XYZ">';
-                html += '</div>';
-                html += '<div class="form-group small">';
-                html += '<label>Fecha:</label>';
-                html += '<input type="date" id="fechaCompra" class="form-control" value="' + new Date().toISOString().split('T')[0] + '">';
-                html += '</div>';
-                html += '<div class="form-group small">';
-                html += '<label>Responsable:</label>';
-                html += '<select id="responsableCompra" class="form-select">';
-                html += '<option value="">-- Seleccionar --</option>';
+                html += '<div class="form-group half"><label>N° Factura:</label><input type="text" id="facturaCompra" class="form-control" placeholder="Ej: FAC-001"></div>';
+                html += '<div class="form-group half"><label>Proveedor:</label><input type="text" id="proveedorCompra" class="form-control" placeholder="Ej: Proveedor XYZ"></div>';
+                html += '<div class="form-group small"><label>Fecha:</label><input type="date" id="fechaCompra" class="form-control" value="' + new Date().toISOString().split('T')[0] + '"></div>';
+                html += '<div class="form-group small"><label>Responsable:</label><select id="responsableCompra" class="form-select"><option value="">-- Seleccionar --</option>';
                 for (var i = 0; i < empleadosData.length; i++) {
-                    html += '<option value="' + empleadosData[i].id + '">' + empleadosData[i].nombre + '</option>';
+                    html += '<option value="' + empleadosData[i].id + '">' + escapeHTML(empleadosData[i].nombre) + '</option>';
                 }
-                html += '</select>';
+                html += '</select></div>';
+                html += '<div class="form-group small"><label>Valor ($):</label><input type="number" id="valorCompra" class="form-control" placeholder="0"></div>';
+                html += '<div class="form-group small" style="display:flex; align-items:flex-end;"><button type="button" class="btn-add" onclick="agregarCompra()"><i class="fas fa-plus"></i> Agregar</button></div>';
                 html += '</div>';
-                html += '<div class="form-group small">';
-                html += '<label>Valor ($):</label>';
-                html += '<input type="number" id="valorCompra" class="form-control" placeholder="0">';
-                html += '</div>';
-                html += '<div class="form-group small" style="display:flex; align-items:flex-end;">';
-                html += '<button type="button" class="btn-add" onclick="agregarCompra()">';
-                html += '<i class="fas fa-plus"></i> Agregar</button>';
-                html += '</div>';
-                html += '</div>';
-                
+
                 html += '<div class="list-container">';
                 var totalCompras = 0;
                 if (proyecto.compras && proyecto.compras.length > 0) {
@@ -1447,76 +927,50 @@
                         var fecha = comp.fecha ? new Date(comp.fecha).toLocaleDateString('es-CO') : '-';
                         var responsable = '';
                         for (var ee = 0; ee < empleadosData.length; ee++) {
-                            if (empleadosData[ee].id === comp.responsableId) {
-                                responsable = empleadosData[ee].nombre;
-                                break;
-                            }
+                            if (empleadosData[ee].id === comp.responsableId) { responsable = empleadosData[ee].nombre; break; }
                         }
                         html += '<div class="list-item">';
-                        html += '<div class="info">';
-                        html += '<strong>#' + numero + '</strong> - ';
-                        html += '<span>Factura: ' + (comp.factura || '-') + '</span>';
-                        html += '<span class="detalle">Proveedor: ' + (comp.proveedor || '-') + ' | Fecha: ' + fecha + ' | Responsable: ' + (responsable || '-') + '</span>';
-                        html += '</div>';
+                        html += '<div class="info"><strong>#' + numero + '</strong> - <span>Factura: ' + escapeHTML(comp.factura || '-') + '</span>';
+                        html += '<span class="detalle">Proveedor: ' + escapeHTML(comp.proveedor || '-') + ' | Fecha: ' + fecha + ' | Responsable: ' + escapeHTML(responsable || '-') + '</span></div>';
                         html += '<span style="font-weight:600; color:var(--primary);">$' + Number(comp.valor || 0).toLocaleString('es-CO') + '</span>';
                         html += '<button type="button" class="btn-remove" onclick="eliminarCompra(' + c + ')"><i class="fas fa-times"></i></button>';
                         html += '</div>';
                     }
-                    html += '<div class="list-item" style="background:var(--gray-100); font-weight:700;">';
-                    html += '<span>Total Compras:</span>';
-                    html += '<span style="color:var(--primary);">$' + Number(totalCompras).toLocaleString('es-CO') + '</span>';
-                    html += '</div>';
+                    html += '<div class="list-item" style="background:var(--gray-100); font-weight:700;"><span>Total Compras:</span><span style="color:var(--primary);">$' + Number(totalCompras).toLocaleString('es-CO') + '</span></div>';
                 } else {
                     html += '<p class="empty-items">No hay compras registradas</p>';
                 }
-                html += '</div>';
-                
-                html += '</div>';
+                html += '</div></div>';
                 return html;
             }
 
+            // ============================================================
             // ===== RENDER TOTALES =====
+            // ============================================================
+            
             function renderTotales() {
                 var proyecto = proyectoEnGestion;
-                
-                // Contar solo APUs
                 var totalAPUs = 0;
                 var totalCompletados = 0;
                 var totalPendientes = 0;
-                var totalCantidades = 0;
-                var totalRealizado = 0;
-                var totalPendiente = 0;
                 var totalValorTotal = 0;
                 var totalValorRealizado = 0;
                 var totalValorPendiente = 0;
-                
+
                 for (var i = 0; i < proyecto.items.length; i++) {
                     if (proyecto.items[i].tipo === 'apu') {
                         totalAPUs++;
                         var cantTotal = proyecto.items[i].cantidad || 0;
                         var cantReal = proyecto.items[i].cantidadRealizada || 0;
-                        if (cantReal >= cantTotal && cantTotal > 0) {
-                            totalCompletados++;
-                        } else if (cantTotal > 0) {
-                            totalPendientes++;
-                        }
-                        totalCantidades += cantTotal;
-                        totalRealizado += cantReal;
-                        totalPendiente += (cantTotal - cantReal);
+                        if (cantReal >= cantTotal && cantTotal > 0) totalCompletados++;
+                        else if (cantTotal > 0) totalPendientes++;
                         totalValorTotal += proyecto.items[i].valorTotalItem || 0;
                         totalValorRealizado += proyecto.items[i].valorEjecutado || 0;
                         totalValorPendiente += proyecto.items[i].valorPendiente || 0;
                     }
                 }
-                
-                // Si no hay APUs, no contar pendientes
-                if (totalAPUs === 0) {
-                    totalCompletados = 0;
-                    totalPendientes = 0;
-                }
-                
+
                 var herramientasEnObra = proyecto.herramientasObra ? proyecto.herramientasObra.filter(function(h) { return !h.fechaSalida; }).length : 0;
-                
                 var totalHorasEmpleados = 0;
                 var totalCostoEmpleados = 0;
                 if (proyecto.empleadosObra) {
@@ -1524,17 +978,14 @@
                         var emp = proyecto.empleadosObra[e];
                         var costoHora = 0;
                         for (var ee = 0; ee < empleadosData.length; ee++) {
-                            if (empleadosData[ee].id === emp.empleadoId) {
-                                costoHora = empleadosData[ee].costoHora || 0;
-                                break;
-                            }
+                            if (empleadosData[ee].id === emp.empleadoId) { costoHora = empleadosData[ee].costoHora || 0; break; }
                         }
                         var horas = calcularHorasTrabajadas(emp.horaEntrada || '08:00', emp.horaSalida || '17:00', emp.almuerzo || false);
                         totalHorasEmpleados += horas;
                         totalCostoEmpleados += horas * costoHora;
                     }
                 }
-                
+
                 var totalComprasValor = 0;
                 var totalCompras = proyecto.compras ? proyecto.compras.length : 0;
                 if (proyecto.compras) {
@@ -1542,79 +993,42 @@
                         totalComprasValor += proyecto.compras[c].valor || 0;
                     }
                 }
-                
+
                 var avanceTotal = Math.round(proyecto.avanceTotal || 0);
-                
+
                 var html = '<div class="tab-content active">';
                 html += '<h4><i class="fas fa-chart-pie"></i> Resumen del Proyecto</h4>';
-                
-                // Tarjetas
                 html += '<div class="totales-grid">';
-                
-                // Total APUs
-                html += '<div class="total-card blue">';
-                html += '<div class="icon"><i class="fas fa-list"></i></div>';
-                html += '<div class="numero">' + totalAPUs + '</div>';
-                html += '<div class="label">Total APUs</div>';
-                html += '<div class="sub-info">';
-                html += '✅ Completados: <span class="destacado">' + totalCompletados + '</span> | ';
-                html += '⏳ Pendientes: <span class="destacado">' + totalPendientes + '</span>';
+                html += '<div class="total-card blue"><div class="icon"><i class="fas fa-list"></i></div><div class="numero">' + totalAPUs + '</div><div class="label">Total APUs</div>';
+                html += '<div class="sub-info">✅ Completados: <span class="destacado">' + totalCompletados + '</span> | ⏳ Pendientes: <span class="destacado">' + totalPendientes + '</span></div>';
+                html += '<div class="sub-info" style="border-top: 2px solid var(--gray-200); margin-top:8px; padding-top:8px;">📊 Avance: <span class="destacado">' + avanceTotal + '%</span></div></div>';
+                html += '<div class="total-card green"><div class="icon"><i class="fas fa-tools"></i></div><div class="numero">' + herramientasEnObra + '</div><div class="label">Herramientas en Obra</div>';
+                html += '<div class="sub-info">Total asignadas: ' + (proyecto.herramientasObra ? proyecto.herramientasObra.length : 0) + '</div></div>';
+                html += '<div class="total-card orange"><div class="icon"><i class="fas fa-users"></i></div><div class="numero">' + totalHorasEmpleados.toFixed(1) + 'h</div><div class="label">Horas Trabajadas</div>';
+                html += '<div class="sub-info">Costo: <span class="destacado">$' + Number(totalCostoEmpleados).toLocaleString('es-CO') + '</span></div></div>';
+                html += '<div class="total-card purple"><div class="icon"><i class="fas fa-shopping-cart"></i></div><div class="numero">' + totalCompras + '</div><div class="label">Compras</div>';
+                html += '<div class="sub-info">Total: <span class="destacado">$' + Number(totalComprasValor).toLocaleString('es-CO') + '</span></div></div>';
                 html += '</div>';
-                html += '<div class="sub-info" style="border-top: 2px solid var(--gray-200); margin-top:8px; padding-top:8px;">';
-                html += '📊 Avance: <span class="destacado">' + avanceTotal + '%</span>';
-                html += '</div>';
-                html += '</div>';
-                
-                // Herramientas
-                html += '<div class="total-card green">';
-                html += '<div class="icon"><i class="fas fa-tools"></i></div>';
-                html += '<div class="numero">' + herramientasEnObra + '</div>';
-                html += '<div class="label">Herramientas en Obra</div>';
-                html += '<div class="sub-info">Total asignadas: ' + (proyecto.herramientasObra ? proyecto.herramientasObra.length : 0) + '</div>';
-                html += '</div>';
-                
-                // Empleados
-                html += '<div class="total-card orange">';
-                html += '<div class="icon"><i class="fas fa-users"></i></div>';
-                html += '<div class="numero">' + totalHorasEmpleados.toFixed(1) + 'h</div>';
-                html += '<div class="label">Horas Trabajadas</div>';
-                html += '<div class="sub-info">Costo: <span class="destacado">$' + Number(totalCostoEmpleados).toLocaleString('es-CO') + '</span></div>';
-                html += '</div>';
-                
-                // Compras
-                html += '<div class="total-card purple">';
-                html += '<div class="icon"><i class="fas fa-shopping-cart"></i></div>';
-                html += '<div class="numero">' + totalCompras + '</div>';
-                html += '<div class="label">Compras</div>';
-                html += '<div class="sub-info">Total: <span class="destacado">$' + Number(totalComprasValor).toLocaleString('es-CO') + '</span></div>';
-                html += '</div>';
-                
-                html += '</div>';
-                
-                // Resumen de Costos
-                html += '<div class="totales-detalle">';
-                html += '<div class="columna">';
+
+                html += '<div class="totales-detalle"><div class="columna">';
                 html += '<h5><i class="fas fa-dollar-sign"></i> Resumen de Costos</h5>';
                 html += '<div class="total-item-detalle"><span class="label">Mano de Obra</span><span class="valor primary">$' + Number(totalCostoEmpleados).toLocaleString('es-CO') + '</span></div>';
                 html += '<div class="total-item-detalle"><span class="label">Horas Trabajadas</span><span class="valor">' + totalHorasEmpleados.toFixed(1) + 'h</span></div>';
                 html += '<div class="total-item-detalle"><span class="label">Compras</span><span class="valor primary">$' + Number(totalComprasValor).toLocaleString('es-CO') + '</span></div>';
                 html += '<div class="total-item-detalle"><span class="label">Herramientas en Obra</span><span class="valor">' + herramientasEnObra + '</span></div>';
                 html += '<div class="total-item-detalle total-row"><span class="label">Total Costos</span><span class="valor">$' + Number(totalCostoEmpleados + totalComprasValor).toLocaleString('es-CO') + '</span></div>';
-                
                 html += '<div style="margin-top:12px; padding-top:12px; border-top:2px solid var(--gray-200);">';
                 html += '<div class="total-item-detalle"><span class="label">Valor Total Proyecto</span><span class="valor primary">$' + Number(totalValorTotal).toLocaleString('es-CO') + '</span></div>';
                 html += '<div class="total-item-detalle"><span class="label">Valor Realizado</span><span class="valor success">$' + Number(totalValorRealizado).toLocaleString('es-CO') + '</span></div>';
                 html += '<div class="total-item-detalle"><span class="label">Valor Pendiente</span><span class="valor warning">$' + Number(totalValorPendiente).toLocaleString('es-CO') + '</span></div>';
-                html += '</div>';
-                
-                html += '</div>';
-                html += '</div>';
-                
-                html += '</div>';
+                html += '</div></div></div></div>';
                 return html;
             }
 
+            // ============================================================
             // ===== FUNCIONES DE HERRAMIENTAS =====
+            // ============================================================
+            
             function agregarHerramientaObra() {
                 var proyecto = proyectoEnGestion;
                 if (!proyecto) return;
@@ -1626,21 +1040,14 @@
                 var fechaSalida = document.getElementById('fechaSalidaHerramienta');
                 var horaSalida = document.getElementById('horaSalidaHerramienta');
 
-                if (!selectHerramienta || !selectResponsable) return;
-
                 var herramientaId = parseInt(selectHerramienta.value);
                 var responsableId = parseInt(selectResponsable.value);
 
-                if (!herramientaId || !responsableId) {
-                    alert('Selecciona una herramienta y un responsable');
-                    return;
-                }
+                if (!herramientaId || !responsableId) { alert('Selecciona una herramienta y un responsable'); return; }
 
-                if (!proyecto.herramientasObra) {
-                    proyecto.herramientasObra = [];
-                }
+                if (!proyecto.herramientasObra) proyecto.herramientasObra = [];
 
-                var obj = {
+                proyecto.herramientasObra.push({
                     herramientaId: herramientaId,
                     responsableId: responsableId,
                     fechaEntrada: fechaEntrada ? fechaEntrada.value : new Date().toISOString().split('T')[0],
@@ -1648,58 +1055,48 @@
                     fechaSalida: fechaSalida ? fechaSalida.value : '',
                     horaSalida: horaSalida ? horaSalida.value : '',
                     fechaAsignacion: new Date().toISOString()
-                };
+                });
 
-                proyecto.herramientasObra.push(obj);
-
-                guardarProyectos();
-                if (window.actualizarUbicacionesHerramientas) {
-                    window.actualizarUbicacionesHerramientas();
-                }
-                cargarContenidoPestana('herramientas');
+                guardarGestionProyecto().then(function() {
+                    cargarContenidoPestana('herramientas');
+                });
                 mostrarNotificacion('✅ Herramienta asignada a la obra');
             }
 
             function registrarSalidaHerramienta(index) {
                 var proyecto = proyectoEnGestion;
                 if (!proyecto) return;
-
                 if (proyecto.herramientasObra && proyecto.herramientasObra.length > index) {
-                    var fechaSalida = prompt('Ingresa la fecha de salida (YYYY-MM-DD):', new Date().toISOString().split('T')[0]);
+                    var fechaSalida = prompt('Fecha de salida (YYYY-MM-DD):', new Date().toISOString().split('T')[0]);
                     if (fechaSalida) {
-                        var horaSalida = prompt('Ingresa la hora de salida (HH:MM):', '17:00');
+                        var horaSalida = prompt('Hora de salida (HH:MM):', '17:00');
                         if (horaSalida) {
                             proyecto.herramientasObra[index].fechaSalida = fechaSalida;
                             proyecto.herramientasObra[index].horaSalida = horaSalida;
-                            guardarProyectos();
-                            if (window.actualizarUbicacionesHerramientas) {
-                                window.actualizarUbicacionesHerramientas();
-                            }
-                            cargarContenidoPestana('herramientas');
-                            mostrarNotificacion('✅ Salida de herramienta registrada');
+                            guardarGestionProyecto().then(function() {
+                                cargarContenidoPestana('herramientas');
+                            });
                         }
                     }
                 }
             }
 
             function eliminarHerramientaObra(index) {
-                if (confirm('¿Eliminar esta herramienta de la obra?')) {
-                    var proyecto = proyectoEnGestion;
-                    if (!proyecto) return;
-
-                    if (proyecto.herramientasObra && proyecto.herramientasObra.length > index) {
-                        proyecto.herramientasObra.splice(index, 1);
-                        guardarProyectos();
-                        if (window.actualizarUbicacionesHerramientas) {
-                            window.actualizarUbicacionesHerramientas();
-                        }
+                if (!confirm('¿Eliminar esta herramienta de la obra?')) return;
+                var proyecto = proyectoEnGestion;
+                if (!proyecto) return;
+                if (proyecto.herramientasObra && proyecto.herramientasObra.length > index) {
+                    proyecto.herramientasObra.splice(index, 1);
+                    guardarGestionProyecto().then(function() {
                         cargarContenidoPestana('herramientas');
-                        mostrarNotificacion('Herramienta eliminada de la obra');
-                    }
+                    });
                 }
             }
 
+            // ============================================================
             // ===== FUNCIONES DE EMPLEADOS =====
+            // ============================================================
+            
             function agregarEmpleadoObra() {
                 var proyecto = proyectoEnGestion;
                 if (!proyecto) return;
@@ -1710,18 +1107,11 @@
                 var horaSalida = document.getElementById('horaSalidaEmpleado');
                 var almuerzo = document.getElementById('almuerzoEmpleado');
 
-                if (!selectEmpleado) return;
-
                 var empleadoId = parseInt(selectEmpleado.value);
 
-                if (!empleadoId) {
-                    alert('Selecciona un empleado');
-                    return;
-                }
+                if (!empleadoId) { alert('Selecciona un empleado'); return; }
 
-                if (!proyecto.empleadosObra) {
-                    proyecto.empleadosObra = [];
-                }
+                if (!proyecto.empleadosObra) proyecto.empleadosObra = [];
 
                 proyecto.empleadosObra.push({
                     empleadoId: empleadoId,
@@ -1731,26 +1121,28 @@
                     almuerzo: almuerzo ? almuerzo.checked : false
                 });
 
-                guardarProyectos();
-                cargarContenidoPestana('empleados');
+                guardarGestionProyecto().then(function() {
+                    cargarContenidoPestana('empleados');
+                });
                 mostrarNotificacion('✅ Empleado asignado a la obra');
             }
 
             function eliminarEmpleadoObra(index) {
-                if (confirm('¿Eliminar este empleado de la obra?')) {
-                    var proyecto = proyectoEnGestion;
-                    if (!proyecto) return;
-
-                    if (proyecto.empleadosObra && proyecto.empleadosObra.length > index) {
-                        proyecto.empleadosObra.splice(index, 1);
-                        guardarProyectos();
+                if (!confirm('¿Eliminar este empleado de la obra?')) return;
+                var proyecto = proyectoEnGestion;
+                if (!proyecto) return;
+                if (proyecto.empleadosObra && proyecto.empleadosObra.length > index) {
+                    proyecto.empleadosObra.splice(index, 1);
+                    guardarGestionProyecto().then(function() {
                         cargarContenidoPestana('empleados');
-                        mostrarNotificacion('Empleado eliminado de la obra');
-                    }
+                    });
                 }
             }
 
+            // ============================================================
             // ===== FUNCIONES DE COMPRAS =====
+            // ============================================================
+            
             function agregarCompra() {
                 var proyecto = proyectoEnGestion;
                 if (!proyecto) return;
@@ -1760,8 +1152,6 @@
                 var fecha = document.getElementById('fechaCompra');
                 var responsable = document.getElementById('responsableCompra');
                 var valor = document.getElementById('valorCompra');
-
-                if (!factura || !proveedor || !fecha || !responsable || !valor) return;
 
                 var facturaVal = factura.value.trim();
                 var proveedorVal = proveedor.value.trim();
@@ -1774,9 +1164,7 @@
                     return;
                 }
 
-                if (!proyecto.compras) {
-                    proyecto.compras = [];
-                }
+                if (!proyecto.compras) proyecto.compras = [];
 
                 proyecto.compras.push({
                     factura: facturaVal,
@@ -1786,58 +1174,40 @@
                     valor: valorVal
                 });
 
-                guardarProyectos();
-                cargarContenidoPestana('compras');
+                guardarGestionProyecto().then(function() {
+                    cargarContenidoPestana('compras');
+                });
                 mostrarNotificacion('✅ Compra agregada');
-                
-                factura.value = '';
-                proveedor.value = '';
-                valor.value = '';
-                responsable.value = '';
             }
 
             function eliminarCompra(index) {
-                if (confirm('¿Eliminar esta compra?')) {
-                    var proyecto = proyectoEnGestion;
-                    if (!proyecto) return;
-
-                    if (proyecto.compras && proyecto.compras.length > index) {
-                        proyecto.compras.splice(index, 1);
-                        guardarProyectos();
+                if (!confirm('¿Eliminar esta compra?')) return;
+                var proyecto = proyectoEnGestion;
+                if (!proyecto) return;
+                if (proyecto.compras && proyecto.compras.length > index) {
+                    proyecto.compras.splice(index, 1);
+                    guardarGestionProyecto().then(function() {
                         cargarContenidoPestana('compras');
-                        mostrarNotificacion('Compra eliminada');
-                    }
+                    });
                 }
             }
 
+            // ============================================================
             // ===== ACTUALIZAR CANTIDAD REALIZADA =====
-            function actualizarCantidadRealizada(proyectoId, itemIndex, valor) {
+            // ============================================================
+            
+            function actualizarCantidadRealizada(itemIndex, valor) {
                 var cantidad = parseFloat(valor) || 0;
                 if (cantidad < 0) cantidad = 0;
 
-                var proyecto = null;
-                for (var i = 0; i < proyectos.length; i++) {
-                    if (proyectos[i].id === proyectoId) {
-                        proyecto = proyectos[i];
-                        break;
-                    }
-                }
-
-                if (!proyecto) return;
-
-                var item = proyecto.items[itemIndex];
+                if (!proyectoEnGestion) return;
+                var item = proyectoEnGestion.items[itemIndex];
                 if (!item || item.tipo !== 'apu') return;
 
                 var cantidadTotal = item.cantidad || 0;
                 if (cantidad > cantidadTotal) {
                     alert('La cantidad realizada no puede ser mayor que la cantidad total (' + cantidadTotal + ')');
-                    var inputs = document.querySelectorAll('.cantidad-input');
-                    for (var j = 0; j < inputs.length; j++) {
-                        if (inputs[j].value === String(valor)) {
-                            inputs[j].value = item.cantidadRealizada || 0;
-                            break;
-                        }
-                    }
+                    cargarContenidoPestana('actividades');
                     return;
                 }
 
@@ -1847,16 +1217,22 @@
                 item.valorEjecutado = (item.valorUnitario || 0) * cantidad;
                 item.valorPendiente = item.valorTotalItem - item.valorEjecutado;
 
-                calcularValoresProyecto(proyecto);
-                cargarContenidoPestana(pestanaActual);
+                calcularValoresProyecto(proyectoEnGestion);
+                guardarGestionProyecto().then(function() {
+                    cargarContenidoPestana(pestanaActual);
+                });
             }
 
+            // ============================================================
             // ===== MODAL PROYECTO =====
+            // ============================================================
+            
             function abrirModalProyecto() {
                 var modal = document.getElementById('modalProyecto');
                 if (!modal) return;
-                cargarCotizaciones();
-                modal.style.display = 'flex';
+                cargarCotizaciones().then(function() {
+                    modal.style.display = 'flex';
+                });
             }
 
             function cerrarModalProyecto() {
@@ -1864,25 +1240,22 @@
                 if (modal) modal.style.display = 'none';
             }
 
+            // ============================================================
             // ===== MODAL GESTIÓN =====
-            function abrirGestionProyecto(id) {
+            // ============================================================
+            
+            async function abrirGestionProyecto(id) {
                 var proyecto = null;
                 for (var i = 0; i < proyectos.length; i++) {
-                    if (proyectos[i].id === id) {
-                        proyecto = proyectos[i];
-                        break;
-                    }
+                    if (proyectos[i].id === id) { proyecto = proyectos[i]; break; }
                 }
-                if (!proyecto) {
-                    alert('Proyecto no encontrado');
-                    return;
-                }
+                if (!proyecto) { alert('Proyecto no encontrado'); return; }
 
-                proyectoEnGestion = proyecto;
+                proyectoEnGestion = JSON.parse(JSON.stringify(proyecto));
                 proyectoIdEnGestion = id;
 
-                cargarHerramientas();
-                cargarEmpleados();
+                await cargarHerramientas();
+                await cargarEmpleados();
 
                 var modal = document.getElementById('modalGestion');
                 var titulo = document.getElementById('modalTituloGestion');
@@ -1890,12 +1263,10 @@
 
                 pestanaActual = 'actividades';
                 var btns = document.querySelectorAll('.tab-btn');
-                btns.forEach(function(btn) {
-                    btn.classList.remove('active');
-                    if (btn.dataset.tab === 'actividades') {
-                        btn.classList.add('active');
-                    }
-                });
+                for (var j = 0; j < btns.length; j++) {
+                    btns[j].classList.remove('active');
+                    if (btns[j].dataset.tab === 'actividades') btns[j].classList.add('active');
+                }
 
                 cargarContenidoPestana('actividades');
                 modal.style.display = 'flex';
@@ -1908,54 +1279,56 @@
                 proyectoIdEnGestion = null;
             }
 
-            // ===== BORRAR CACHÉ =====
-            function borrarCache() {
-                if (confirm('⚠️ ¿Estás seguro de borrar TODOS los datos guardados? Esta acción no se puede deshacer.')) {
-                    localStorage.clear();
-                    proyectos = [];
-                    cotizaciones = [];
-                    guardarProyectos();
-                    mostrarNotificacion('🗑️ Caché borrada correctamente');
-                    renderizarTablaProyectos();
+            // ============================================================
+            // ===== BORRAR TODOS =====
+            // ============================================================
+            
+            function borrarTodos() {
+                if (!proyectos || proyectos.length === 0) { alert('No hay proyectos para borrar'); return; }
+                if (!confirm('⚠️ ¿Borrar TODOS tus proyectos? Esta acción no se puede deshacer.')) return;
+
+                var promesas = [];
+                for (var i = 0; i < proyectos.length; i++) {
+                    promesas.push(fetch('/api/proyectos/' + proyectos[i].id, { method: 'DELETE' }));
                 }
+                Promise.all(promesas)
+                    .then(function() { return cargarProyectos(); })
+                    .then(function() { mostrarNotificacion('Todos los proyectos fueron eliminados'); });
             }
 
+            // ============================================================
             // ===== NOTIFICACIONES =====
+            // ============================================================
+            
             function mostrarNotificacion(mensaje) {
                 var notificacion = document.createElement('div');
                 notificacion.className = 'notification';
                 notificacion.textContent = mensaje;
                 document.body.appendChild(notificacion);
-                setTimeout(function() {
-                    notificacion.classList.add('show');
-                }, 100);
+                setTimeout(function() { notificacion.classList.add('show'); }, 100);
                 setTimeout(function() {
                     notificacion.classList.remove('show');
-                    setTimeout(function() {
-                        notificacion.remove();
-                    }, 300);
+                    setTimeout(function() { notificacion.remove(); }, 300);
                 }, 3000);
             }
 
-            // ===== CERRAR MODALES AL HACER CLIC FUERA =====
-            window.onclick = function(event) {
-                var modalProyecto = document.getElementById('modalProyecto');
-                if (event.target === modalProyecto) {
-                    cerrarModalProyecto();
-                }
-                var modalGestion = document.getElementById('modalGestion');
-                if (event.target === modalGestion) {
-                    cerrarModalGestion();
-                }
-            };
-
+            // ============================================================
             // ===== INICIALIZAR =====
+            // ============================================================
+            
             document.addEventListener('DOMContentLoaded', function() {
                 cargarProyectos();
                 cargarCotizaciones();
                 cargarHerramientas();
                 cargarEmpleados();
             });
+
+            window.onclick = function(event) {
+                var modalProyecto = document.getElementById('modalProyecto');
+                if (event.target === modalProyecto) cerrarModalProyecto();
+                var modalGestion = document.getElementById('modalGestion');
+                if (event.target === modalGestion) cerrarModalGestion();
+            };
         </script>
     `
 }) %>

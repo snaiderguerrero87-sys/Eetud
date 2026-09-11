@@ -339,12 +339,7 @@
         </button>
 
         <style>
-            .modal-muy-grande .modal-content {
-                max-width: 95vw;
-                width: 95vw;
-                max-height: 92vh;
-                padding: 24px 32px;
-            }
+            .modal-muy-grande .modal-content { max-width: 95vw; width: 95vw; max-height: 92vh; padding: 24px 32px; }
             @media (max-width: 768px) {
                 .modal-muy-grande .modal-content { max-width: 98vw; width: 98vw; padding: 16px; max-height: 95vh; }
                 .modal-muy-grande .modal-content .form-row { flex-direction: column; gap: 0; }
@@ -403,7 +398,6 @@
             .categoria-tabla .categoria-body table { width: 100%; border-collapse: collapse; }
             .categoria-tabla .categoria-body table th { background: var(--gray-50); padding: 10px 16px; text-align: left; font-size: 12px; text-transform: uppercase; color: var(--gray-600); font-weight: 600; border-bottom: 1px solid var(--gray-200); }
             .categoria-tabla .categoria-body table td { padding: 10px 16px; border-bottom: 1px solid var(--gray-100); font-size: 14px; }
-            .categoria-tabla .categoria-body table tr:last-child td { border-bottom: none; }
             .categoria-tabla .categoria-body table tr:hover { background: var(--gray-50); }
             .sugerencia-item { padding: 8px 14px; cursor: pointer; transition: all 0.2s; }
             .sugerencia-item:hover { background: var(--primary); color: white; }
@@ -414,6 +408,7 @@
         </style>
 
         <script>
+            // ===== VARIABLES GLOBALES =====
             var apus = [];
             var editandoId = null;
             var materialesData = [];
@@ -450,7 +445,7 @@
                 setupPaginacionMateriales();
                 setupEventListeners();
                 setupPlantillaListeners();
-                
+
                 document.getElementById('btnToggleInfo').addEventListener('click', function() {
                     alert('⚠️ Al activar esta opción, se ignoran los campos de materiales, equipos, transporte y mano de obra y solo se usa el valor manual.');
                 });
@@ -471,7 +466,7 @@
 
             function generarMapaLetras() {
                 mapaLetras = {};
-                var ordenadas = categoriasGuardadas.slice().sort((a, b) => a.nombre.localeCompare(b.nombre));
+                var ordenadas = categoriasGuardadas.slice().sort(function(a, b) { return a.nombre.localeCompare(b.nombre); });
                 for (var i = 0; i < ordenadas.length; i++) {
                     if (i < letrasDisponibles.length) {
                         mapaLetras[ordenadas[i].nombre.toLowerCase()] = letrasDisponibles[i];
@@ -496,8 +491,8 @@
                 var input = document.getElementById('categoriaInput');
                 if (!input) return;
                 var sugerencias = document.getElementById('sugerenciasCategorias');
-                var newInput = input.cloneNode(true);
-                input.parentNode.replaceChild(newInput, input);
+                var nuevoInput = input.cloneNode(true);
+                input.parentNode.replaceChild(nuevoInput, input);
                 input = document.getElementById('categoriaInput');
 
                 input.addEventListener('input', function() {
@@ -506,7 +501,7 @@
                     var existe = categoriasGuardadas.some(function(c) { return c.nombre.toLowerCase() === catLower; });
 
                     if (texto.length > 0) {
-                        var coincidencias = categoriasGuardadas.filter(function(c) { return c.nombre.toLowerCase().includes(catLower); });
+                        var coincidencias = categoriasGuardadas.filter(function(c) { return c.nombre.toLowerCase().indexOf(catLower) !== -1; });
                         if (coincidencias.length > 0) {
                             sugerencias.style.display = 'block';
                             var html = '';
@@ -577,26 +572,34 @@
                 }
             }
 
-            function editarCategoria(id, nombreActual) {
-                var nuevo = prompt('Editar categoría:', nombreActual);
-                if (!nuevo || nuevo.trim() === '' || nuevo.trim() === nombreActual) return;
+            function editarCategoria(id) {
+                var cat = categoriasGuardadas.find(function(c) { return c.id === id; });
+                if (!cat) return;
+
+                var nuevo = prompt('Editar categoría:', cat.nombre);
+                if (!nuevo || nuevo.trim() === '' || nuevo.trim() === cat.nombre) return;
+
                 fetch('/api/apus/categorias/' + id, {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ nombre: nuevo.trim() })
                 })
-                .then(() => cargarCategoriasDesdeServidor())
-                .then(() => cargarAPU())
-                .then(() => mostrarNotificacion('Categoría actualizada'))
-                .catch(() => mostrarNotificacion('Error al actualizar'));
+                .then(function() { return cargarCategoriasDesdeServidor(); })
+                .then(function() { return cargarAPU(); })
+                .then(function() { mostrarNotificacion('Categoría actualizada'); })
+                .catch(function() { mostrarNotificacion('Error al actualizar'); });
             }
 
-            function eliminarCategoria(id, nombre) {
-                if (!confirm('¿Eliminar la categoría "' + nombre + '"?')) return;
+            function eliminarCategoria(id) {
+                var cat = categoriasGuardadas.find(function(c) { return c.id === id; });
+                if (!cat) return;
+
+                if (!confirm('¿Eliminar la categoría "' + cat.nombre + '"?')) return;
+
                 fetch('/api/apus/categorias/' + id, { method: 'DELETE' })
-                    .then(() => cargarCategoriasDesdeServidor())
-                    .then(() => mostrarNotificacion('Categoría eliminada'))
-                    .catch(() => mostrarNotificacion('Error al eliminar'));
+                    .then(function() { return cargarCategoriasDesdeServidor(); })
+                    .then(function() { mostrarNotificacion('Categoría eliminada'); })
+                    .catch(function() { mostrarNotificacion('Error al eliminar'); });
             }
 
             // ===== UNIDADES =====
@@ -622,7 +625,7 @@
                     var existe = unidadesGuardadas.some(function(u) { return u.nombre.toUpperCase() === texto; });
 
                     if (texto.length > 0) {
-                        var coincidencias = unidadesGuardadas.filter(function(u) { return u.nombre.toUpperCase().includes(texto); });
+                        var coincidencias = unidadesGuardadas.filter(function(u) { return u.nombre.toUpperCase().indexOf(texto) !== -1; });
                         if (coincidencias.length > 0) {
                             sugerencias.style.display = 'block';
                             var html = '';
@@ -745,8 +748,8 @@
                     html += ' <span style="font-weight:400; font-size:14px; opacity:0.8;">(' + items.length + ' APUs)</span>';
                     html += ' <span class="categoria-acciones">';
                     if (catId) {
-                        html += '<button class="btn-edit-categoria" onclick="editarCategoria(' + catId + ')"><i class="fas fa-edit"></i></button>';
-                        html += '<button class="btn-delete-categoria" onclick="eliminarCategoria(' + catId + ')"><i class="fas fa-trash"></i></button>';
+                        html += '<button class="btn-edit-categoria" onclick="editarCategoria(' + catId + ')" title="Editar"><i class="fas fa-edit"></i></button>';
+                        html += '<button class="btn-delete-categoria" onclick="eliminarCategoria(' + catId + ')" title="Eliminar"><i class="fas fa-trash"></i></button>';
                     }
                     html += '</span>';
                     html += '</div>';
@@ -1174,8 +1177,8 @@
             function descargarFormatoAPU() {
                 mostrarNotificacion('⏳ Generando formato...');
                 fetch('/api/apus/exportar-formato')
-                    .then(r => r.blob())
-                    .then(blob => {
+                    .then(function(r) { return r.blob(); })
+                    .then(function(blob) {
                         var url = window.URL.createObjectURL(blob);
                         var a = document.createElement('a');
                         a.href = url;
@@ -1186,7 +1189,7 @@
                         a.remove();
                         mostrarNotificacion('✅ Formato descargado');
                     })
-                    .catch(err => mostrarNotificacion('❌ Error: ' + err.message));
+                    .catch(function(err) { mostrarNotificacion('❌ Error: ' + err.message); });
             }
 
             function procesarImportacionAPU(event) {
@@ -1209,8 +1212,8 @@
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ file: base64 })
                         })
-                        .then(r => r.json())
-                        .then(async data => {
+                        .then(function(r) { return r.json(); })
+                        .then(function(data) {
                             if (data.success) {
                                 resultado.style.display = 'block';
                                 resultado.style.background = '#d1fae5';
@@ -1221,9 +1224,11 @@
                                 }
                                 resultado.innerHTML = msg;
                                 progress.style.display = 'none';
-                                await cargarCategoriasDesdeServidor();
-                                await cargarUnidadesDesdeServidor();
-                                await cargarAPU();
+                                cargarCategoriasDesdeServidor().then(function() {
+                                    cargarUnidadesDesdeServidor().then(function() {
+                                        cargarAPU();
+                                    });
+                                });
                                 mostrarNotificacion('✅ APUs importados');
                                 setTimeout(cerrarModalImportar, 3000);
                             } else {
@@ -1233,14 +1238,16 @@
                                 var errMsg = '<strong>❌ Error:</strong> ' + (data.error || 'Desconocido');
                                 if (data.detalles && data.detalles.length > 0) {
                                     errMsg += '<br><ul style="margin-top:8px; padding-left:20px;">';
-                                    data.detalles.forEach(d => { errMsg += '<li>' + d + '</li>'; });
+                                    for (var i = 0; i < data.detalles.length; i++) {
+                                        errMsg += '<li>' + data.detalles[i] + '</li>';
+                                    }
                                     errMsg += '</ul>';
                                 }
                                 resultado.innerHTML = errMsg;
                                 progress.style.display = 'none';
                             }
                         })
-                        .catch(err => {
+                        .catch(function(err) {
                             resultado.style.display = 'block';
                             resultado.style.background = '#fee2e2';
                             resultado.style.color = '#991b1b';
@@ -1336,7 +1343,7 @@
                 var busqueda = document.getElementById('buscarMaterialSelector').value.toLowerCase().trim();
                 materialesFiltradosSelector = busqueda === ''
                     ? materialesSelector.slice()
-                    : materialesSelector.filter(m => m.nombre.toLowerCase().includes(busqueda));
+                    : materialesSelector.filter(function(m) { return m.nombre.toLowerCase().indexOf(busqueda) !== -1; });
                 paginaActualMateriales = 1;
                 renderizarListaMaterialesSelector();
             }
@@ -1357,8 +1364,16 @@
                     var html = '';
                     for (var i = 0; i < paginaItems.length; i++) {
                         var m = paginaItems[i];
-                        var seleccionado = materialesSeleccionadosTemp.some(s => s.id === m.id);
-                        var cantidad = seleccionado ? (materialesSeleccionadosTemp.find(s => s.id === m.id) || {}).cantidad || 1 : 1;
+                        var seleccionado = materialesSeleccionadosTemp.some(function(s) { return s.id === m.id; });
+                        var cantidad = 1;
+                        if (seleccionado) {
+                            for (var s = 0; s < materialesSeleccionadosTemp.length; s++) {
+                                if (materialesSeleccionadosTemp[s].id === m.id) {
+                                    cantidad = materialesSeleccionadosTemp[s].cantidad || 1;
+                                    break;
+                                }
+                            }
+                        }
                         var btnClase = seleccionado ? 'btn-agregar agregado' : 'btn-agregar';
                         var btnText = seleccionado ? '✓ Agregado' : 'Agregar';
                         html += '<div class="material-item-selector" data-id="' + m.id + '">';
@@ -1402,7 +1417,10 @@
             }
 
             function toggleMaterialSeleccionadoTemp(id, cantidad) {
-                var index = materialesSeleccionadosTemp.findIndex(s => s.id === id);
+                var index = -1;
+                for (var i = 0; i < materialesSeleccionadosTemp.length; i++) {
+                    if (materialesSeleccionadosTemp[i].id === id) { index = i; break; }
+                }
                 if (index === -1) materialesSeleccionadosTemp.push({ id: id, cantidad: cantidad || 1 });
                 else materialesSeleccionadosTemp.splice(index, 1);
                 actualizarSeleccionadosContador();
@@ -1418,7 +1436,10 @@
                     var html = '';
                     for (var i = 0; i < materialesSeleccionadosTemp.length; i++) {
                         var sel = materialesSeleccionadosTemp[i];
-                        var material = materialesSelector.find(m => m.id === sel.id);
+                        var material = null;
+                        for (var j = 0; j < materialesSelector.length; j++) {
+                            if (materialesSelector[j].id === sel.id) { material = materialesSelector[j]; break; }
+                        }
                         if (material) {
                             html += '<div class="seleccionado-item">';
                             html += '<span class="info"><strong>' + escapeHtml(material.nombre) + '</strong> - $' + Number(material.precio).toLocaleString('es-CO') + '</span>';
@@ -1428,13 +1449,13 @@
                         }
                     }
                     container.innerHTML = html;
-                    var quitarBtns = container.querySelectorAll('.btn-quitar');
-                    for (var j = 0; j < quitarBtns.length; j++) {
+                    var btns = container.querySelectorAll('.btn-quitar');
+                    for (var k = 0; k < btns.length; k++) {
                         (function(btn) {
                             btn.addEventListener('click', function() {
                                 toggleMaterialSeleccionadoTemp(parseInt(this.getAttribute('data-id')), 1);
                             });
-                        })(quitarBtns[j]);
+                        })(btns[k]);
                     }
                 }
             }
@@ -1443,7 +1464,10 @@
                 itemsMateriales = [];
                 for (var i = 0; i < materialesSeleccionadosTemp.length; i++) {
                     var sel = materialesSeleccionadosTemp[i];
-                    var material = materialesSelector.find(m => m.id === sel.id);
+                    var material = null;
+                    for (var j = 0; j < materialesSelector.length; j++) {
+                        if (materialesSelector[j].id === sel.id) { material = materialesSelector[j]; break; }
+                    }
                     if (material) {
                         itemsMateriales.push({
                             id: material.id,
@@ -1570,9 +1594,9 @@
                 if (!nombre) { alert('Ingresa el nombre del equipo'); return; }
 
                 if (origen !== 'manual') {
-                    valorBase = origen === 'materiales' ? obtenerSubtotalMateriales()
-                        : origen === 'manoDeObra' ? obtenerSubtotalManoObra()
-                        : obtenerValorTotalGeneral();
+                    if (origen === 'materiales') valorBase = obtenerSubtotalMateriales();
+                    else if (origen === 'manoDeObra') valorBase = obtenerSubtotalManoObra();
+                    else valorBase = obtenerValorTotalGeneral();
                     document.getElementById('valorBaseEquipo').value = formatearMoneda(valorBase);
                 }
                 if (valorBase <= 0) { alert('Valor base debe ser mayor a 0'); return; }
@@ -1602,7 +1626,10 @@
                 var html = '';
                 for (var i = 0; i < itemsEquipos.length; i++) {
                     var item = itemsEquipos[i];
-                    var origenLabel = { manual: 'Manual', materiales: 'Materiales', manoDeObra: 'Mano de Obra', total: 'Total' }[item.valorBaseOrigen] || 'Manual';
+                    var origenLabel = item.valorBaseOrigen === 'manual' ? 'Manual'
+                        : item.valorBaseOrigen === 'materiales' ? 'Materiales'
+                        : item.valorBaseOrigen === 'manoDeObra' ? 'Mano de Obra'
+                        : 'Total';
                     html += '<div class="item-tag"><span><strong>' + escapeHtml(item.nombre) + '</strong> ' + item.porcentaje + '% de ' + formatearMoneda(item.valorBase) + ' (' + origenLabel + ') = ' + formatearMoneda(item.subtotal) + '</span>';
                     html += '<button type="button" class="btn-remove" onclick="eliminarItemEquipo(' + i + ')"><i class="fas fa-times"></i></button></div>';
                 }
@@ -1629,9 +1656,9 @@
                 if (!nombre) { alert('Ingresa el nombre del transporte'); return; }
 
                 if (origen !== 'manual') {
-                    valorBase = origen === 'materiales' ? obtenerSubtotalMateriales()
-                        : origen === 'manoDeObra' ? obtenerSubtotalManoObra()
-                        : obtenerValorTotalGeneral();
+                    if (origen === 'materiales') valorBase = obtenerSubtotalMateriales();
+                    else if (origen === 'manoDeObra') valorBase = obtenerSubtotalManoObra();
+                    else valorBase = obtenerValorTotalGeneral();
                     document.getElementById('valorBaseTransporte').value = formatearMoneda(valorBase);
                 }
                 if (valorBase <= 0) { alert('Valor base debe ser mayor a 0'); return; }
@@ -1661,7 +1688,10 @@
                 var html = '';
                 for (var i = 0; i < itemsTransporte.length; i++) {
                     var item = itemsTransporte[i];
-                    var origenLabel = { manual: 'Manual', materiales: 'Materiales', manoDeObra: 'Mano de Obra', total: 'Total' }[item.valorBaseOrigen] || 'Manual';
+                    var origenLabel = item.valorBaseOrigen === 'manual' ? 'Manual'
+                        : item.valorBaseOrigen === 'materiales' ? 'Materiales'
+                        : item.valorBaseOrigen === 'manoDeObra' ? 'Mano de Obra'
+                        : 'Total';
                     html += '<div class="item-tag"><span><strong>' + escapeHtml(item.nombre) + '</strong> ' + item.porcentaje + '% de ' + formatearMoneda(item.valorBase) + ' (' + origenLabel + ') = ' + formatearMoneda(item.subtotal) + '</span>';
                     html += '<button type="button" class="btn-remove" onclick="eliminarItemTransporte(' + i + ')"><i class="fas fa-times"></i></button></div>';
                 }
@@ -1787,7 +1817,10 @@
             }
 
             function editarAPU(id) {
-                var apu = apus.find(a => a.id === id);
+                var apu = null;
+                for (var i = 0; i < apus.length; i++) {
+                    if (apus[i].id === id) { apu = apus[i]; break; }
+                }
                 if (apu) {
                     modoPlantilla = false;
                     document.getElementById('btnGuardarPlantilla').style.display = 'none';
@@ -1799,17 +1832,22 @@
             function eliminarAPU(id) {
                 if (!confirm('¿Eliminar este APU?')) return;
                 fetch('/api/apus/' + id, { method: 'DELETE' })
-                    .then(() => cargarAPU())
-                    .then(() => mostrarNotificacion('APU eliminado'))
-                    .catch(() => mostrarNotificacion('Error al eliminar'));
+                    .then(function() { return cargarAPU(); })
+                    .then(function() { mostrarNotificacion('APU eliminado'); })
+                    .catch(function() { mostrarNotificacion('Error al eliminar'); });
             }
 
             function borrarTodos() {
                 if (apus.length === 0) { alert('No hay APUs para borrar'); return; }
                 if (!confirm('⚠️ ¿Borrar TODOS tus APUs?')) return;
 
-                var promesas = apus.map(a => fetch('/api/apus/' + a.id, { method: 'DELETE' }));
-                Promise.all(promesas).then(() => cargarAPU()).then(() => mostrarNotificacion('Todos los APUs eliminados'));
+                var promesas = [];
+                for (var i = 0; i < apus.length; i++) {
+                    promesas.push(fetch('/api/apus/' + apus[i].id, { method: 'DELETE' }));
+                }
+                Promise.all(promesas)
+                    .then(function() { return cargarAPU(); })
+                    .then(function() { mostrarNotificacion('Todos los APUs fueron eliminados'); });
             }
 
             // ===== SUBMIT =====
@@ -1848,42 +1886,47 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(apuData)
                 })
-                .then(r => {
-                    if (!r.ok) return r.json().then(err => { throw new Error(err.error || 'Error'); });
+                .then(function(r) {
+                    if (!r.ok) return r.json().then(function(err) { throw new Error(err.error || 'Error'); });
                     return r.json();
                 })
-                .then(async () => {
-                    if (categoria && !categoriasGuardadas.some(c => c.nombre.toLowerCase() === categoria.toLowerCase())) {
-                        await fetch('/api/apus/categorias', {
+                .then(function() {
+                    // Guardar categoría/unidad nuevas
+                    var promesas = [];
+                    if (categoria && !categoriasGuardadas.some(function(c) { return c.nombre.toLowerCase() === categoria.toLowerCase(); })) {
+                        promesas.push(fetch('/api/apus/categorias', {
                             method: 'POST', headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ nombre: categoria })
-                        });
+                        }));
                     }
-                    if (unidad && !unidadesGuardadas.some(u => u.nombre.toUpperCase() === unidad)) {
-                        await fetch('/api/apus/unidades', {
+                    if (unidad && !unidadesGuardadas.some(function(u) { return u.nombre.toUpperCase() === unidad; })) {
+                        promesas.push(fetch('/api/apus/unidades', {
                             method: 'POST', headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ nombre: unidad })
-                        });
+                        }));
                     }
-                    await cargarCategoriasDesdeServidor();
-                    await cargarUnidadesDesdeServidor();
-                    await cargarAPU();
+                    return Promise.all(promesas);
+                })
+                .then(function() { return cargarCategoriasDesdeServidor(); })
+                .then(function() { return cargarUnidadesDesdeServidor(); })
+                .then(function() { return cargarAPU(); })
+                .then(function() {
                     cerrarModal();
                     mostrarNotificacion(editandoId !== null ? 'APU actualizado' : 'APU guardado');
                     editandoId = null;
                 })
-                .catch(err => mostrarNotificacion('Error: ' + err.message));
+                .catch(function(err) { mostrarNotificacion('Error: ' + err.message); });
             });
 
             // ===== PDF =====
             function imprimirAPU(id) {
                 mostrarNotificacion('⏳ Generando PDF...');
                 fetch('/api/apu-pdf/' + id)
-                    .then(r => {
-                        if (!r.ok) return r.json().then(err => { throw new Error(err.error || 'Error'); });
+                    .then(function(r) {
+                        if (!r.ok) return r.json().then(function(err) { throw new Error(err.error || 'Error'); });
                         return r.blob();
                     })
-                    .then(blob => {
+                    .then(function(blob) {
                         var url = window.URL.createObjectURL(blob);
                         var a = document.createElement('a');
                         a.href = url;
@@ -1894,7 +1937,7 @@
                         a.remove();
                         mostrarNotificacion('✅ PDF generado');
                     })
-                    .catch(err => mostrarNotificacion('❌ Error: ' + err.message));
+                    .catch(function(err) { mostrarNotificacion('❌ Error: ' + err.message); });
             }
 
             // ===== NOTIFICACIONES =====
