@@ -477,7 +477,7 @@ Redacta el informe ahora, siguiendo estrictamente las reglas del sistema.`;
 
         // 5. Llamar a Gemini
         const ai = obtenerGenAI();
-        const model = ai.getGenerativeModel({ model: 'gemini-2.5-flash' });
+        const model = ai.getGenerativeModel({ model: 'gemini-3.6-flash' });
 
         const result = await model.generateContent({
             contents: [
