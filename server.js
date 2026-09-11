@@ -75,36 +75,23 @@ app.set('views', path.join(__dirname, 'views'));
 // ============================================================
 function dibujarLogoEmpresa(doc, empresa, logoX, logoY, LOGO_WIDTH, LOGO_HEIGHT) {
     console.log('🔍 === DIAGNÓSTICO DEL LOGO ===');
-    console.log('   empresa.logo existe:', !!empresa.logo);
-
     let logoCargado = false;
 
     if (empresa.logo && typeof empresa.logo === 'string' && empresa.logo.length > 50) {
-        console.log('   empresa.logo longitud:', empresa.logo.length);
-        console.log('   primeros 60 chars:', empresa.logo.substring(0, 60));
-
         try {
             let base64Data = null;
 
-            // Caso 1: prefijo data:image/...
             if (empresa.logo.indexOf('data:image') === 0) {
                 const matches = empresa.logo.match(/^data:image\/(\w+);base64,(.+)$/);
-                if (matches) {
-                    base64Data = matches[2];
-                    console.log('   ✅ Formato data:image detectado');
-                }
+                if (matches) base64Data = matches[2];
             } else {
                 base64Data = empresa.logo;
-                console.log('   ✅ Base64 puro detectado');
             }
 
             if (base64Data) {
                 const imageBuffer = Buffer.from(base64Data, 'base64');
-                console.log('   📦 Buffer creado:', imageBuffer.length, 'bytes');
-
                 if (imageBuffer.length > 100) {
                     try {
-                        // ✅ Pasar el buffer DIRECTAMENTE a PDFKit (sin archivos temporales)
                         doc.image(imageBuffer, logoX, logoY, {
                             width: LOGO_WIDTH,
                             height: LOGO_HEIGHT,
@@ -113,25 +100,19 @@ function dibujarLogoEmpresa(doc, empresa, logoX, logoY, LOGO_WIDTH, LOGO_HEIGHT)
                             valign: 'center'
                         });
                         logoCargado = true;
-                        console.log('   ✅ Logo insertado correctamente (buffer directo)');
+                        console.log('   ✅ Logo insertado correctamente');
                     } catch (imgError) {
-                        console.error('   ❌ Error PDFKit al insertar imagen:', imgError.message);
+                        console.error('   ❌ Error PDFKit:', imgError.message);
                     }
-                } else {
-                    console.log('   ⚠️ Buffer demasiado pequeño');
                 }
-            } else {
-                console.log('   ⚠️ Formato no reconocido');
             }
         } catch (e) {
             console.error('   ❌ Error procesando logo:', e.message);
         }
-    } else {
-        console.log('   ⚠️ No hay logo (vacío o nulo)');
     }
 
     if (!logoCargado) {
-        console.log('   📌 Mostrando placeholder "(logo vacío)"');
+        console.log('   📌 Placeholder "(logo vacío)"');
         doc.rect(logoX, logoY, LOGO_WIDTH, LOGO_HEIGHT).stroke('#cbd5e1');
         doc.fontSize(8).font('Helvetica').fillColor('#94a3b8');
         doc.text('(logo vacío)', logoX, logoY + LOGO_HEIGHT / 2 - 5, {
@@ -142,6 +123,55 @@ function dibujarLogoEmpresa(doc, empresa, logoX, logoY, LOGO_WIDTH, LOGO_HEIGHT)
 
     doc.fillColor('#0f172a').fontSize(9).font('Helvetica');
     return logoCargado;
+}
+
+// ============================================================
+// ===== FUNCIÓN AUXILIAR: DIBUJAR PIE DE PÁGINA (SIN CREAR PÁGINAS) =====
+// ============================================================
+function dibujarPieDePagina(doc, MARGEN_IZQ, MARGEN_DER) {
+    // Obtener el rango REAL de páginas existentes (antes de doc.end())
+    const range = doc.bufferedPageRange();
+    const totalPages = range.count;
+
+    console.log(`📄 Dibujando pie en ${totalPages} página(s) (rango ${range.start} a ${range.start + totalPages - 1})`);
+
+    for (let i = 0; i < totalPages; i++) {
+        const pageIndex = range.start + i;
+        try {
+            doc.switchToPage(pageIndex);
+        } catch (e) {
+            console.error(`   ⚠️ No se pudo cambiar a la página ${pageIndex}:`, e.message);
+            continue;
+        }
+
+        const ph = doc.page.height;
+        const pw = doc.page.width;
+
+        // Línea superior del pie
+        doc.strokeColor('#e2e8f0').lineWidth(1);
+        doc.moveTo(MARGEN_IZQ, ph - 45).lineTo(MARGEN_DER, ph - 45).stroke();
+
+        // Texto del pie
+        doc.fontSize(9).font('Helvetica').fillColor('#94a3b8');
+        doc.text(`Página ${i + 1} de ${totalPages}`, MARGEN_IZQ, ph - 35);
+
+        const ct = `Creado con Eetud™ - ${new Date().getFullYear()}`;
+        const cw = doc.widthOfString(ct);
+        doc.text(ct, (pw - cw) / 2, ph - 35);
+
+        const rt = 'Todos los derechos reservados.';
+        doc.text(rt, MARGEN_DER - doc.widthOfString(rt), ph - 35);
+
+        // Línea inferior
+        doc.strokeColor('#002735').lineWidth(1);
+        doc.moveTo(MARGEN_IZQ, ph - 30).lineTo(MARGEN_DER, ph - 30).stroke();
+    }
+
+    // Volver a la última página para evitar que PDFKit agregue una nueva
+    // (a veces el switchToPage deja la "página activa" apuntando a una nueva)
+    try {
+        doc.switchToPage(range.start + totalPages - 1);
+    } catch (e) {}
 }
 
 // ============================================================
@@ -290,9 +320,8 @@ app.get('/api/dashboard/resumen', verificarAutenticacionApi, async (req, res) =>
 
         for (const p of proyectosRows) {
             const avance = parseFloat(p.avanceTotal) || 0;
-            if (avance >= 100) {
-                proyectosCompletos++;
-            } else {
+            if (avance >= 100) proyectosCompletos++;
+            else {
                 proyectosEnCurso++;
                 proyectosCurso.push({
                     id: p.id, nombre: p.nombre, cliente: p.cliente,
@@ -301,33 +330,22 @@ app.get('/api/dashboard/resumen', verificarAutenticacionApi, async (req, res) =>
             }
         }
 
-        const [cotizacionesRows] = await pool.query(
-            'SELECT COUNT(*) AS total FROM cotizaciones WHERE usuario_id = ?', [usuarioId]
-        );
+        const [cotizacionesRows] = await pool.query('SELECT COUNT(*) AS total FROM cotizaciones WHERE usuario_id = ?', [usuarioId]);
         const totalCotizaciones = cotizacionesRows[0].total;
 
-        const [herramientasRows] = await pool.query(
-            'SELECT COUNT(*) AS total FROM herramientas WHERE usuario_id = ?', [usuarioId]
-        );
+        const [herramientasRows] = await pool.query('SELECT COUNT(*) AS total FROM herramientas WHERE usuario_id = ?', [usuarioId]);
         const totalHerramientas = herramientasRows[0].total;
 
-        const [proyectosHerrRows] = await pool.query(
-            'SELECT herramientasObra FROM proyectos WHERE usuario_id = ?', [usuarioId]
-        );
+        const [proyectosHerrRows] = await pool.query('SELECT herramientasObra FROM proyectos WHERE usuario_id = ?', [usuarioId]);
         let herramientasEnObra = 0;
         const idsHerramientasEnObra = [];
 
         for (const row of proyectosHerrRows) {
             let herrs = row.herramientasObra;
-            if (typeof herrs === 'string') {
-                try { herrs = JSON.parse(herrs); } catch (e) { herrs = []; }
-            }
+            if (typeof herrs === 'string') { try { herrs = JSON.parse(herrs); } catch (e) { herrs = []; } }
             if (Array.isArray(herrs)) {
                 for (const h of herrs) {
-                    if (!h.fechaSalida) {
-                        herramientasEnObra++;
-                        idsHerramientasEnObra.push(h.herramientaId);
-                    }
+                    if (!h.fechaSalida) { herramientasEnObra++; idsHerramientasEnObra.push(h.herramientaId); }
                 }
             }
         }
@@ -342,24 +360,16 @@ app.get('/api/dashboard/resumen', verificarAutenticacionApi, async (req, res) =>
             detalleHerramientasObra = herrInfo.map(h => ({ nombre: h.nombre, codigo: h.codigo, marca: h.marca }));
         }
 
-        const [empleadosRows] = await pool.query(
-            'SELECT COUNT(*) AS total FROM empleados WHERE usuario_id = ?', [usuarioId]
-        );
+        const [empleadosRows] = await pool.query('SELECT COUNT(*) AS total FROM empleados WHERE usuario_id = ?', [usuarioId]);
         const totalEmpleados = empleadosRows[0].total;
 
-        const [proyectosEmpRows] = await pool.query(
-            'SELECT empleadosObra FROM proyectos WHERE usuario_id = ?', [usuarioId]
-        );
+        const [proyectosEmpRows] = await pool.query('SELECT empleadosObra FROM proyectos WHERE usuario_id = ?', [usuarioId]);
         const idsEmpleadosEnObra = new Set();
         for (const row of proyectosEmpRows) {
             let emps = row.empleadosObra;
-            if (typeof emps === 'string') {
-                try { emps = JSON.parse(emps); } catch (e) { emps = []; }
-            }
+            if (typeof emps === 'string') { try { emps = JSON.parse(emps); } catch (e) { emps = []; } }
             if (Array.isArray(emps)) {
-                for (const e of emps) {
-                    if (e.empleadoId) idsEmpleadosEnObra.add(e.empleadoId);
-                }
+                for (const e of emps) { if (e.empleadoId) idsEmpleadosEnObra.add(e.empleadoId); }
             }
         }
         const empleadosEnObra = idsEmpleadosEnObra.size;
@@ -1040,7 +1050,13 @@ app.get('/api/apu-pdf/:id', verificarAutenticacion, async (req, res) => {
         );
         if (empresas.length > 0) empresaData = empresas[0];
 
-        const doc = new PDFDocument({ size: 'A4', margin: 40, info: { Title: `APU - ${apuData.codigo}`, Author: empresaData.nombre || 'Eetud', Subject: 'APU' } });
+        // ✅ bufferPages: true es IMPORTANTE para poder cambiar de página al final
+        const doc = new PDFDocument({
+            size: 'A4',
+            margin: 40,
+            bufferPages: true,
+            info: { Title: `APU - ${apuData.codigo}`, Author: empresaData.nombre || 'Eetud', Subject: 'APU' }
+        });
 
         const filename = `APU_${apuData.codigo}_${new Date().toISOString().slice(0,10)}.pdf`;
         res.setHeader('Content-Type', 'application/pdf');
@@ -1050,18 +1066,18 @@ app.get('/api/apu-pdf/:id', verificarAutenticacion, async (req, res) => {
         function fp(v) { return '$' + Number(v).toLocaleString('es-CO'); }
         function ff() { const a = new Date(); return a.toLocaleDateString('es-CO', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }); }
 
+        const MARGEN_IZQ = 40;
+        const MARGEN_DER = doc.page.width - 40;
         const pageWidth = doc.page.width - 80;
         let currentY = 40;
 
         doc.strokeColor('#002735').lineWidth(2);
         doc.rect(40, currentY, pageWidth, 90).stroke();
 
-        // ===== LOGO O PLACEHOLDER (SIN ARCHIVO TEMPORAL) =====
         const LOGO_WIDTH = 65;
         const LOGO_HEIGHT = 65;
         let logoX = 55;
         let logoY = currentY + 10;
-
         dibujarLogoEmpresa(doc, empresaData, logoX, logoY, LOGO_WIDTH, LOGO_HEIGHT);
 
         let tx = logoX + LOGO_WIDTH + 15;
@@ -1232,6 +1248,9 @@ app.get('/api/apu-pdf/:id', verificarAutenticacion, async (req, res) => {
         const tv = fp(apuData.valor || 0);
         doc.text(tv, doc.page.width - 50 - doc.widthOfString(tv) - 10, totalY + 10);
 
+        // ✅ Dibujar pie de página ANTES de doc.end() y SIN crear páginas nuevas
+        dibujarPieDePagina(doc, 40, doc.page.width - 40);
+
         doc.end();
     } catch (error) {
         console.error('❌ Error PDF APU:', error);
@@ -1250,11 +1269,14 @@ app.post('/api/cotizacion-pdf', verificarAutenticacion, async (req, res) => {
         if (!cotizacion) return res.status(400).json({ error: 'Datos incompletos' });
 
         console.log('📄 === GENERANDO PDF COTIZACIÓN ===');
-        console.log('📋 Cotización:', cotizacion.numero);
-        console.log('🏢 Empresa:', empresa ? empresa.nombre : 'undefined');
-        console.log('🖼️ Logo en body:', empresa && empresa.logo ? 'SÍ (' + empresa.logo.length + ' chars)' : 'NO');
 
-        const doc = new PDFDocument({ size: 'A4', margin: 40, info: { Title: `Cotización ${cotizacion.numero}`, Author: empresa.nombre || 'Eetud', Subject: 'Cotización' } });
+        // ✅ bufferPages: true es IMPORTANTE para poder cambiar de página al final
+        const doc = new PDFDocument({
+            size: 'A4',
+            margin: 40,
+            bufferPages: true,
+            info: { Title: `Cotización ${cotizacion.numero}`, Author: empresa.nombre || 'Eetud', Subject: 'Cotización' }
+        });
 
         const filename = `Cotizacion_${cotizacion.numero}_${new Date().toISOString().slice(0,10)}.pdf`;
         res.setHeader('Content-Type', 'application/pdf');
@@ -1272,12 +1294,10 @@ app.post('/api/cotizacion-pdf', verificarAutenticacion, async (req, res) => {
         doc.strokeColor('#002735').lineWidth(2);
         doc.rect(MARGEN_IZQ, currentY, pageWidth, 90).stroke();
 
-        // ===== LOGO O PLACEHOLDER (SIN ARCHIVO TEMPORAL) =====
         const LOGO_WIDTH = 65;
         const LOGO_HEIGHT = 65;
         let logoX = MARGEN_IZQ + 15;
         let logoY = currentY + 10;
-
         dibujarLogoEmpresa(doc, empresa, logoX, logoY, LOGO_WIDTH, LOGO_HEIGHT);
 
         let tx = logoX + LOGO_WIDTH + 15;
@@ -1514,24 +1534,8 @@ app.post('/api/cotizacion-pdf', verificarAutenticacion, async (req, res) => {
         const tv = fp(tFinal);
         doc.text(tv, MARGEN_DER - doc.widthOfString(tv) - 10, totalY + 12);
 
-        const range = doc.bufferedPageRange();
-        const totalPages = range.count;
-        for (let i = 0; i < totalPages; i++) {
-            doc.switchToPage(range.start + i);
-            const ph = doc.page.height;
-            const pw = doc.page.width;
-            doc.strokeColor('#e2e8f0').lineWidth(1);
-            doc.moveTo(MARGEN_IZQ, ph - 45).lineTo(MARGEN_DER, ph - 45).stroke();
-            doc.fontSize(9).font('Helvetica').fillColor('#94a3b8');
-            doc.text(`Página ${i + 1} de ${totalPages}`, MARGEN_IZQ, ph - 35);
-            const ct = `Creado con Eetud™ - ${new Date().getFullYear()}`;
-            const cw = doc.widthOfString(ct);
-            doc.text(ct, (pw - cw) / 2, ph - 35);
-            const rt = 'Todos los derechos reservados.';
-            doc.text(rt, MARGEN_DER - doc.widthOfString(rt), ph - 35);
-            doc.strokeColor('#002735').lineWidth(1);
-            doc.moveTo(MARGEN_IZQ, ph - 30).lineTo(MARGEN_DER, ph - 30).stroke();
-        }
+        // ✅ Dibujar pie de página ANTES de doc.end() y SIN crear páginas nuevas
+        dibujarPieDePagina(doc, MARGEN_IZQ, MARGEN_DER);
 
         doc.end();
     } catch (error) {
