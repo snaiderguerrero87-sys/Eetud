@@ -268,7 +268,6 @@ app.get('/api/ping', (req, res) => {
 // ===== INFORMES (IA) =====
 // ============================================================
 
-// Inicializar Gemini (lazy, solo cuando se necesite)
 let genAI = null;
 function obtenerGenAI() {
     if (!genAI) {
@@ -279,7 +278,6 @@ function obtenerGenAI() {
     return genAI;
 }
 
-// ---- LISTAR INFORMES GUARDADOS ----
 app.get('/api/informes', verificarAutenticacionApi, async (req, res) => {
     try {
         const [rows] = await pool.query(
@@ -294,7 +292,6 @@ app.get('/api/informes', verificarAutenticacionApi, async (req, res) => {
     }
 });
 
-// ---- OBTENER UN INFORME POR ID ----
 app.get('/api/informes/:id', verificarAutenticacionApi, async (req, res) => {
     try {
         const [rows] = await pool.query(
@@ -308,7 +305,6 @@ app.get('/api/informes/:id', verificarAutenticacionApi, async (req, res) => {
     }
 });
 
-// ---- ELIMINAR INFORME ----
 app.delete('/api/informes/:id', verificarAutenticacionApi, async (req, res) => {
     try {
         const [result] = await pool.query(
@@ -322,7 +318,6 @@ app.delete('/api/informes/:id', verificarAutenticacionApi, async (req, res) => {
     }
 });
 
-// ---- GUARDAR INFORME EDITADO ----
 app.put('/api/informes/:id', verificarAutenticacionApi, async (req, res) => {
     try {
         const { contenido } = req.body;
@@ -337,7 +332,6 @@ app.put('/api/informes/:id', verificarAutenticacionApi, async (req, res) => {
     }
 });
 
-// ---- GENERAR INFORME CON IA ----
 app.post('/api/informes/generar', verificarAutenticacionApi, async (req, res) => {
     console.log('🤖 === GENERANDO INFORME CON IA ===');
     try {
@@ -348,7 +342,6 @@ app.post('/api/informes/generar', verificarAutenticacionApi, async (req, res) =>
             return res.status(400).json({ error: 'Faltan campos obligatorios' });
         }
 
-        // 1. Leer el proyecto de MySQL
         const [proyectos] = await pool.query(
             'SELECT * FROM proyectos WHERE id = ? AND usuario_id = ? LIMIT 1',
             [proyectoId, usuarioId]
@@ -357,7 +350,6 @@ app.post('/api/informes/generar', verificarAutenticacionApi, async (req, res) =>
 
         const proyecto = proyectos[0];
 
-        // Parsear campos JSON
         let items = proyecto.items;
         let herramientasObra = proyecto.herramientasObra;
         let empleadosObra = proyecto.empleadosObra;
@@ -370,7 +362,6 @@ app.post('/api/informes/generar', verificarAutenticacionApi, async (req, res) =>
         if (typeof compras === 'string') { try { compras = JSON.parse(compras); } catch (e) { compras = []; } }
         if (typeof ajustes === 'string') { try { ajustes = JSON.parse(ajustes); } catch (e) { ajustes = {}; } }
 
-        // 2. Leer herramientas y empleados completos (para nombres)
         const idsHerramientas = herramientasObra.map(h => h.herramientaId).filter(x => x);
         const idsEmpleados = empleadosObra.map(e => e.empleadoId).filter(x => x);
 
@@ -392,7 +383,6 @@ app.post('/api/informes/generar', verificarAutenticacionApi, async (req, res) =>
             empleadosCompletos = e;
         }
 
-        // 3. Armar resumen estructurado del proyecto
         const resumenItems = [];
         for (const item of items) {
             if (item.tipo === 'titulo') {
@@ -402,16 +392,11 @@ app.post('/api/informes/generar', verificarAutenticacionApi, async (req, res) =>
                 const realizada = item.cantidadRealizada || 0;
                 const vu = item.valorUnitario || 0;
                 resumenItems.push({
-                    tipo: 'apu',
-                    numero: item.numero || '',
-                    codigo: item.codigo || '',
-                    nombre: item.nombre || '',
-                    unidad: item.unidad || '',
-                    cantidad,
-                    cantidadRealizada: realizada,
+                    tipo: 'apu', numero: item.numero || '', codigo: item.codigo || '',
+                    nombre: item.nombre || '', unidad: item.unidad || '',
+                    cantidad, cantidadRealizada: realizada,
                     porcentajeAvance: cantidad > 0 ? ((realizada / cantidad) * 100).toFixed(1) : 0,
-                    valorUnitario: vu,
-                    valorTotal: cantidad * vu,
+                    valorUnitario: vu, valorTotal: cantidad * vu,
                     valorEjecutado: realizada * vu,
                     valorPendiente: (cantidad - realizada) * vu
                 });
@@ -435,7 +420,6 @@ app.post('/api/informes/generar', verificarAutenticacionApi, async (req, res) =>
             compras: compras.map(c => ({ factura: c.factura, proveedor: c.proveedor, fecha: c.fecha, valor: c.valor }))
         };
 
-        // 4. Armar el prompt
         const systemPrompt = `Eres un redactor profesional de informes técnicos de proyectos de construcción, ingeniería y servicios. Tu trabajo es transformar datos crudos en informes claros, bien estructurados y profesionales.
 
 REGLAS ESTRICTAS:
@@ -470,14 +454,8 @@ ${instrucciones ? '- Instrucciones adicionales: ' + instrucciones : ''}
 
 Redacta el informe ahora, siguiendo estrictamente las reglas del sistema.`;
 
-        console.log('📝 Enviando a Gemini...');
-        console.log('   Área:', areaTrabajo);
-        console.log('   Tipo:', tipoInforme);
-        console.log('   Extensión:', extension);
-
-        // 5. Llamar a Gemini
         const ai = obtenerGenAI();
-        const model = ai.getGenerativeModel({ model: 'gemini-3.6-flash' });
+        const model = ai.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
         const result = await model.generateContent({
             contents: [
@@ -498,7 +476,6 @@ Redacta el informe ahora, siguiendo estrictamente las reglas del sistema.`;
 
         console.log('✅ Informe generado:', texto.length, 'caracteres');
 
-        // 6. Guardar en MySQL
         const [insertResult] = await pool.query(
             `INSERT INTO informes (usuario_id, proyecto_id, proyecto_nombre, area_trabajo, tipo_informe, destinatario, extension, instrucciones, contenido)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -522,14 +499,12 @@ Redacta el informe ahora, siguiendo estrictamente las reglas del sistema.`;
     }
 });
 
-// ---- GENERAR PDF DEL INFORME ----
 app.post('/api/informes/pdf', verificarAutenticacion, async (req, res) => {
     try {
         const PDFDocument = require('pdfkit');
         const { contenido, proyectoNombre, areaTrabajo, tipoInforme } = req.body;
         if (!contenido) return res.status(400).json({ error: 'Falta el contenido del informe' });
 
-        // Cargar datos de la empresa
         let empresa = {};
         const [empresas] = await pool.query(
             'SELECT nombre, nit, telefono, email, direccion, web, descripcion, logo FROM empresa_info WHERE usuario_id = ? LIMIT 1',
@@ -538,14 +513,8 @@ app.post('/api/informes/pdf', verificarAutenticacion, async (req, res) => {
         if (empresas.length > 0) empresa = empresas[0];
 
         const doc = new PDFDocument({
-            size: 'A4',
-            margin: 40,
-            bufferPages: true,
-            info: {
-                Title: `Informe - ${proyectoNombre || 'Proyecto'}`,
-                Author: empresa.nombre || 'Eetud',
-                Subject: 'Informe de proyecto'
-            }
+            size: 'A4', margin: 40, bufferPages: true,
+            info: { Title: `Informe - ${proyectoNombre || 'Proyecto'}`, Author: empresa.nombre || 'Eetud', Subject: 'Informe de proyecto' }
         });
 
         const filename = `Informe_${(proyectoNombre || 'proyecto').replace(/\s+/g, '_')}_${new Date().toISOString().slice(0,10)}.pdf`;
@@ -558,7 +527,6 @@ app.post('/api/informes/pdf', verificarAutenticacion, async (req, res) => {
         const pageWidth = MARGEN_DER - MARGEN_IZQ;
         let currentY = 40;
 
-        // ===== HEADER =====
         doc.strokeColor('#002735').lineWidth(2);
         doc.rect(MARGEN_IZQ, currentY, pageWidth, 90).stroke();
 
@@ -588,13 +556,10 @@ app.post('/api/informes/pdf', verificarAutenticacion, async (req, res) => {
         doc.moveTo(MARGEN_IZQ, currentY).lineTo(MARGEN_DER, currentY).stroke();
         currentY += 20;
 
-        // ===== TÍTULO =====
         doc.fontSize(18).font('Helvetica-Bold').fillColor('#002735');
         const titulo = `INFORME - ${proyectoNombre || 'PROYECTO'}`;
         const tw = doc.widthOfString(titulo);
-        if (tw > pageWidth) {
-            doc.fontSize(14);
-        }
+        if (tw > pageWidth) doc.fontSize(14);
         doc.text(titulo, MARGEN_IZQ, currentY, { width: pageWidth, align: 'center' });
         currentY += 25;
 
@@ -606,8 +571,6 @@ app.post('/api/informes/pdf', verificarAutenticacion, async (req, res) => {
         doc.moveTo(MARGEN_IZQ, currentY).lineTo(MARGEN_DER, currentY).stroke();
         currentY += 15;
 
-        // ===== CONTENIDO MARKDOWN =====
-        // Parsear el markdown básico y dibujarlo
         const lineas = contenido.split('\n');
         const fontRegular = 'Helvetica';
         const fontBold = 'Helvetica-Bold';
@@ -616,8 +579,7 @@ app.post('/api/informes/pdf', verificarAutenticacion, async (req, res) => {
             let linea = lineas[i];
             let textoLimpio = linea;
 
-            // Detectar tipo de línea
-            let esH1 = false, esH2 = false, esH3 = false, esLista = false, esBold = false, esVacio = false;
+            let esH1 = false, esH2 = false, esH3 = false, esLista = false, esVacio = false;
 
             if (linea.indexOf('# ') === 0) { esH1 = true; textoLimpio = linea.substring(2); }
             else if (linea.indexOf('## ') === 0) { esH2 = true; textoLimpio = linea.substring(3); }
@@ -626,25 +588,19 @@ app.post('/api/informes/pdf', verificarAutenticacion, async (req, res) => {
             else if (linea.indexOf('* ') === 0) { esLista = true; textoLimpio = linea.substring(2); }
             else if (linea.trim() === '') { esVacio = true; }
 
-            // Limpiar ** del markdown (bold inline lo hacemos todo en bold para simplificar)
             textoLimpio = textoLimpio.replace(/\*\*(.+?)\*\*/g, '$1');
             textoLimpio = textoLimpio.replace(/`(.+?)`/g, '$1');
             textoLimpio = textoLimpio.replace(/\*(.+?)\*/g, '$1');
 
-            if (esVacio) {
-                currentY += 8;
-                continue;
-            }
+            if (esVacio) { currentY += 8; continue; }
 
-            // Verificar espacio antes de dibujar
             let fontSize = 10;
             let fontName = fontRegular;
             let color = '#0f172a';
-            let alturaEstimada = 16;
 
-            if (esH1) { fontSize = 16; fontName = fontBold; color = '#002735'; alturaEstimada = 24; }
-            else if (esH2) { fontSize = 13; fontName = fontBold; color = '#002735'; alturaEstimada = 20; }
-            else if (esH3) { fontSize = 11; fontName = fontBold; color = '#0f172a'; alturaEstimada = 18; }
+            if (esH1) { fontSize = 16; fontName = fontBold; color = '#002735'; }
+            else if (esH2) { fontSize = 13; fontName = fontBold; color = '#002735'; }
+            else if (esH3) { fontSize = 11; fontName = fontBold; color = '#0f172a'; }
 
             doc.fontSize(fontSize).font(fontName).fillColor(color);
 
@@ -660,7 +616,6 @@ app.post('/api/informes/pdf', verificarAutenticacion, async (req, res) => {
             if (esH2) currentY += 4;
 
             if (esLista) {
-                // Viñeta
                 doc.text('•', MARGEN_IZQ + 5, currentY, { width: 15 });
                 doc.text(textoLimpio, MARGEN_IZQ + 20, currentY, { width: pageWidth - 20 });
             } else {
@@ -670,7 +625,6 @@ app.post('/api/informes/pdf', verificarAutenticacion, async (req, res) => {
             currentY += altura + 4;
         }
 
-        // ===== PIE DE PÁGINA =====
         dibujarPieDePagina(doc, MARGEN_IZQ, MARGEN_DER);
 
         doc.end();
@@ -1095,15 +1049,20 @@ app.post('/api/apus/unidades', verificarAutenticacionApi, async (req, res) => {
     } catch (error) { res.status(500).json({ error: 'Error' }); }
 });
 
+// ===== EXPORTAR FORMATO APU (5 COLUMNAS) =====
 app.get('/api/apus/exportar-formato', verificarAutenticacionApi, async (req, res) => {
     try {
         const usuarioId = req.session.usuario.id;
         const ExcelJS = require('exceljs');
+
+        // Cargar unidades del usuario (para la lista desplegable)
         const [unidadesRows] = await pool.query('SELECT nombre FROM unidades_apu WHERE usuario_id = ? ORDER BY nombre ASC', [usuarioId]);
         let unidadesGuardadas = unidadesRows.map(r => r.nombre);
         if (unidadesGuardadas.length === 0) unidadesGuardadas = ['und', 'm', 'm2', 'm3', 'kg', 'ml', 'hr', 'dia'];
 
         const workbook = new ExcelJS.Workbook();
+
+        // ===== HOJA: LISTAS (oculta, para el dropdown de unidades) =====
         const listasSheet = workbook.addWorksheet('Listas');
         listasSheet.state = 'hidden';
         listasSheet.getCell('B1').value = 'UNIDADES';
@@ -1111,36 +1070,97 @@ app.get('/api/apus/exportar-formato', verificarAutenticacionApi, async (req, res
         unidadesGuardadas.forEach((u, i) => { listasSheet.getCell(`B${i + 2}`).value = u; });
         listasSheet.getColumn(2).width = 20;
 
+        // ===== HOJA: APU (5 columnas solamente) =====
         const worksheet = workbook.addWorksheet('APU');
         worksheet.columns = [
-            { header: 'Código', width: 12 }, { header: 'Nombre', width: 25 }, { header: 'Categoría', width: 25 }, { header: 'Unidad', width: 10 },
-            { header: 'Nombre del Equipo/Herramienta', width: 30 }, { header: 'Unidad Equipo (%)', width: 18 }, { header: 'Porcentaje (%)', width: 15 }, { header: 'Valor Base Equipo', width: 18 },
-            { header: 'Nombre del Transporte', width: 30 }, { header: 'Unidad Transporte (%)', width: 18 }, { header: 'Porcentaje Transporte (%)', width: 15 }, { header: 'Valor Base Transporte', width: 18 },
-            { header: 'Descripción Mano de Obra', width: 30 }, { header: 'Unidad Mano de Obra', width: 18 }, { header: 'Cantidad Mano de Obra', width: 15 }, { header: 'Valor Unitario Mano de Obra', width: 18 }
+            { header: 'Código', key: 'codigo', width: 15 },
+            { header: 'Nombre del APU', key: 'nombre', width: 45 },
+            { header: 'Categoría', key: 'categoria', width: 25 },
+            { header: 'Unidad', key: 'unidad', width: 12 },
+            { header: 'Valor Unitario Manual (COP)', key: 'valorManual', width: 28 }
         ];
+
+        // Estilo del encabezado
         const headerRow = worksheet.getRow(1);
         headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
         headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF002735' } };
         headerRow.alignment = { horizontal: 'center', vertical: 'middle' };
-        headerRow.height = 25;
+        headerRow.height = 30;
 
-        const data = [
-            ['A001', 'Excavación Manual', 'Movimiento de Tierra', 'm3', 'Excavadora', '%', '15', '50000', 'Flete', '%', '10', '30000', 'Oficial', 'und', '2', '80000'],
-            ['A001', 'Excavación Manual', 'Movimiento de Tierra', 'm3', '', '%', '', '', '', '%', '', '', 'Ayudante', 'und', '4', '50000']
+        // Datos de ejemplo
+        const ejemplos = [
+            ['A001', 'Excavación Manual', 'Movimiento de Tierra', 'm3', 50000],
+            ['A002', 'Cimentación en Concreto', 'Estructura', 'm3', 120000],
+            ['E001', 'Instalación Eléctrica Básica', 'Eléctrica', 'und', 80000],
+            ['E002', 'Punto de Luz Sencillo', 'Eléctrica', 'und', 45000]
         ];
-        data.forEach(row => worksheet.addRow(row));
 
-        for (let r = 2; r <= data.length + 1; r++) {
-            worksheet.getCell(`D${r}`).dataValidation = { type: 'list', formulae: ['=Listas!B:B'], showErrorMessage: true, errorTitle: 'Inválido', error: 'Selecciona una unidad' };
+        ejemplos.forEach(row => worksheet.addRow(row));
+
+        // Formato de moneda para la columna E (Valor Unitario Manual)
+        for (let r = 2; r <= ejemplos.length + 1; r++) {
+            const cell = worksheet.getCell(`E${r}`);
+            cell.numFmt = '#,##0';
+            cell.alignment = { horizontal: 'right' };
         }
+
+        // Lista desplegable de unidades en la columna D
+        for (let r = 2; r <= 500; r++) {
+            worksheet.getCell(`D${r}`).dataValidation = {
+                type: 'list',
+                formulae: ['=Listas!B:B'],
+                showErrorMessage: true,
+                errorTitle: 'Unidad inválida',
+                error: 'Selecciona una unidad de la lista'
+            };
+        }
+
+        // ===== HOJA: INSTRUCCIONES =====
+        const instruccionesSheet = workbook.addWorksheet('Instrucciones');
+        instruccionesSheet.getColumn(1).width = 90;
+
+        const instrucciones = [
+            '📋 INSTRUCCIONES PARA IMPORTAR APUs',
+            '',
+            'Este formato permite importar APUs con valor unitario manual (sin desglose de materiales, equipos, transporte o mano de obra).',
+            '',
+            '=== COLUMNAS OBLIGATORIAS ===',
+            '',
+            '1. Código           → Identificador único del APU (ej: A001, E005)',
+            '2. Nombre del APU   → Descripción del APU (ej: Excavación Manual)',
+            '3. Categoría        → Agrupación del APU (ej: Movimiento de Tierra, Eléctrica)',
+            '4. Unidad           → Unidad de medida. Usa la lista desplegable (m3, und, kg, etc.)',
+            '5. Valor Unitario   → Valor en pesos colombianos, sin puntos ni símbolos. Ej: 50000',
+            '',
+            '=== REGLAS ===',
+            '',
+            '• Si un APU ya existe (mismo código), se ACTUALIZA automáticamente',
+            '• Si la categoría NO existe, se crea automáticamente',
+            '• Si la unidad NO existe, se agrega a la lista',
+            '• Los APUs importados tendrán el modo "Ignorar items" activado con el valor manual',
+            '• No uses fórmulas, solo valores',
+            '',
+            '=== EJEMPLOS ===',
+            '',
+            'Código | Nombre del APU              | Categoría          | Unidad | Valor Unitario',
+            '-------|-----------------------------|--------------------|--------|---------------',
+            'A001   | Excavación Manual           | Movimiento Tierra  | m3     | 50000',
+            'E001   | Instalación Eléctrica Básica| Eléctrica          | und    | 80000'
+        ];
+
+        instrucciones.forEach(line => instruccionesSheet.addRow([line]));
 
         const buffer = await workbook.xlsx.writeBuffer();
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         res.setHeader('Content-Disposition', 'attachment; filename=formato_apu.xlsx');
         res.send(buffer);
-    } catch (error) { res.status(500).json({ error: 'Error' }); }
+    } catch (error) {
+        console.error('❌ Error al exportar formato APU:', error);
+        res.status(500).json({ error: 'Error al exportar formato' });
+    }
 });
 
+// ===== IMPORTAR APU (5 COLUMNAS) =====
 app.post('/api/apus/importar', verificarAutenticacionApi, async (req, res) => {
     try {
         const XLSX = require('xlsx');
@@ -1167,89 +1187,139 @@ app.post('/api/apus/importar', verificarAutenticacionApi, async (req, res) => {
         });
         if (data.length === 0) return res.status(400).json({ error: 'Archivo vacío' });
 
+        // Validar columnas requeridas
         const headers = Object.keys(data[0]);
-        const req_headers = ['Código', 'Nombre', 'Categoría', 'Unidad'];
+        const req_headers = ['Código', 'Nombre del APU', 'Categoría', 'Unidad', 'Valor Unitario Manual (COP)'];
         const missing = req_headers.filter(h => !headers.includes(h));
-        if (missing.length > 0) return res.status(400).json({ error: 'Faltan columnas: ' + missing.join(', ') });
+        if (missing.length > 0) {
+            return res.status(400).json({
+                error: 'Faltan columnas: ' + missing.join(', '),
+                columnasEncontradas: headers,
+                columnasRequeridas: req_headers
+            });
+        }
 
+        // Cargar categorías y unidades existentes
         const [categoriasRows] = await pool.query('SELECT nombre FROM categorias_apu WHERE usuario_id = ?', [usuarioId]);
-        let categoriasExistentes = categoriasRows.map(r => r.nombre);
+        const categoriasExistentes = categoriasRows.map(r => r.nombre);
+
+        const [unidadesRows] = await pool.query('SELECT nombre FROM unidades_apu WHERE usuario_id = ?', [usuarioId]);
+        const unidadesExistentes = unidadesRows.map(r => r.nombre);
 
         function str(v) { return v === undefined || v === null ? '' : String(v).trim(); }
-        function num(v) { if (!v) return 0; if (typeof v === 'number') return v; return parseFloat(String(v).replace(/[€£¥$.,\s]/g, '')) || 0; }
+        function num(v) {
+            if (v === undefined || v === null || v === '') return 0;
+            if (typeof v === 'number') return v;
+            return parseFloat(String(v).replace(/[€£¥$.,\s]/g, '')) || 0;
+        }
 
         const apusMap = {};
-        let errores = [];
-        let categoriasNuevas = [];
+        const errores = [];
+        const categoriasNuevas = [];
+        const unidadesNuevas = [];
 
         for (let i = 0; i < data.length; i++) {
             const row = data[i];
             const filaNum = i + 2;
+
             const codigo = str(row['Código']);
-            const nombre = str(row['Nombre']);
+            const nombre = str(row['Nombre del APU']);
             const categoria = str(row['Categoría']);
             const unidad = str(row['Unidad']).toUpperCase();
+            const valorManual = num(row['Valor Unitario Manual (COP)']);
 
-            if (!codigo || !nombre || !categoria || !unidad) {
-                errores.push(`Fila ${filaNum}: Campos obligatorios vacíos`);
-                continue;
-            }
+            // Validaciones
+            if (!codigo) { errores.push(`Fila ${filaNum}: Código vacío`); continue; }
+            if (!nombre) { errores.push(`Fila ${filaNum}: Nombre del APU vacío`); continue; }
+            if (!categoria) { errores.push(`Fila ${filaNum}: Categoría vacía`); continue; }
+            if (!unidad) { errores.push(`Fila ${filaNum}: Unidad vacía`); continue; }
+            if (valorManual <= 0) { errores.push(`Fila ${filaNum}: Valor unitario inválido (debe ser mayor a 0)`); continue; }
+
+            // Detectar categorías nuevas
             if (!categoriasExistentes.some(c => c.toLowerCase() === categoria.toLowerCase())) {
-                if (!categoriasNuevas.includes(categoria)) categoriasNuevas.push(categoria);
-            }
-            if (!apusMap[codigo]) {
-                apusMap[codigo] = { codigo, nombre, categoria, unidad, items: { materiales: [], equipos: [], transporte: [], cargos: [] } };
+                if (!categoriasNuevas.some(c => c.toLowerCase() === categoria.toLowerCase())) {
+                    categoriasNuevas.push(categoria);
+                }
             }
 
-            const ne = str(row['Nombre del Equipo/Herramienta']);
-            if (ne) {
-                const p = num(row['Porcentaje (%)']);
-                const vb = num(row['Valor Base Equipo']);
-                apusMap[codigo].items.equipos.push({ nombre: ne, unidad: '%', porcentaje: p, valorBase: vb, subtotal: (p / 100) * vb });
+            // Detectar unidades nuevas
+            if (!unidadesExistentes.some(u => u.toUpperCase() === unidad)) {
+                if (!unidadesNuevas.includes(unidad)) {
+                    unidadesNuevas.push(unidad);
+                }
             }
-            const nt = str(row['Nombre del Transporte']);
-            if (nt) {
-                const p = num(row['Porcentaje Transporte (%)']);
-                const vb = num(row['Valor Base Transporte']);
-                apusMap[codigo].items.transporte.push({ nombre: nt, unidad: '%', porcentaje: p, valorBase: vb, subtotal: (p / 100) * vb });
-            }
-            const dm = str(row['Descripción Mano de Obra']);
-            if (dm) {
-                const um = str(row['Unidad Mano de Obra']) || 'und';
-                const cm = num(row['Cantidad Mano de Obra']);
-                const vu = num(row['Valor Unitario Mano de Obra']);
-                apusMap[codigo].items.cargos.push({ descripcion: dm, unidad: um, cantidad: cm, valorUnitario: vu, subtotal: cm * vu });
-            }
+
+            apusMap[codigo] = {
+                codigo: codigo,
+                nombre: nombre,
+                categoria: categoria,
+                unidad: unidad,
+                valorManual: valorManual
+            };
         }
 
-        if (errores.length > 0) return res.status(400).json({ success: false, error: 'Errores', detalles: errores });
+        if (errores.length > 0) {
+            return res.status(400).json({ success: false, error: 'Errores en el archivo', detalles: errores });
+        }
 
-        let apusImportados = 0;
+        // Guardar APUs en MySQL
+        let apusCreados = 0;
+        let apusActualizados = 0;
+
         for (const codigo in apusMap) {
             const apu = apusMap[codigo];
-            let valorTotal = 0;
-            apu.items.equipos.forEach(e => { valorTotal += e.subtotal; });
-            apu.items.transporte.forEach(t => { valorTotal += t.subtotal; });
-            apu.items.cargos.forEach(c => { valorTotal += c.subtotal; });
 
-            await pool.query(
-                `INSERT INTO apus (usuario_id, codigo, nombre, categoria, unidad, valor, items, ignorarItems, valorManual) VALUES (?, ?, ?, ?, ?, ?, ?, 0, 0)`,
-                [usuarioId, apu.codigo, apu.nombre, apu.categoria, apu.unidad, valorTotal, JSON.stringify(apu.items)]
+            // Verificar si ya existe
+            const [existentes] = await pool.query(
+                'SELECT id FROM apus WHERE usuario_id = ? AND codigo = ? LIMIT 1',
+                [usuarioId, apu.codigo]
             );
-            apusImportados++;
+
+            const itemsVacio = JSON.stringify({ materiales: [], equipos: [], transporte: [], cargos: [] });
+
+            if (existentes.length > 0) {
+                // Actualizar
+                await pool.query(
+                    `UPDATE apus SET nombre = ?, categoria = ?, unidad = ?, valor = ?, items = ?, ignorarItems = 1, valorManual = ?
+                     WHERE id = ? AND usuario_id = ?`,
+                    [apu.nombre, apu.categoria, apu.unidad, apu.valorManual, itemsVacio, apu.valorManual, existentes[0].id, usuarioId]
+                );
+                apusActualizados++;
+            } else {
+                // Crear nuevo
+                await pool.query(
+                    `INSERT INTO apus (usuario_id, codigo, nombre, categoria, unidad, valor, items, ignorarItems, valorManual)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?)`,
+                    [usuarioId, apu.codigo, apu.nombre, apu.categoria, apu.unidad, apu.valorManual, itemsVacio, apu.valorManual]
+                );
+                apusCreados++;
+            }
         }
 
+        // Guardar categorías nuevas
         for (const cat of categoriasNuevas) {
             await pool.query('INSERT IGNORE INTO categorias_apu (usuario_id, nombre) VALUES (?, ?)', [usuarioId, cat]);
         }
-        const unidadesSet = new Set();
-        for (const codigo in apusMap) unidadesSet.add(apusMap[codigo].unidad);
-        for (const uni of unidadesSet) {
+
+        // Guardar unidades nuevas
+        for (const uni of unidadesNuevas) {
             await pool.query('INSERT IGNORE INTO unidades_apu (usuario_id, nombre) VALUES (?, ?)', [usuarioId, uni]);
         }
 
-        res.json({ success: true, message: `${apusImportados} APUs importados`, apusImportados, categoriasNuevas });
-    } catch (error) { res.status(500).json({ error: 'Error al importar' }); }
+        res.json({
+            success: true,
+            message: `Importación exitosa: ${apusCreados} creados, ${apusActualizados} actualizados`,
+            apusCreados: apusCreados,
+            apusActualizados: apusActualizados,
+            categoriasNuevas: categoriasNuevas,
+            unidadesNuevas: unidadesNuevas,
+            total: apusCreados + apusActualizados
+        });
+
+    } catch (error) {
+        console.error('❌ Error al importar APUs:', error);
+        res.status(500).json({ error: 'Error al importar: ' + error.message });
+    }
 });
 
 // ============================================================
