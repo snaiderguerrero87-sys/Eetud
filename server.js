@@ -198,6 +198,162 @@ app.get('/api/ping', (req, res) => {
 });
 
 // ============================================================
+// ===== DASHBOARD (RESUMEN) =====
+// ============================================================
+
+app.get('/api/dashboard/resumen', verificarAutenticacionApi, async (req, res) => {
+    try {
+        const usuarioId = req.session.usuario.id;
+
+        // ===== PROYECTOS =====
+        const [proyectosRows] = await pool.query(
+            'SELECT id, nombre, cliente, avanceTotal, valorTotal, valorEjecutado, saldo FROM proyectos WHERE usuario_id = ? ORDER BY id DESC',
+            [usuarioId]
+        );
+        let totalProyectos = proyectosRows.length;
+        let proyectosCompletos = 0;
+        let proyectosEnCurso = 0;
+        const proyectosCurso = [];
+
+        for (const p of proyectosRows) {
+            const avance = parseFloat(p.avanceTotal) || 0;
+            if (avance >= 100) {
+                proyectosCompletos++;
+            } else {
+                proyectosEnCurso++;
+                proyectosCurso.push({
+                    id: p.id,
+                    nombre: p.nombre,
+                    cliente: p.cliente,
+                    avanceTotal: avance,
+                    valorTotal: parseFloat(p.valorTotal) || 0
+                });
+            }
+        }
+
+        // ===== COTIZACIONES =====
+        const [cotizacionesRows] = await pool.query(
+            'SELECT COUNT(*) AS total FROM cotizaciones WHERE usuario_id = ?',
+            [usuarioId]
+        );
+        const totalCotizaciones = cotizacionesRows[0].total;
+
+        // ===== HERRAMIENTAS =====
+        const [herramientasRows] = await pool.query(
+            'SELECT COUNT(*) AS total FROM herramientas WHERE usuario_id = ?',
+            [usuarioId]
+        );
+        const totalHerramientas = herramientasRows[0].total;
+
+        // Herramientas en obra: contar las que están asignadas en proyectos sin fecha de salida
+        const [proyectosHerrRows] = await pool.query(
+            'SELECT herramientasObra FROM proyectos WHERE usuario_id = ?',
+            [usuarioId]
+        );
+        let herramientasEnObra = 0;
+        const idsHerramientasEnObra = [];
+        const mapaHerramientasProyecto = {};
+
+        for (const row of proyectosHerrRows) {
+            let herrs = row.herramientasObra;
+            if (typeof herrs === 'string') {
+                try { herrs = JSON.parse(herrs); } catch (e) { herrs = []; }
+            }
+            if (Array.isArray(herrs)) {
+                for (const h of herrs) {
+                    if (!h.fechaSalida) {
+                        herramientasEnObra++;
+                        idsHerramientasEnObra.push(h.herramientaId);
+                    }
+                }
+            }
+        }
+        const herramientasDisponibles = totalHerramientas - herramientasEnObra;
+
+        // Detalle de herramientas en obra
+        let detalleHerramientasObra = [];
+        if (idsHerramientasEnObra.length > 0) {
+            const [herrInfo] = await pool.query(
+                'SELECT id, nombre, codigo, marca FROM herramientas WHERE usuario_id = ? AND id IN (?)',
+                [usuarioId, idsHerramientasEnObra]
+            );
+            detalleHerramientasObra = herrInfo.map(h => ({
+                nombre: h.nombre,
+                codigo: h.codigo,
+                marca: h.marca
+            }));
+        }
+
+        // ===== EMPLEADOS =====
+        const [empleadosRows] = await pool.query(
+            'SELECT COUNT(*) AS total FROM empleados WHERE usuario_id = ?',
+            [usuarioId]
+        );
+        const totalEmpleados = empleadosRows[0].total;
+
+        // Empleados en obra
+        const [proyectosEmpRows] = await pool.query(
+            'SELECT empleadosObra FROM proyectos WHERE usuario_id = ?',
+            [usuarioId]
+        );
+        const idsEmpleadosEnObra = new Set();
+        for (const row of proyectosEmpRows) {
+            let emps = row.empleadosObra;
+            if (typeof emps === 'string') {
+                try { emps = JSON.parse(emps); } catch (e) { emps = []; }
+            }
+            if (Array.isArray(emps)) {
+                for (const e of emps) {
+                    if (e.empleadoId) idsEmpleadosEnObra.add(e.empleadoId);
+                }
+            }
+        }
+        const empleadosEnObra = idsEmpleadosEnObra.size;
+        const empleadosDisponibles = totalEmpleados - empleadosEnObra;
+
+        let detalleEmpleadosObra = [];
+        if (empleadosEnObra > 0) {
+            const [empInfo] = await pool.query(
+                'SELECT id, nombre, cargo FROM empleados WHERE usuario_id = ? AND id IN (?)',
+                [usuarioId, Array.from(idsEmpleadosEnObra)]
+            );
+            detalleEmpleadosObra = empInfo.map(e => ({
+                nombre: e.nombre,
+                cargo: e.cargo
+            }));
+        }
+
+        // ===== RESPUESTA =====
+        res.json({
+            proyectos: {
+                total: totalProyectos,
+                completos: proyectosCompletos,
+                enCurso: proyectosEnCurso,
+                lista: proyectosCurso.slice(0, 10)
+            },
+            cotizaciones: {
+                total: totalCotizaciones
+            },
+            herramientas: {
+                total: totalHerramientas,
+                enObra: herramientasEnObra,
+                disponibles: herramientasDisponibles,
+                detalleEnObra: detalleHerramientasObra.slice(0, 10)
+            },
+            empleados: {
+                total: totalEmpleados,
+                enObra: empleadosEnObra,
+                disponibles: empleadosDisponibles,
+                detalleEnObra: detalleEmpleadosObra.slice(0, 10)
+            }
+        });
+    } catch (error) {
+        console.error('❌ Error al generar resumen del dashboard:', error);
+        res.status(500).json({ error: 'Error al generar resumen' });
+    }
+});
+
+// ============================================================
 // ===== HERRAMIENTAS =====
 // ============================================================
 
@@ -466,7 +622,6 @@ app.delete('/api/apus/:id', verificarAutenticacionApi, async (req, res) => {
     } catch (error) { res.status(500).json({ error: 'Error' }); }
 });
 
-// Categorías APU
 app.get('/api/apus/categorias', verificarAutenticacionApi, async (req, res) => {
     try {
         const [rows] = await pool.query(
@@ -501,7 +656,6 @@ app.delete('/api/apus/categorias/:id', verificarAutenticacionApi, async (req, re
     } catch (error) { res.status(500).json({ error: 'Error' }); }
 });
 
-// Unidades APU
 app.get('/api/apus/unidades', verificarAutenticacionApi, async (req, res) => {
     try {
         const [rows] = await pool.query(
@@ -740,7 +894,7 @@ app.delete('/api/cotizaciones/:id', verificarAutenticacionApi, async (req, res) 
 });
 
 // ============================================================
-// ===== PROYECTOS (MYSQL - POR USUARIO) =====
+// ===== PROYECTOS =====
 // ============================================================
 
 app.get('/api/proyectos', verificarAutenticacionApi, async (req, res) => {
@@ -759,10 +913,7 @@ app.get('/api/proyectos', verificarAutenticacionApi, async (req, res) => {
             compras: r.compras ? (typeof r.compras === 'string' ? JSON.parse(r.compras) : r.compras) : []
         }));
         res.json(proyectos);
-    } catch (error) {
-        console.error('❌ Error al listar proyectos:', error);
-        res.status(500).json({ error: 'Error al listar proyectos' });
-    }
+    } catch (error) { res.status(500).json({ error: 'Error al listar proyectos' }); }
 });
 
 app.post('/api/proyectos', verificarAutenticacionApi, async (req, res) => {
@@ -789,12 +940,8 @@ app.post('/api/proyectos', verificarAutenticacionApi, async (req, res) => {
                 JSON.stringify(compras || [])
             ]
         );
-        console.log(`✅ Proyecto creado ID ${result.insertId} para usuario ${usuarioId}`);
         res.json({ success: true, id: result.insertId });
-    } catch (error) {
-        console.error('❌ Error al crear proyecto:', error);
-        res.status(500).json({ error: 'Error al crear proyecto' });
-    }
+    } catch (error) { res.status(500).json({ error: 'Error al crear proyecto' }); }
 });
 
 app.put('/api/proyectos/:id', verificarAutenticacionApi, async (req, res) => {
@@ -823,10 +970,7 @@ app.put('/api/proyectos/:id', verificarAutenticacionApi, async (req, res) => {
         );
         if (result.affectedRows === 0) return res.status(404).json({ error: 'Proyecto no encontrado' });
         res.json({ success: true });
-    } catch (error) {
-        console.error('❌ Error al actualizar proyecto:', error);
-        res.status(500).json({ error: 'Error al actualizar proyecto' });
-    }
+    } catch (error) { res.status(500).json({ error: 'Error al actualizar proyecto' }); }
 });
 
 app.delete('/api/proyectos/:id', verificarAutenticacionApi, async (req, res) => {

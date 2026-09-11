@@ -3,9 +3,7 @@
     usuario: usuario,
     usuarioData: usuarioData,
     body: `
-        <!-- ===== CARDS DE RESUMEN ===== -->
         <section class="dashboard-cards">
-            <!-- Proyectos -->
             <div class="card">
                 <div class="card-icon blue">
                     <i class="fas fa-project-diagram"></i>
@@ -20,7 +18,6 @@
                 </div>
             </div>
 
-            <!-- Cotizaciones -->
             <div class="card">
                 <div class="card-icon green">
                     <i class="fas fa-file-invoice"></i>
@@ -34,7 +31,6 @@
                 </div>
             </div>
 
-            <!-- Herramientas -->
             <div class="card">
                 <div class="card-icon orange">
                     <i class="fas fa-tools"></i>
@@ -49,7 +45,6 @@
                 </div>
             </div>
 
-            <!-- Empleados -->
             <div class="card">
                 <div class="card-icon purple">
                     <i class="fas fa-users"></i>
@@ -65,47 +60,37 @@
             </div>
         </section>
 
-        <!-- ===== DETALLE UNIFICADO ===== -->
         <section class="dashboard-detalle">
-            <!-- Columna 1: Proyectos en curso -->
             <div class="detalle-columna">
                 <div class="detalle-header">
                     <h3><i class="fas fa-chart-line" style="color: var(--warning);"></i> Proyectos en Curso</h3>
                     <a href="/proyectos" class="view-all">Ver todos</a>
                 </div>
-                <div id="listaProyectosCurso">
-                    <!-- Se carga con JavaScript -->
-                </div>
+                <div id="listaProyectosCurso"></div>
                 <div id="sinProyectosCurso" class="empty-state-detalle" style="display:none;">
                     <i class="fas fa-check-circle" style="color: var(--success);"></i>
                     <p>Todos los proyectos están completos</p>
                 </div>
             </div>
 
-            <!-- Columna 2: Herramientas en Obra -->
             <div class="detalle-columna">
                 <div class="detalle-header">
                     <h3><i class="fas fa-tools" style="color: var(--orange);"></i> Herramientas en Obra</h3>
                     <a href="/herramientas" class="view-all">Ver todas</a>
                 </div>
-                <div id="listaHerramientasObra">
-                    <!-- Se carga con JavaScript -->
-                </div>
+                <div id="listaHerramientasObra"></div>
                 <div id="sinHerramientasObra" class="empty-state-detalle" style="display:none;">
                     <i class="fas fa-tools"></i>
                     <p>No hay herramientas asignadas</p>
                 </div>
             </div>
 
-            <!-- Columna 3: Empleados en Obra -->
             <div class="detalle-columna">
                 <div class="detalle-header">
-                    <h3><i class="fas fa-user-hard-hat" style="color: var(--purple);"></i> Empleados en Obra</h3>
+                    <h3><i class="fas fa-users" style="color: var(--purple);"></i> Empleados en Obra</h3>
                     <a href="/asistencia" class="view-all">Ver todos</a>
                 </div>
-                <div id="listaEmpleadosObra">
-                    <!-- Se carga con JavaScript -->
-                </div>
+                <div id="listaEmpleadosObra"></div>
                 <div id="sinEmpleadosObra" class="empty-state-detalle" style="display:none;">
                     <i class="fas fa-users"></i>
                     <p>No hay empleados asignados</p>
@@ -114,249 +99,123 @@
         </section>
 
         <script>
-            // ===== GUARDAR DATOS DEL USUARIO EN LOCALSTORAGE =====
-            function guardarDatosUsuario() {
-                try {
-                    var usuarioData = window._usuarioData || {};
-                    if (usuarioData && usuarioData.username) {
-                        var empresaInfo = {
-                            nombre: usuarioData.nombreCompleto || usuarioData.username,
-                            nit: usuarioData.nit || '',
-                            telefono: usuarioData.telefono || '',
-                            email: usuarioData.email || '',
-                            direccion: '',
-                            web: '',
-                            descripcion: '',
-                            logo: ''
-                        };
-                        localStorage.setItem('empresaInfo', JSON.stringify(empresaInfo));
-                    }
-                } catch (e) {
-                    console.log('Error al guardar datos del usuario:', e);
-                }
+            function escapeHtml(text) {
+                if (text === undefined || text === null) return '';
+                return String(text)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#39;');
             }
 
-            // ===== CARGAR TODOS LOS DATOS =====
-            function cargarDashboard() {
-                cargarProyectos();
-                cargarCotizaciones();
-                cargarHerramientas();
-                cargarEmpleados();
-            }
-
-            // ===== 1. PROYECTOS =====
-            function cargarProyectos() {
+            async function cargarDashboard() {
                 try {
-                    var data = localStorage.getItem('proyectos');
-                    var proyectos = data ? JSON.parse(data) : [];
-                    
-                    var total = proyectos.length;
-                    var completos = 0;
-                    var faltantes = 0;
-                    var html = '';
+                    const response = await fetch('/api/dashboard/resumen');
+                    if (!response.ok) throw new Error('Error al cargar resumen');
+                    const data = await response.json();
 
-                    for (var i = 0; i < proyectos.length; i++) {
-                        var p = proyectos[i];
-                        var avance = p.avanceTotal || 0;
-                        if (avance >= 100) {
-                            completos++;
-                        } else {
-                            faltantes++;
-                            html += '<div class="item-detalle">';
-                            html += '<div class="item-info">';
-                            html += '<strong>' + (p.nombre || 'Proyecto #' + p.id) + '</strong>';
-                            html += '<span class="item-sub">' + (p.cliente || '-') + '</span>';
-                            html += '</div>';
-                            html += '<div class="item-progress">';
-                            html += '<div class="progress-bar-mini">';
-                            html += '<div class="progress-fill-mini" style="width:' + avance + '%;"></div>';
-                            html += '<span class="progress-text-mini">' + Math.round(avance) + '%</span>';
-                            html += '</div>';
-                            html += '</div>';
-                            html += '</div>';
-                        }
-                    }
+                    // ===== PROYECTOS =====
+                    document.getElementById('totalProyectos').textContent = data.proyectos.total;
+                    document.getElementById('proyectosCompletos').textContent = data.proyectos.completos;
+                    document.getElementById('proyectosFaltantes').textContent = data.proyectos.enCurso;
 
-                    document.getElementById('totalProyectos').textContent = total;
-                    document.getElementById('proyectosCompletos').textContent = completos;
-                    document.getElementById('proyectosFaltantes').textContent = faltantes;
+                    var containerProyectos = document.getElementById('listaProyectosCurso');
+                    var sinProyectos = document.getElementById('sinProyectosCurso');
 
-                    var container = document.getElementById('listaProyectosCurso');
-                    var sinDatos = document.getElementById('sinProyectosCurso');
-
-                    if (faltantes === 0) {
-                        container.innerHTML = '';
-                        sinDatos.style.display = 'block';
+                    if (data.proyectos.lista.length === 0) {
+                        containerProyectos.innerHTML = '';
+                        sinProyectos.style.display = 'block';
                     } else {
-                        sinDatos.style.display = 'none';
-                        container.innerHTML = html;
-                    }
-
-                } catch (e) {
-                    console.log('Error al cargar proyectos:', e);
-                }
-            }
-
-            // ===== 2. COTIZACIONES =====
-            function cargarCotizaciones() {
-                try {
-                    var data = localStorage.getItem('cotizaciones');
-                    var cotizaciones = data ? JSON.parse(data) : [];
-                    var total = cotizaciones.length;
-                    document.getElementById('totalCotizaciones').textContent = total;
-                    document.getElementById('cotizacionesActivas').textContent = total;
-                } catch (e) {
-                    document.getElementById('totalCotizaciones').textContent = '0';
-                    document.getElementById('cotizacionesActivas').textContent = '0';
-                }
-            }
-
-            // ===== 3. HERRAMIENTAS =====
-            function cargarHerramientas() {
-                try {
-                    var dataHerramientas = localStorage.getItem('herramientas');
-                    var herramientas = dataHerramientas ? JSON.parse(dataHerramientas) : [];
-                    var total = herramientas.length;
-
-                    var dataProyectos = localStorage.getItem('proyectos');
-                    var proyectos = dataProyectos ? JSON.parse(dataProyectos) : [];
-                    
-                    var herramientasAsignadas = {};
-                    for (var i = 0; i < proyectos.length; i++) {
-                        if (proyectos[i].herramientasObra) {
-                            for (var j = 0; j < proyectos[i].herramientasObra.length; j++) {
-                                var herr = proyectos[i].herramientasObra[j];
-                                var nombreHerramienta = '';
-                                for (var k = 0; k < herramientas.length; k++) {
-                                    if (herramientas[k].id === herr.herramientaId) {
-                                        nombreHerramienta = herramientas[k].nombre || 'Herramienta #' + herr.herramientaId;
-                                        break;
-                                    }
-                                }
-                                herramientasAsignadas[herr.herramientaId] = {
-                                    nombre: nombreHerramienta || 'Herramienta #' + herr.herramientaId,
-                                    proyecto: proyectos[i].nombre || 'Proyecto #' + proyectos[i].id
-                                };
-                            }
+                        sinProyectos.style.display = 'none';
+                        var htmlProyectos = '';
+                        for (var i = 0; i < data.proyectos.lista.length; i++) {
+                            var p = data.proyectos.lista[i];
+                            var avance = Math.round(p.avanceTotal || 0);
+                            htmlProyectos += '<div class="item-detalle">';
+                            htmlProyectos += '<div class="item-info">';
+                            htmlProyectos += '<strong>' + escapeHtml(p.nombre || 'Proyecto #' + p.id) + '</strong>';
+                            htmlProyectos += '<span class="item-sub">' + escapeHtml(p.cliente || '-') + '</span>';
+                            htmlProyectos += '</div>';
+                            htmlProyectos += '<div class="item-progress">';
+                            htmlProyectos += '<div class="progress-bar-mini">';
+                            htmlProyectos += '<div class="progress-fill-mini" style="width:' + avance + '%;"></div>';
+                            htmlProyectos += '<span class="progress-text-mini">' + avance + '%</span>';
+                            htmlProyectos += '</div>';
+                            htmlProyectos += '</div>';
+                            htmlProyectos += '</div>';
                         }
+                        containerProyectos.innerHTML = htmlProyectos;
                     }
 
-                    var asignadas = Object.keys(herramientasAsignadas).length;
-                    var disponibles = total - asignadas;
+                    // ===== COTIZACIONES =====
+                    document.getElementById('totalCotizaciones').textContent = data.cotizaciones.total;
+                    document.getElementById('cotizacionesActivas').textContent = data.cotizaciones.total;
 
-                    document.getElementById('totalHerramientas').textContent = total;
-                    document.getElementById('herramientasAsignadas').textContent = asignadas;
-                    document.getElementById('herramientasDisponibles').textContent = disponibles;
+                    // ===== HERRAMIENTAS =====
+                    document.getElementById('totalHerramientas').textContent = data.herramientas.total;
+                    document.getElementById('herramientasAsignadas').textContent = data.herramientas.enObra;
+                    document.getElementById('herramientasDisponibles').textContent = data.herramientas.disponibles;
 
-                    var container = document.getElementById('listaHerramientasObra');
-                    var sinDatos = document.getElementById('sinHerramientasObra');
+                    var containerHerr = document.getElementById('listaHerramientasObra');
+                    var sinHerr = document.getElementById('sinHerramientasObra');
 
-                    var listaHerramientas = Object.values(herramientasAsignadas);
-                    if (listaHerramientas.length === 0) {
-                        container.innerHTML = '';
-                        sinDatos.style.display = 'block';
+                    if (data.herramientas.detalleEnObra.length === 0) {
+                        containerHerr.innerHTML = '';
+                        sinHerr.style.display = 'block';
                     } else {
-                        sinDatos.style.display = 'none';
-                        var html = '';
-                        for (var m = 0; m < listaHerramientas.length; m++) {
-                            var h = listaHerramientas[m];
-                            html += '<div class="item-detalle">';
-                            html += '<div class="item-info">';
-                            html += '<strong>' + h.nombre + '</strong>';
-                            html += '<span class="item-sub">' + h.proyecto + '</span>';
-                            html += '</div>';
-                            html += '<div class="item-badge">';
-                            html += '<span class="badge-success">Asignada</span>';
-                            html += '</div>';
-                            html += '</div>';
+                        sinHerr.style.display = 'none';
+                        var htmlHerr = '';
+                        for (var j = 0; j < data.herramientas.detalleEnObra.length; j++) {
+                            var h = data.herramientas.detalleEnObra[j];
+                            htmlHerr += '<div class="item-detalle">';
+                            htmlHerr += '<div class="item-info">';
+                            htmlHerr += '<strong>' + escapeHtml(h.nombre || 'Herramienta') + '</strong>';
+                            htmlHerr += '<span class="item-sub">' + escapeHtml(h.marca || '-') + ' · ' + escapeHtml(h.codigo || '-') + '</span>';
+                            htmlHerr += '</div>';
+                            htmlHerr += '<div class="item-badge">';
+                            htmlHerr += '<span class="badge-success">En obra</span>';
+                            htmlHerr += '</div>';
+                            htmlHerr += '</div>';
                         }
-                        container.innerHTML = html;
+                        containerHerr.innerHTML = htmlHerr;
                     }
 
-                } catch (e) {
-                    console.log('Error al cargar herramientas:', e);
-                }
-            }
+                    // ===== EMPLEADOS =====
+                    document.getElementById('totalEmpleados').textContent = data.empleados.total;
+                    document.getElementById('empleadosEnObra').textContent = data.empleados.enObra;
+                    document.getElementById('empleadosDisponibles').textContent = data.empleados.disponibles;
 
-            // ===== 4. EMPLEADOS =====
-            function cargarEmpleados() {
-                try {
-                    var dataEmpleados = localStorage.getItem('empleados');
-                    var empleados = dataEmpleados ? JSON.parse(dataEmpleados) : [];
-                    var total = empleados.length;
+                    var containerEmp = document.getElementById('listaEmpleadosObra');
+                    var sinEmp = document.getElementById('sinEmpleadosObra');
 
-                    var dataProyectos = localStorage.getItem('proyectos');
-                    var proyectos = dataProyectos ? JSON.parse(dataProyectos) : [];
-                    
-                    var empleadosAsignados = {};
-                    for (var i = 0; i < proyectos.length; i++) {
-                        if (proyectos[i].herramientasObra) {
-                            for (var j = 0; j < proyectos[i].herramientasObra.length; j++) {
-                                var herr = proyectos[i].herramientasObra[j];
-                                if (herr.responsableId) {
-                                    var nombreEmpleado = '';
-                                    for (var k = 0; k < empleados.length; k++) {
-                                        if (empleados[k].id === herr.responsableId) {
-                                            nombreEmpleado = empleados[k].nombre || 'Empleado #' + herr.responsableId;
-                                            break;
-                                        }
-                                    }
-                                    empleadosAsignados[herr.responsableId] = {
-                                        nombre: nombreEmpleado || 'Empleado #' + herr.responsableId,
-                                        proyecto: proyectos[i].nombre || 'Proyecto #' + proyectos[i].id
-                                    };
-                                }
-                            }
-                        }
-                    }
-
-                    var enObra = Object.keys(empleadosAsignados).length;
-                    var disponibles = total - enObra;
-
-                    document.getElementById('totalEmpleados').textContent = total;
-                    document.getElementById('empleadosEnObra').textContent = enObra;
-                    document.getElementById('empleadosDisponibles').textContent = disponibles;
-
-                    var container = document.getElementById('listaEmpleadosObra');
-                    var sinDatos = document.getElementById('sinEmpleadosObra');
-
-                    var listaEmpleados = Object.values(empleadosAsignados);
-                    if (listaEmpleados.length === 0) {
-                        container.innerHTML = '';
-                        sinDatos.style.display = 'block';
+                    if (data.empleados.detalleEnObra.length === 0) {
+                        containerEmp.innerHTML = '';
+                        sinEmp.style.display = 'block';
                     } else {
-                        sinDatos.style.display = 'none';
-                        var html = '';
-                        for (var m = 0; m < listaEmpleados.length; m++) {
-                            var e = listaEmpleados[m];
-                            html += '<div class="item-detalle">';
-                            html += '<div class="item-info">';
-                            html += '<strong>' + e.nombre + '</strong>';
-                            html += '<span class="item-sub">' + e.proyecto + '</span>';
-                            html += '</div>';
-                            html += '<div class="item-badge">';
-                            html += '<span class="badge-success">En obra</span>';
-                            html += '</div>';
-                            html += '</div>';
+                        sinEmp.style.display = 'none';
+                        var htmlEmp = '';
+                        for (var k = 0; k < data.empleados.detalleEnObra.length; k++) {
+                            var e = data.empleados.detalleEnObra[k];
+                            htmlEmp += '<div class="item-detalle">';
+                            htmlEmp += '<div class="item-info">';
+                            htmlEmp += '<strong>' + escapeHtml(e.nombre || 'Empleado') + '</strong>';
+                            htmlEmp += '<span class="item-sub">' + escapeHtml(e.cargo || '-') + '</span>';
+                            htmlEmp += '</div>';
+                            htmlEmp += '<div class="item-badge">';
+                            htmlEmp += '<span class="badge-success">En obra</span>';
+                            htmlEmp += '</div>';
+                            htmlEmp += '</div>';
                         }
-                        container.innerHTML = html;
+                        containerEmp.innerHTML = htmlEmp;
                     }
 
-                } catch (e) {
-                    console.log('Error al cargar empleados:', e);
+                } catch (error) {
+                    console.error('Error al cargar dashboard:', error);
                 }
             }
 
-            // ===== ESCUCHAR CAMBIOS =====
-            window.addEventListener('storage', function(e) {
-                if (e.key === 'proyectos' || e.key === 'cotizaciones' || e.key === 'herramientas' || e.key === 'empleados') {
-                    cargarDashboard();
-                }
-            });
-
-            // ===== INICIALIZAR =====
             document.addEventListener('DOMContentLoaded', function() {
-                guardarDatosUsuario();
                 cargarDashboard();
             });
         </script>
