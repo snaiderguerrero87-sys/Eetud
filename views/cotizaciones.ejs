@@ -385,6 +385,9 @@
             .item-apu-params { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
             .item-apu-params label { display: flex; align-items: center; gap: 4px; font-size: 13px; font-weight: 500; color: var(--gray-600); }
             .apu-cantidad { width: 60px; padding: 2px 6px; border: 1px solid var(--gray-200); border-radius: 4px; font-size: 13px; text-align: center; }
+            .apu-cantidad:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(0, 39, 53, 0.15); }
+            .apu-valor-unitario { width: 100px; padding: 2px 6px; border: 1px solid var(--gray-200); border-radius: 4px; font-size: 13px; text-align: right; font-family: monospace; font-weight: 600; color: var(--primary); }
+            .apu-valor-unitario:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(0, 39, 53, 0.15); background: #fffbea; }
             .apu-subtotal { font-size: 13px; font-weight: 600; color: var(--success); }
             .item-acciones { display: flex; gap: 4px; }
             .btn-insertar { background: transparent; border: none; color: var(--gray-400); cursor: pointer; padding: 4px 6px; border-radius: 4px; font-size: 16px; transition: all 0.2s; }
@@ -468,6 +471,18 @@
             function escapeHTML(str) {
                 if (!str) return '';
                 return String(str).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            }
+
+            function formatearMoneda(v) {
+                if (v === undefined || v === null || isNaN(v)) return '$0';
+                return '$' + Number(v).toLocaleString('es-CO');
+            }
+
+            function parsearMoneda(texto) {
+                if (!texto) return 0;
+                var limpio = String(texto).replace(/[$,.]/g, '').trim();
+                var num = parseFloat(limpio);
+                return isNaN(num) ? 0 : num;
             }
 
             // ===== UNDO =====
@@ -666,7 +681,8 @@
                         html += '</span>';
                         html += '<div class="item-apu-params">';
                         html += '<label>Cantidad: <input type="number" class="apu-cantidad" value="' + (item.cantidad || 1) + '" min="0.1" step="0.1" data-index="' + i + '"></label>';
-                        html += '<span class="apu-subtotal">Subtotal: $' + Number(subtotal).toLocaleString('es-CO') + '</span>';
+                        html += '<label>Valor Unit: <input type="text" class="apu-valor-unitario" value="' + formatearMoneda(item.valorUnitario || 0) + '" data-index="' + i + '" onfocus="this.select()" oninput="actualizarValorUnitarioDesdeInput(this)"></label>';
+                        html += '<span class="apu-subtotal" data-subtotal-index="' + i + '">Subtotal: ' + formatearMoneda(subtotal) + '</span>';
                         html += '</div>';
                     } else if (item.tipo === 'subitem') {
                         html += '<input type="text" class="item-input-subitem" value="' + escapeHTML(item.descripcion || '') + '" placeholder="Escribe el subitem..." data-index="' + i + '" data-campo="descripcion">';
@@ -729,6 +745,28 @@
 
                 calcularTotales();
                 actualizarBotonUndo();
+            }
+
+            // ===== ACTUALIZAR VALOR UNITARIO DESDE INPUT =====
+            function actualizarValorUnitarioDesdeInput(input) {
+                var index = parseInt(input.getAttribute('data-index'));
+                if (isNaN(index) || index < 0 || index >= items.length) return;
+
+                var soloNumeros = input.value.replace(/[^0-9]/g, '');
+                var num = parseInt(soloNumeros, 10);
+                if (isNaN(num) || num < 0) num = 0;
+
+                items[index].valorUnitario = num;
+
+                // Actualizar solo el subtotal visual (sin re-renderizar, para no perder el foco)
+                var subtotalSpan = document.querySelector('[data-subtotal-index="' + index + '"]');
+                if (subtotalSpan) {
+                    var subtotal = num * (items[index].cantidad || 1);
+                    subtotalSpan.textContent = 'Subtotal: ' + formatearMoneda(subtotal);
+                }
+
+                // Actualizar totales generales
+                calcularTotales();
             }
 
             // ===== MENÚ INSERTAR =====
@@ -981,9 +1019,7 @@
                 tbody.innerHTML = html;
             }
 
-            // ============================================================
-            // ===== EXPORTAR PDF (con logo) =====
-            // ============================================================
+            // ===== EXPORTAR PDF =====
             async function exportarPDF(id) {
                 mostrarNotificacion('⏳ Generando PDF...');
 
@@ -993,16 +1029,11 @@
                 }
                 if (!cotizacion) { mostrarNotificacion('❌ Cotización no encontrada'); return; }
 
-                // Cargar datos de la empresa (incluye logo)
                 let empresaData = null;
                 try {
                     const r = await fetch('/api/empresa-info');
                     if (r.ok) empresaData = await r.json();
-                    console.log('🏢 Empresa cargada:', empresaData ? 'SÍ' : 'NO');
-                    console.log('🖼️ Logo presente:', empresaData && empresaData.logo ? 'SÍ (' + empresaData.logo.length + ' chars)' : 'NO');
-                } catch (e) {
-                    console.error('Error al cargar empresa:', e);
-                }
+                } catch (e) {}
 
                 if (!empresaData) {
                     empresaData = { nombre: 'Mi Empresa', nit: '', telefono: '', email: '', direccion: '', web: '', logo: '' };
@@ -1011,11 +1042,7 @@
                 fetch('/api/cotizacion-pdf', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        cotizacion: cotizacion,
-                        empresa: empresaData,
-                        fecha: new Date().toISOString()
-                    })
+                    body: JSON.stringify({ cotizacion: cotizacion, empresa: empresaData, fecha: new Date().toISOString() })
                 })
                 .then(function(r) {
                     if (!r.ok) return r.json().then(function(err) { throw new Error(err.error || 'Error'); });
