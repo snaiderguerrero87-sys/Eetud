@@ -205,7 +205,6 @@ app.get('/api/dashboard/resumen', verificarAutenticacionApi, async (req, res) =>
     try {
         const usuarioId = req.session.usuario.id;
 
-        // ===== PROYECTOS =====
         const [proyectosRows] = await pool.query(
             'SELECT id, nombre, cliente, avanceTotal, valorTotal, valorEjecutado, saldo FROM proyectos WHERE usuario_id = ? ORDER BY id DESC',
             [usuarioId]
@@ -231,28 +230,24 @@ app.get('/api/dashboard/resumen', verificarAutenticacionApi, async (req, res) =>
             }
         }
 
-        // ===== COTIZACIONES =====
         const [cotizacionesRows] = await pool.query(
             'SELECT COUNT(*) AS total FROM cotizaciones WHERE usuario_id = ?',
             [usuarioId]
         );
         const totalCotizaciones = cotizacionesRows[0].total;
 
-        // ===== HERRAMIENTAS =====
         const [herramientasRows] = await pool.query(
             'SELECT COUNT(*) AS total FROM herramientas WHERE usuario_id = ?',
             [usuarioId]
         );
         const totalHerramientas = herramientasRows[0].total;
 
-        // Herramientas en obra: contar las que están asignadas en proyectos sin fecha de salida
         const [proyectosHerrRows] = await pool.query(
             'SELECT herramientasObra FROM proyectos WHERE usuario_id = ?',
             [usuarioId]
         );
         let herramientasEnObra = 0;
         const idsHerramientasEnObra = [];
-        const mapaHerramientasProyecto = {};
 
         for (const row of proyectosHerrRows) {
             let herrs = row.herramientasObra;
@@ -270,7 +265,6 @@ app.get('/api/dashboard/resumen', verificarAutenticacionApi, async (req, res) =>
         }
         const herramientasDisponibles = totalHerramientas - herramientasEnObra;
 
-        // Detalle de herramientas en obra
         let detalleHerramientasObra = [];
         if (idsHerramientasEnObra.length > 0) {
             const [herrInfo] = await pool.query(
@@ -278,20 +272,16 @@ app.get('/api/dashboard/resumen', verificarAutenticacionApi, async (req, res) =>
                 [usuarioId, idsHerramientasEnObra]
             );
             detalleHerramientasObra = herrInfo.map(h => ({
-                nombre: h.nombre,
-                codigo: h.codigo,
-                marca: h.marca
+                nombre: h.nombre, codigo: h.codigo, marca: h.marca
             }));
         }
 
-        // ===== EMPLEADOS =====
         const [empleadosRows] = await pool.query(
             'SELECT COUNT(*) AS total FROM empleados WHERE usuario_id = ?',
             [usuarioId]
         );
         const totalEmpleados = empleadosRows[0].total;
 
-        // Empleados en obra
         const [proyectosEmpRows] = await pool.query(
             'SELECT empleadosObra FROM proyectos WHERE usuario_id = ?',
             [usuarioId]
@@ -317,13 +307,9 @@ app.get('/api/dashboard/resumen', verificarAutenticacionApi, async (req, res) =>
                 'SELECT id, nombre, cargo FROM empleados WHERE usuario_id = ? AND id IN (?)',
                 [usuarioId, Array.from(idsEmpleadosEnObra)]
             );
-            detalleEmpleadosObra = empInfo.map(e => ({
-                nombre: e.nombre,
-                cargo: e.cargo
-            }));
+            detalleEmpleadosObra = empInfo.map(e => ({ nombre: e.nombre, cargo: e.cargo }));
         }
 
-        // ===== RESPUESTA =====
         res.json({
             proyectos: {
                 total: totalProyectos,
@@ -331,9 +317,7 @@ app.get('/api/dashboard/resumen', verificarAutenticacionApi, async (req, res) =>
                 enCurso: proyectosEnCurso,
                 lista: proyectosCurso.slice(0, 10)
             },
-            cotizaciones: {
-                total: totalCotizaciones
-            },
+            cotizaciones: { total: totalCotizaciones },
             herramientas: {
                 total: totalHerramientas,
                 enObra: herramientasEnObra,
@@ -348,7 +332,7 @@ app.get('/api/dashboard/resumen', verificarAutenticacionApi, async (req, res) =>
             }
         });
     } catch (error) {
-        console.error('❌ Error al generar resumen del dashboard:', error);
+        console.error('❌ Error al generar resumen:', error);
         res.status(500).json({ error: 'Error al generar resumen' });
     }
 });
@@ -1023,31 +1007,39 @@ app.get('/api/apu-pdf/:id', verificarAutenticacion, async (req, res) => {
         doc.strokeColor('#002735').lineWidth(2);
         doc.rect(40, currentY, pageWidth, 90).stroke();
 
-        let logoX = 55, logoY = currentY + 10, logoCargado = false;
-        if (empresaData.logo && empresaData.logo.startsWith('data:image')) {
+        // ===== LOGO o PLACEHOLDER =====
+        const LOGO_WIDTH = 65;
+        const LOGO_HEIGHT = 65;
+        let logoX = 55;
+        let logoY = currentY + 10;
+        let logoCargado = false;
+
+        if (empresaData.logo && typeof empresaData.logo === 'string' && empresaData.logo.indexOf('data:image') === 0) {
             try {
-                const b64 = empresaData.logo.replace(/^data:image\/\w+;base64,/, '');
-                const buf = Buffer.from(b64, 'base64');
-                const tl = path.join(__dirname, 'data', 'temp_logo.png');
-                fs.writeFileSync(tl, buf);
-                doc.image(tl, logoX, logoY, { width: 65, height: 65 });
-                logoCargado = true; logoX = 135;
-                fs.unlinkSync(tl);
-            } catch (e) {}
-        }
-        if (!logoCargado) {
-            try {
-                const dl = path.join(__dirname, 'public', 'assets', 'logo.jpg');
-                if (fs.existsSync(dl)) { doc.image(dl, logoX, logoY, { width: 65, height: 65 }); logoCargado = true; logoX = 135; }
-            } catch (e) {}
-        }
-        if (!logoCargado) {
-            doc.fontSize(12).font('Helvetica-Bold').fillColor('#002735');
-            doc.text('LOGO', logoX + 10, logoY + 20, { width: 65, align: 'center' });
-            logoX = 135;
+                const matches = empresaData.logo.match(/^data:image\/(\w+);base64,(.+)$/);
+                if (matches) {
+                    const imageBuffer = Buffer.from(matches[2], 'base64');
+                    const tempLogoPath = path.join(__dirname, 'data', `temp_logo_${Date.now()}.png`);
+                    fs.writeFileSync(tempLogoPath, imageBuffer);
+                    doc.image(tempLogoPath, logoX, logoY, { width: LOGO_WIDTH, height: LOGO_HEIGHT, fit: [LOGO_WIDTH, LOGO_HEIGHT] });
+                    logoCargado = true;
+                    fs.unlinkSync(tempLogoPath);
+                }
+            } catch (e) {
+                console.error('❌ Error al procesar logo empresa (APU):', e.message);
+                logoCargado = false;
+            }
         }
 
-        let tx = logoX + 10, ty = currentY + 12;
+        if (!logoCargado) {
+            doc.rect(logoX, logoY, LOGO_WIDTH, LOGO_HEIGHT).stroke('#cbd5e1');
+            doc.fontSize(8).font('Helvetica').fillColor('#94a3b8');
+            doc.text('(logo vacío)', logoX, logoY + LOGO_HEIGHT / 2 - 5, { width: LOGO_WIDTH, align: 'center' });
+        }
+
+        doc.fillColor('#0f172a').fontSize(9).font('Helvetica');
+        let tx = logoX + LOGO_WIDTH + 15;
+        let ty = currentY + 12;
         doc.fontSize(16).font('Helvetica-Bold').fillColor('#002735');
         doc.text((empresaData.nombre || 'MI EMPRESA').toUpperCase(), tx, ty);
         ty += 20;
@@ -1231,6 +1223,11 @@ app.post('/api/cotizacion-pdf', verificarAutenticacion, async (req, res) => {
         const { cotizacion, empresa } = req.body;
         if (!cotizacion) return res.status(400).json({ error: 'Datos incompletos' });
 
+        console.log('📄 === GENERANDO PDF COTIZACIÓN ===');
+        console.log('📋 Cotización:', cotizacion.numero);
+        console.log('🏢 Empresa:', empresa.nombre);
+        console.log('🖼️ Logo presente:', empresa.logo ? 'SÍ (' + empresa.logo.length + ' chars)' : 'NO');
+
         const doc = new PDFDocument({ size: 'A4', margin: 40, info: { Title: `Cotización ${cotizacion.numero}`, Author: empresa.nombre || 'Eetud', Subject: 'Cotización' } });
 
         const filename = `Cotizacion_${cotizacion.numero}_${new Date().toISOString().slice(0,10)}.pdf`;
@@ -1249,31 +1246,44 @@ app.post('/api/cotizacion-pdf', verificarAutenticacion, async (req, res) => {
         doc.strokeColor('#002735').lineWidth(2);
         doc.rect(MARGEN_IZQ, currentY, pageWidth, 90).stroke();
 
-        let logoX = MARGEN_IZQ + 15, logoY = currentY + 10, logoCargado = false;
-        if (empresa.logo && empresa.logo.startsWith('data:image')) {
+        // ===== LOGO o PLACEHOLDER =====
+        const LOGO_WIDTH = 65;
+        const LOGO_HEIGHT = 65;
+        let logoX = MARGEN_IZQ + 15;
+        let logoY = currentY + 10;
+        let logoCargado = false;
+
+        if (empresa.logo && typeof empresa.logo === 'string' && empresa.logo.indexOf('data:image') === 0) {
             try {
-                const b64 = empresa.logo.replace(/^data:image\/\w+;base64,/, '');
-                const buf = Buffer.from(b64, 'base64');
-                const tl = path.join(__dirname, 'data', 'temp_logo_cotizacion.png');
-                fs.writeFileSync(tl, buf);
-                doc.image(tl, logoX, logoY, { width: 65, height: 65 });
-                logoCargado = true; logoX = MARGEN_IZQ + 95;
-                fs.unlinkSync(tl);
-            } catch (e) {}
-        }
-        if (!logoCargado) {
-            try {
-                const dl = path.join(__dirname, 'public', 'assets', 'logo.jpg');
-                if (fs.existsSync(dl)) { doc.image(dl, logoX, logoY, { width: 65, height: 65 }); logoCargado = true; logoX = MARGEN_IZQ + 95; }
-            } catch (e) {}
-        }
-        if (!logoCargado) {
-            doc.fontSize(12).font('Helvetica-Bold').fillColor('#002735');
-            doc.text('LOGO', logoX + 10, logoY + 20, { width: 65, align: 'center' });
-            logoX = MARGEN_IZQ + 95;
+                const matches = empresa.logo.match(/^data:image\/(\w+);base64,(.+)$/);
+                if (matches) {
+                    const imageBuffer = Buffer.from(matches[2], 'base64');
+                    const tempLogoPath = path.join(__dirname, 'data', `temp_logo_cotizacion_${Date.now()}.png`);
+                    fs.writeFileSync(tempLogoPath, imageBuffer);
+                    doc.image(tempLogoPath, logoX, logoY, { width: LOGO_WIDTH, height: LOGO_HEIGHT, fit: [LOGO_WIDTH, LOGO_HEIGHT] });
+                    logoCargado = true;
+                    fs.unlinkSync(tempLogoPath);
+                    console.log('✅ Logo de empresa aplicado al PDF de cotización');
+                } else {
+                    console.log('⚠️ Formato de logo no reconocido');
+                }
+            } catch (e) {
+                console.error('❌ Error al procesar logo de cotización:', e.message);
+                logoCargado = false;
+            }
+        } else {
+            console.log('⚠️ No hay logo en la empresa → mostrando placeholder');
         }
 
-        let tx = logoX + 10, ty = currentY + 12;
+        if (!logoCargado) {
+            doc.rect(logoX, logoY, LOGO_WIDTH, LOGO_HEIGHT).stroke('#cbd5e1');
+            doc.fontSize(8).font('Helvetica').fillColor('#94a3b8');
+            doc.text('(logo vacío)', logoX, logoY + LOGO_HEIGHT / 2 - 5, { width: LOGO_WIDTH, align: 'center' });
+        }
+
+        doc.fillColor('#0f172a').fontSize(9).font('Helvetica');
+        let tx = logoX + LOGO_WIDTH + 15;
+        let ty = currentY + 12;
         doc.fontSize(16).font('Helvetica-Bold').fillColor('#002735');
         doc.text((empresa.nombre || 'MI EMPRESA').toUpperCase(), tx, ty);
         ty += 20;

@@ -348,7 +348,6 @@
                 border-radius: 10px;
             }
 
-            /* Items jerárquicos */
             .items-container {
                 background: var(--gray-50);
                 border-radius: 8px;
@@ -454,7 +453,6 @@
         </style>
 
         <script>
-            // ===== VARIABLES GLOBALES =====
             var cotizaciones = [];
             var editandoId = null;
             var apusData = [];
@@ -505,7 +503,7 @@
                 } catch (e) { apusData = []; }
             }
 
-            // ===== NUMERACIÓN JERÁRQUICA =====
+            // ===== NUMERACIÓN =====
             function generarNumeracion() {
                 var contadorTitulo = 0;
                 var contadorAPU = {};
@@ -575,17 +573,20 @@
                 document.getElementById('valorTotalFinal').textContent = '$' + Number(totalFinal).toLocaleString('es-CO');
 
                 window._ajustes = {
-                    adminPorc, imprevistosPorc, utilidadPorc, ivaPorc,
-                    adminActivo, imprevistosActivo, utilidadActivo, ivaActivo,
-                    adminValor, imprevistosValor, utilidadValor, ivaValor,
-                    subtotal, totalFinal
+                    adminPorc: adminPorc, imprevistosPorc: imprevistosPorc, utilidadPorc: utilidadPorc, ivaPorc: ivaPorc,
+                    adminActivo: adminActivo, imprevistosActivo: imprevistosActivo, utilidadActivo: utilidadActivo, ivaActivo: ivaActivo,
+                    adminValor: adminValor, imprevistosValor: imprevistosValor, utilidadValor: utilidadValor, ivaValor: ivaValor,
+                    subtotal: subtotal, totalFinal: totalFinal
                 };
             }
 
             // ===== NÚMERO COTIZACIÓN =====
             function obtenerUltimoNumero() {
                 if (cotizaciones.length === 0) return '-';
-                var nums = cotizaciones.map(c => c.numero).filter(n => n);
+                var nums = [];
+                for (var i = 0; i < cotizaciones.length; i++) {
+                    if (cotizaciones[i].numero) nums.push(cotizaciones[i].numero);
+                }
                 if (nums.length === 0) return '-';
                 nums.sort();
                 return nums[nums.length - 1];
@@ -827,7 +828,9 @@
                 var b = document.getElementById('buscarAPUSelector').value.toLowerCase().trim();
                 apusFiltradosSelector = b === ''
                     ? apusData.slice()
-                    : apusData.filter(a => a.codigo.toLowerCase().includes(b) || a.nombre.toLowerCase().includes(b) || (a.categoria && a.categoria.toLowerCase().includes(b)));
+                    : apusData.filter(function(a) {
+                        return a.codigo.toLowerCase().indexOf(b) !== -1 || a.nombre.toLowerCase().indexOf(b) !== -1 || (a.categoria && a.categoria.toLowerCase().indexOf(b) !== -1);
+                    });
                 renderizarListaAPUSelector();
             }
 
@@ -839,7 +842,7 @@
                     var html = '';
                     for (var i = 0; i < apusFiltradosSelector.length; i++) {
                         var a = apusFiltradosSelector[i];
-                        var seleccionado = apusSeleccionadosTemp.some(s => s.id === a.id);
+                        var seleccionado = apusSeleccionadosTemp.some(function(s) { return s.id === a.id; });
                         var valorFormateado = '$' + Number(a.valor || 0).toLocaleString('es-CO');
                         html += '<div class="apu-item-selector ' + (seleccionado ? 'seleccionado' : '') + '" data-id="' + a.id + '" onclick="toggleAPUSeleccionado(' + a.id + ')">';
                         html += '<input type="checkbox" ' + (seleccionado ? 'checked' : '') + ' onclick="event.stopPropagation(); toggleAPUSeleccionado(' + a.id + ')">';
@@ -857,9 +860,15 @@
             }
 
             function toggleAPUSeleccionado(id) {
-                var index = apusSeleccionadosTemp.findIndex(s => s.id === id);
+                var index = -1;
+                for (var i = 0; i < apusSeleccionadosTemp.length; i++) {
+                    if (apusSeleccionadosTemp[i].id === id) { index = i; break; }
+                }
                 if (index === -1) {
-                    var apu = apusData.find(a => a.id === id);
+                    var apu = null;
+                    for (var j = 0; j < apusData.length; j++) {
+                        if (apusData[j].id === id) { apu = apusData[j]; break; }
+                    }
                     if (apu) {
                         apusSeleccionadosTemp.push({
                             id: apu.id, codigo: apu.codigo || '', nombre: apu.nombre || '',
@@ -955,12 +964,12 @@
                     var c = cotizaciones[i];
                     var valorFormateado = '$' + Number(c.valorTotalFinal || c.valorTotal || 0).toLocaleString('es-CO');
                     html += '<tr>';
-                    html += '<td><strong>' + (c.numero || '-') + '</strong></td>';
-                    html += '<td>' + (c.cliente || '-') + '</td>';
-                    html += '<td>' + (c.tipo || '-') + '</td>';
-                    html += '<td>' + (c.proyecto || '-') + '</td>';
+                    html += '<td><strong>' + escapeHTML(c.numero || '-') + '</strong></td>';
+                    html += '<td>' + escapeHTML(c.cliente || '-') + '</td>';
+                    html += '<td>' + escapeHTML(c.tipo || '-') + '</td>';
+                    html += '<td>' + escapeHTML(c.proyecto || '-') + '</td>';
                     var obj = c.objetivo || '';
-                    html += '<td>' + (obj.substring(0, 30) + (obj.length > 30 ? '...' : '')) + '</td>';
+                    html += '<td>' + escapeHTML(obj.substring(0, 30) + (obj.length > 30 ? '...' : '')) + '</td>';
                     html += '<td>' + valorFormateado + '</td>';
                     html += '<td>';
                     html += '<button class="btn-edit" onclick="editarCotizacion(' + c.id + ')"><i class="fas fa-edit"></i></button>';
@@ -972,33 +981,47 @@
                 tbody.innerHTML = html;
             }
 
-            // ===== EXPORTAR PDF =====
+            // ============================================================
+            // ===== EXPORTAR PDF (con logo) =====
+            // ============================================================
             async function exportarPDF(id) {
                 mostrarNotificacion('⏳ Generando PDF...');
 
-                var cotizacion = cotizaciones.find(c => c.id === id);
+                var cotizacion = null;
+                for (var i = 0; i < cotizaciones.length; i++) {
+                    if (cotizaciones[i].id === id) { cotizacion = cotizaciones[i]; break; }
+                }
                 if (!cotizacion) { mostrarNotificacion('❌ Cotización no encontrada'); return; }
 
+                // Cargar datos de la empresa (incluye logo)
                 let empresaData = null;
                 try {
                     const r = await fetch('/api/empresa-info');
                     if (r.ok) empresaData = await r.json();
-                } catch (e) {}
+                    console.log('🏢 Empresa cargada:', empresaData ? 'SÍ' : 'NO');
+                    console.log('🖼️ Logo presente:', empresaData && empresaData.logo ? 'SÍ (' + empresaData.logo.length + ' chars)' : 'NO');
+                } catch (e) {
+                    console.error('Error al cargar empresa:', e);
+                }
 
-                if (!empresaData || !empresaData.nombre) {
+                if (!empresaData) {
                     empresaData = { nombre: 'Mi Empresa', nit: '', telefono: '', email: '', direccion: '', web: '', logo: '' };
                 }
 
                 fetch('/api/cotizacion-pdf', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ cotizacion: cotizacion, empresa: empresaData, fecha: new Date().toISOString() })
+                    body: JSON.stringify({
+                        cotizacion: cotizacion,
+                        empresa: empresaData,
+                        fecha: new Date().toISOString()
+                    })
                 })
-                .then(r => {
-                    if (!r.ok) return r.json().then(err => { throw new Error(err.error || 'Error'); });
+                .then(function(r) {
+                    if (!r.ok) return r.json().then(function(err) { throw new Error(err.error || 'Error'); });
                     return r.blob();
                 })
-                .then(blob => {
+                .then(function(blob) {
                     var url = window.URL.createObjectURL(blob);
                     var a = document.createElement('a');
                     a.href = url;
@@ -1009,7 +1032,10 @@
                     a.remove();
                     mostrarNotificacion('✅ PDF generado');
                 })
-                .catch(err => mostrarNotificacion('❌ Error: ' + err.message));
+                .catch(function(err) {
+                    console.error('Error PDF:', err);
+                    mostrarNotificacion('❌ Error: ' + err.message);
+                });
             }
 
             // ===== MODAL =====
@@ -1033,7 +1059,7 @@
                 document.getElementById('imprevistosPorcentaje').value = 0;
                 document.getElementById('utilidadPorcentaje').value = 0;
                 document.getElementById('ivaPorcentaje').value = 0;
-                document.querySelectorAll('.toggle-ajuste').forEach(el => { el.checked = true; });
+                document.querySelectorAll('.toggle-ajuste').forEach(function(el) { el.checked = true; });
 
                 if (!cotizacion) {
                     items.push({ id: ++counterId, tipo: 'titulo', descripcion: '', numero: '' });
@@ -1083,7 +1109,7 @@
                     editandoId = null;
                 }
 
-                document.querySelectorAll('.toggle-ajuste').forEach(el => {
+                document.querySelectorAll('.toggle-ajuste').forEach(function(el) {
                     el.addEventListener('change', function() { calcularTotales(); });
                 });
 
@@ -1154,11 +1180,11 @@
                         }
 
                         var cotizacionData = {
-                            numero: numeroFinal, cliente, tipo, proyecto, objetivo, direccion,
+                            numero: numeroFinal, cliente: cliente, tipo: tipo, proyecto: proyecto,
+                            objetivo: objetivo, direccion: direccion,
                             valorTotal: ajustes.subtotal || 0,
                             valorTotalFinal: ajustes.totalFinal || 0,
-                            items: items,
-                            ajustes: ajustes
+                            items: items, ajustes: ajustes
                         };
 
                         try {
@@ -1189,7 +1215,10 @@
             });
 
             function editarCotizacion(id) {
-                var c = cotizaciones.find(x => x.id === id);
+                var c = null;
+                for (var i = 0; i < cotizaciones.length; i++) {
+                    if (cotizaciones[i].id === id) { c = cotizaciones[i]; break; }
+                }
                 if (c) abrirModal(c);
             }
 
@@ -1209,9 +1238,11 @@
                 if (!cotizaciones || cotizaciones.length === 0) { alert('No hay cotizaciones para borrar'); return; }
                 if (!confirm('⚠️ ¿Borrar TODAS tus cotizaciones? Esta acción no se puede deshacer.')) return;
 
-                Promise.all(cotizaciones.map(c => fetch('/api/cotizaciones/' + c.id, { method: 'DELETE' })))
-                    .then(() => cargarCotizaciones())
-                    .then(() => mostrarNotificacion('Todas las cotizaciones fueron eliminadas'));
+                Promise.all(cotizaciones.map(function(c) {
+                    return fetch('/api/cotizaciones/' + c.id, { method: 'DELETE' });
+                }))
+                .then(function() { return cargarCotizaciones(); })
+                .then(function() { mostrarNotificacion('Todas las cotizaciones fueron eliminadas'); });
             }
 
             function mostrarNotificacion(mensaje) {
@@ -1219,10 +1250,10 @@
                 n.className = 'notification';
                 n.textContent = mensaje;
                 document.body.appendChild(n);
-                setTimeout(() => n.classList.add('show'), 100);
-                setTimeout(() => {
+                setTimeout(function() { n.classList.add('show'); }, 100);
+                setTimeout(function() {
                     n.classList.remove('show');
-                    setTimeout(() => n.remove(), 300);
+                    setTimeout(function() { n.remove(); }, 300);
                 }, 3000);
             }
 
