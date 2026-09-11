@@ -71,12 +71,11 @@ app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
 // ============================================================
-// ===== FUNCIÓN AUXILIAR: DIBUJAR LOGO EN PDF =====
+// ===== FUNCIÓN AUXILIAR: DIBUJAR LOGO EN PDF (SIN ARCHIVOS) =====
 // ============================================================
 function dibujarLogoEmpresa(doc, empresa, logoX, logoY, LOGO_WIDTH, LOGO_HEIGHT) {
     console.log('🔍 === DIAGNÓSTICO DEL LOGO ===');
     console.log('   empresa.logo existe:', !!empresa.logo);
-    console.log('   empresa.logo tipo:', typeof empresa.logo);
 
     let logoCargado = false;
 
@@ -86,18 +85,15 @@ function dibujarLogoEmpresa(doc, empresa, logoX, logoY, LOGO_WIDTH, LOGO_HEIGHT)
 
         try {
             let base64Data = null;
-            let extension = 'png';
 
             // Caso 1: prefijo data:image/...
             if (empresa.logo.indexOf('data:image') === 0) {
                 const matches = empresa.logo.match(/^data:image\/(\w+);base64,(.+)$/);
                 if (matches) {
-                    extension = matches[1] === 'jpeg' ? 'jpg' : matches[1];
                     base64Data = matches[2];
-                    console.log('   ✅ Formato data:image detectado, extensión:', extension);
+                    console.log('   ✅ Formato data:image detectado');
                 }
             } else {
-                // Caso 2: base64 puro
                 base64Data = empresa.logo;
                 console.log('   ✅ Base64 puro detectado');
             }
@@ -107,12 +103,9 @@ function dibujarLogoEmpresa(doc, empresa, logoX, logoY, LOGO_WIDTH, LOGO_HEIGHT)
                 console.log('   📦 Buffer creado:', imageBuffer.length, 'bytes');
 
                 if (imageBuffer.length > 100) {
-                    const tempLogoPath = path.join(__dirname, 'data', `temp_logo_${Date.now()}.${extension}`);
-                    fs.writeFileSync(tempLogoPath, imageBuffer);
-                    console.log('   💾 Archivo temporal:', tempLogoPath);
-
                     try {
-                        doc.image(tempLogoPath, logoX, logoY, {
+                        // ✅ Pasar el buffer DIRECTAMENTE a PDFKit (sin archivos temporales)
+                        doc.image(imageBuffer, logoX, logoY, {
                             width: LOGO_WIDTH,
                             height: LOGO_HEIGHT,
                             fit: [LOGO_WIDTH, LOGO_HEIGHT],
@@ -120,13 +113,10 @@ function dibujarLogoEmpresa(doc, empresa, logoX, logoY, LOGO_WIDTH, LOGO_HEIGHT)
                             valign: 'center'
                         });
                         logoCargado = true;
-                        console.log('   ✅ Logo insertado correctamente');
+                        console.log('   ✅ Logo insertado correctamente (buffer directo)');
                     } catch (imgError) {
                         console.error('   ❌ Error PDFKit al insertar imagen:', imgError.message);
                     }
-
-                    // Limpiar archivo temporal
-                    try { fs.unlinkSync(tempLogoPath); } catch (e) {}
                 } else {
                     console.log('   ⚠️ Buffer demasiado pequeño');
                 }
@@ -135,7 +125,6 @@ function dibujarLogoEmpresa(doc, empresa, logoX, logoY, LOGO_WIDTH, LOGO_HEIGHT)
             }
         } catch (e) {
             console.error('   ❌ Error procesando logo:', e.message);
-            console.error('   Stack:', e.stack);
         }
     } else {
         console.log('   ⚠️ No hay logo (vacío o nulo)');
@@ -1067,7 +1056,7 @@ app.get('/api/apu-pdf/:id', verificarAutenticacion, async (req, res) => {
         doc.strokeColor('#002735').lineWidth(2);
         doc.rect(40, currentY, pageWidth, 90).stroke();
 
-        // ===== LOGO O PLACEHOLDER =====
+        // ===== LOGO O PLACEHOLDER (SIN ARCHIVO TEMPORAL) =====
         const LOGO_WIDTH = 65;
         const LOGO_HEIGHT = 65;
         let logoX = 55;
@@ -1283,7 +1272,7 @@ app.post('/api/cotizacion-pdf', verificarAutenticacion, async (req, res) => {
         doc.strokeColor('#002735').lineWidth(2);
         doc.rect(MARGEN_IZQ, currentY, pageWidth, 90).stroke();
 
-        // ===== LOGO O PLACEHOLDER =====
+        // ===== LOGO O PLACEHOLDER (SIN ARCHIVO TEMPORAL) =====
         const LOGO_WIDTH = 65;
         const LOGO_HEIGHT = 65;
         let logoX = MARGEN_IZQ + 15;
